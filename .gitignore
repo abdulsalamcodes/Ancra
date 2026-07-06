@@ -1,0 +1,30 @@
+persistent-dva-hackathon-playbook.md
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Go build artifacts
+/ancra
+/bin/
+*.exe
+
+# Dependency vendor dir (if used)
+vendor/
+
+# Test cache & coverage
+*.out
+coverage.html
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
