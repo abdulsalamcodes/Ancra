@@ -67,6 +67,32 @@ func (s *CustomerStore) GetCurrentIdentity(ctx context.Context, customerID uuid.
 	return &v, nil
 }
 
+// ListCustomers returns customers with their current display name, newest first.
+func (s *CustomerStore) ListCustomers(ctx context.Context, limit, offset int) ([]*store.Customer, error) {
+	const q = `
+		SELECT c.id, c.kyc_tier, c.created_at, COALESCE(iv.display_name, '') AS display_name
+		FROM customers c
+		LEFT JOIN identity_versions iv ON iv.customer_id = c.id AND iv.effective_to IS NULL
+		ORDER BY c.created_at DESC
+		LIMIT $1 OFFSET $2`
+
+	rows, err := s.Pool.Query(ctx, q, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("customers.List: %w", err)
+	}
+	defer rows.Close()
+
+	var customers []*store.Customer
+	for rows.Next() {
+		var c store.Customer
+		if err := rows.Scan(&c.ID, &c.KYCTier, &c.CreatedAt, &c.DisplayName); err != nil {
+			return nil, fmt.Errorf("customers.List scan: %w", err)
+		}
+		customers = append(customers, &c)
+	}
+	return customers, rows.Err()
+}
+
 // CloseIdentityVersion stamps effective_to on the given identity version row.
 func (s *CustomerStore) CloseIdentityVersion(ctx context.Context, id uuid.UUID, closedAt time.Time) error {
 	const q = `UPDATE identity_versions SET effective_to = $1 WHERE id = $2`

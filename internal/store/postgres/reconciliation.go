@@ -164,6 +164,31 @@ func (s *WebhookStore) UpdateDelivery(ctx context.Context, d *store.WebhookDeliv
 	return nil
 }
 
+// ListDeliveries returns all webhook deliveries, newest first.
+func (s *WebhookStore) ListDeliveries(ctx context.Context, limit, offset int) ([]*store.WebhookDelivery, error) {
+	const q = `
+		SELECT id, event_type, payload, status, attempts, next_retry_at, created_at
+		FROM webhook_deliveries
+		ORDER BY created_at DESC
+		LIMIT $1 OFFSET $2`
+
+	rows, err := s.Pool.Query(ctx, q, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("webhook.ListDeliveries: %w", err)
+	}
+	defer rows.Close()
+
+	var deliveries []*store.WebhookDelivery
+	for rows.Next() {
+		d, err := scanDelivery(rows)
+		if err != nil {
+			return nil, err
+		}
+		deliveries = append(deliveries, d)
+	}
+	return deliveries, rows.Err()
+}
+
 func scanDelivery(row scanner) (*store.WebhookDelivery, error) {
 	var d store.WebhookDelivery
 	var status string

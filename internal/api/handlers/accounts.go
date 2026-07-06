@@ -274,6 +274,29 @@ func (h *CustomerHandler) Create(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, c)
 }
 
+// List returns a paginated list of customers with their display names.
+//
+// GET /customers
+func (h *CustomerHandler) List(w http.ResponseWriter, r *http.Request) {
+	limit := queryInt(r, "limit", 20)
+	offset := queryInt(r, "offset", 0)
+
+	customers, err := h.customers.ListCustomers(r.Context(), limit, offset)
+	if err != nil {
+		h.log.Error("list customers failed", zap.Error(err))
+		writeError(w, http.StatusInternalServerError, "failed to list customers")
+		return
+	}
+	if customers == nil {
+		customers = []*store.Customer{}
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"customers": customers,
+		"limit":     limit,
+		"offset":    offset,
+	})
+}
+
 // ---------------------------------------------------------------------------
 // helpers
 // ---------------------------------------------------------------------------

@@ -67,6 +67,7 @@ func main() {
 	eventStore := postgres.NewEventStore(db)
 	reconStore := postgres.NewReconciliationStore(db)
 	webhookStore := postgres.NewWebhookStore(db)
+	apiKeyStore := postgres.NewAPIKeyStore(db)
 
 	// ---------------------------------------------------------------------------
 	// Nomba client
@@ -115,7 +116,9 @@ func main() {
 		Customers:   customerStore,
 		Events:      eventStore,
 		Webhooks:    webhookStore,
-		APIKey:      cfg.APIKey,
+		APIKeys:     apiKeyStore,
+		StaticKey:   cfg.APIKey,
+		AdminSecret: cfg.AdminSecret,
 		Log:         log,
 	})
 

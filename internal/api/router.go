@@ -15,6 +15,7 @@ import (
 	"github.com/abdulsalamcodes/ancra/internal/domain/reconciliation"
 	"github.com/abdulsalamcodes/ancra/internal/nomba"
 	"github.com/abdulsalamcodes/ancra/internal/store"
+	"github.com/abdulsalamcodes/ancra/web"
 )
 
 // RouterDeps bundles everything the router needs to wire handlers.
@@ -28,7 +29,9 @@ type RouterDeps struct {
 	Customers   store.CustomerStore
 	Events      store.EventStore
 	Webhooks    store.WebhookStore
-	APIKey      string
+	APIKeys     store.APIKeyStore
+	StaticKey   string // legacy env var key, optional
+	AdminSecret string
 	Log         *zap.Logger
 }
 
@@ -50,6 +53,9 @@ func NewRouter(d RouterDeps) http.Handler {
 	// ---------------------------------------------------------------------------
 	r.Get("/health", healthHandler)
 
+	// Dashboard — served at root
+	r.Handle("/*", web.Handler())
+
 	// Nomba webhook — public but HMAC-verified inside the handler.
 	whHandler := handlers.NewWebhookHandler(
 		d.Verifier, d.LedgerSvc, d.Accounts, d.Events, d.Webhooks, d.Log,
@@ -57,19 +63,34 @@ func NewRouter(d RouterDeps) http.Handler {
 	r.Post("/webhooks/nomba", whHandler.HandleNomba)
 
 	// ---------------------------------------------------------------------------
+	// Admin routes — protected by Admin-Secret header only
+	// ---------------------------------------------------------------------------
+	apiKeyHandler := handlers.NewAPIKeyHandler(d.APIKeys, d.Log)
+	reconHandler := handlers.NewReconciliationHandler(d.ReconSvc, d.Webhooks, d.Log)
+
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.AdminAuth(d.AdminSecret))
+
+		r.Post("/admin/api-keys", apiKeyHandler.Create)
+		r.Get("/admin/api-keys", apiKeyHandler.List)
+		r.Delete("/admin/api-keys/{id}", apiKeyHandler.Revoke)
+		r.Get("/admin/webhooks", reconHandler.ListWebhooks)
+	})
+
+	// ---------------------------------------------------------------------------
 	// Authenticated developer API
 	// ---------------------------------------------------------------------------
 	acctHandler := handlers.NewAccountHandler(d.AccountSvc, d.Log)
 	txnHandler := handlers.NewTransactionHandler(d.LedgerSvc, d.NombaClient, d.Log)
-	reconHandler := handlers.NewReconciliationHandler(d.ReconSvc, d.Log)
 	customerHandler := handlers.NewCustomerHandler(d.Customers, d.Log)
 
 	r.Group(func(r chi.Router) {
-		r.Use(middleware.APIKeyAuth(d.APIKey))
-		r.Use(middleware.Idempotency)
+		r.Use(middleware.APIKeyAuth(d.APIKeys, d.StaticKey))
+		r.Use(chimw.StripSlashes)
 
 		// Customer endpoints
 		r.Post("/customers", customerHandler.Create)
+		r.Get("/customers", customerHandler.List)
 
 		// Account endpoints
 		r.Post("/accounts", acctHandler.Create)
@@ -85,6 +106,7 @@ func NewRouter(d RouterDeps) http.Handler {
 
 		// Reconciliation
 		r.Get("/reconciliation", reconHandler.GetLatest)
+		r.Post("/reconciliation/trigger", reconHandler.Trigger)
 	})
 
 	return r

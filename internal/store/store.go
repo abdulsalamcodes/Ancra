@@ -51,89 +51,111 @@ const (
 // Domain models
 // ---------------------------------------------------------------------------
 
+// APIKey represents a hashed developer API key.
+type APIKey struct {
+	ID         uuid.UUID  `json:"id"`
+	Name       string     `json:"name"`
+	KeyHash    string     `json:"-"`
+	CreatedAt  time.Time  `json:"created_at"`
+	LastUsedAt *time.Time `json:"last_used_at"`
+	RevokedAt  *time.Time `json:"revoked_at"`
+}
+
 // Customer represents an end-user of the Ancra platform.
 type Customer struct {
-	ID        uuid.UUID
-	KYCTier   int
-	CreatedAt time.Time
+	ID          uuid.UUID `json:"id"`
+	KYCTier     int       `json:"kyc_tier"`
+	CreatedAt   time.Time `json:"created_at"`
+	DisplayName string    `json:"display_name"` // joined from identity_versions, may be empty
 }
 
 // IdentityVersion is a point-in-time display name record for a customer.
 type IdentityVersion struct {
-	ID            uuid.UUID
-	CustomerID    uuid.UUID
-	DisplayName   string
-	EffectiveFrom time.Time
-	EffectiveTo   *time.Time // nil means currently active
+	ID            uuid.UUID  `json:"id"`
+	CustomerID    uuid.UUID  `json:"customer_id"`
+	DisplayName   string     `json:"display_name"`
+	EffectiveFrom time.Time  `json:"effective_from"`
+	EffectiveTo   *time.Time `json:"effective_to"`
 }
 
 // VirtualAccount is a Nomba-backed dedicated virtual account owned by a customer.
 type VirtualAccount struct {
-	ID                uuid.UUID
-	CustomerID        uuid.UUID
-	AccountRef        string
-	BankAccountNumber string
-	BankAccountName   string
-	Status            AccountStatus
-	CreatedAt         time.Time
+	ID                uuid.UUID     `json:"id"`
+	CustomerID        uuid.UUID     `json:"customer_id"`
+	AccountRef        string        `json:"account_ref"`
+	BankAccountNumber string        `json:"bank_account_number"`
+	BankAccountName   string        `json:"bank_account_name"`
+	Status            AccountStatus `json:"status"`
+	CreatedAt         time.Time     `json:"created_at"`
 }
 
 // LedgerEntry is an immutable double-entry line in the ledger.
 type LedgerEntry struct {
-	ID          uuid.UUID
-	AccountID   uuid.UUID
-	Direction   Direction
-	Amount      int64  // kobo (smallest NGN unit)
-	Currency    string
-	TxnGroupID  uuid.UUID
-	ExternalRef string // Nomba transactionId
-	EntryType   string // e.g. "inbound_credit", "fee", "transfer_out"
-	CreatedAt   time.Time
+	ID          uuid.UUID `json:"id"`
+	AccountID   uuid.UUID `json:"account_id"`
+	Direction   Direction `json:"direction"`
+	Amount      int64     `json:"amount"` // kobo (smallest NGN unit)
+	Currency    string    `json:"currency"`
+	TxnGroupID  uuid.UUID `json:"txn_group_id"`
+	ExternalRef string    `json:"external_ref"` // Nomba transactionId
+	EntryType   string    `json:"entry_type"`   // e.g. "inbound_credit", "fee", "transfer_out"
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 // SystemAccount identifies one of the named system ledger accounts.
 type SystemAccount struct {
-	ID   uuid.UUID
-	Name string // pool | suspense | fees | returns_clearing
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"` // pool | suspense | fees | returns_clearing
 }
 
 // ProcessedEvent records a Nomba transaction that has already been ingested,
 // providing idempotency for the webhook handler.
 type ProcessedEvent struct {
-	TransactionID string
-	RequestID     string
-	ReceivedAt    time.Time
+	TransactionID string    `json:"transaction_id"`
+	RequestID     string    `json:"request_id"`
+	ReceivedAt    time.Time `json:"received_at"`
 }
 
 // ReconciliationRun is the result of one sweep execution.
 type ReconciliationRun struct {
-	ID                  uuid.UUID
-	RunAt               time.Time
-	NombaWalletBalance  int64 // kobo
-	ComputedPoolBalance int64 // kobo
-	Delta               int64 // NombaWalletBalance - ComputedPoolBalance
-	Status              ReconciliationStatus
+	ID                  uuid.UUID            `json:"id"`
+	RunAt               time.Time            `json:"run_at"`
+	NombaWalletBalance  int64                `json:"nomba_wallet_balance"`  // kobo
+	ComputedPoolBalance int64                `json:"computed_pool_balance"` // kobo
+	Delta               int64                `json:"delta"`                 // NombaWalletBalance - ComputedPoolBalance
+	Status              ReconciliationStatus `json:"status"`
 }
 
 // WebhookDelivery tracks an outbound webhook notification to a developer.
 type WebhookDelivery struct {
-	ID          uuid.UUID
-	EventType   string
-	Payload     []byte // raw JSON
-	Status      WebhookStatus
-	Attempts    int
-	NextRetryAt *time.Time
-	CreatedAt   time.Time
+	ID          uuid.UUID     `json:"id"`
+	EventType   string        `json:"event_type"`
+	Payload     []byte        `json:"payload"` // raw JSON
+	Status      WebhookStatus `json:"status"`
+	Attempts    int           `json:"attempts"`
+	NextRetryAt *time.Time    `json:"next_retry_at"`
+	CreatedAt   time.Time     `json:"created_at"`
 }
 
 // ---------------------------------------------------------------------------
 // Store interfaces
 // ---------------------------------------------------------------------------
 
+// APIKeyStore manages developer API key persistence.
+type APIKeyStore interface {
+	CreateKey(ctx context.Context, k *APIKey) error
+	GetByHash(ctx context.Context, hash string) (*APIKey, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*APIKey, error)
+	ListKeys(ctx context.Context) ([]*APIKey, error)
+	RevokeKey(ctx context.Context, id uuid.UUID) error
+	TouchLastUsed(ctx context.Context, id uuid.UUID) error
+}
+
 // CustomerStore manages customer and identity-version persistence.
 type CustomerStore interface {
 	CreateCustomer(ctx context.Context, c *Customer) error
 	GetCustomer(ctx context.Context, id uuid.UUID) (*Customer, error)
+	ListCustomers(ctx context.Context, limit, offset int) ([]*Customer, error)
 
 	CreateIdentityVersion(ctx context.Context, v *IdentityVersion) error
 	GetCurrentIdentity(ctx context.Context, customerID uuid.UUID) (*IdentityVersion, error)
@@ -187,5 +209,6 @@ type WebhookStore interface {
 	GetDelivery(ctx context.Context, id uuid.UUID) (*WebhookDelivery, error)
 	// ListPending returns deliveries that are due for (re-)delivery.
 	ListPending(ctx context.Context, now time.Time, limit int) ([]*WebhookDelivery, error)
+	ListDeliveries(ctx context.Context, limit, offset int) ([]*WebhookDelivery, error)
 	UpdateDelivery(ctx context.Context, d *WebhookDelivery) error
 }

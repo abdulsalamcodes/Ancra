@@ -18,7 +18,8 @@ type Config struct {
 	NombaSubAccountID    string
 	NombaBaseURL         string
 	NombaWebhookSecret   string
-	APIKey               string
+	APIKey               string // legacy static key; optional when DB keys are used
+	AdminSecret          string // protects /admin/* endpoints
 	SweepIntervalSeconds int
 }
 
@@ -42,7 +43,8 @@ func Load() (*Config, error) {
 	if cfg.NombaWebhookSecret == "" {
 		cfg.NombaWebhookSecret = mustGetEnv("NOMBA_WEBHOOK_SIGNING_KEY")
 	}
-	cfg.APIKey = mustGetEnv("API_KEY")
+	cfg.APIKey = getEnv("API_KEY", "")     // optional; legacy static key
+	cfg.AdminSecret = mustGetEnv("ADMIN_SECRET")
 
 	sweepStr := getEnv("SWEEP_INTERVAL_SECONDS", "60")
 	sweep, err := strconv.Atoi(sweepStr)
