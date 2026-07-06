@@ -11,6 +11,7 @@ import (
 
 	"go.uber.org/zap"
 
+	dbpkg "github.com/abdulsalamcodes/ancra/db"
 	"github.com/abdulsalamcodes/ancra/internal/api"
 	"github.com/abdulsalamcodes/ancra/internal/config"
 	"github.com/abdulsalamcodes/ancra/internal/domain/account"
@@ -51,6 +52,11 @@ func main() {
 	defer db.Close()
 
 	log.Info("postgres connected", zap.String("dsn", maskDSN(cfg.DatabaseURL)))
+
+	if err := dbpkg.RunMigrations(ctx, db.Pool); err != nil {
+		log.Fatal("failed to run migrations", zap.Error(err))
+	}
+	log.Info("database migrations applied")
 
 	// ---------------------------------------------------------------------------
 	// Stores

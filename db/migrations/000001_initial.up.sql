@@ -36,7 +36,10 @@ CREATE INDEX IF NOT EXISTS idx_identity_versions_customer
 -- ---------------------------------------------------------------------------
 -- virtual_accounts
 -- ---------------------------------------------------------------------------
-CREATE TYPE account_status AS ENUM ('active', 'closed');
+DO $$ BEGIN
+    CREATE TYPE account_status AS ENUM ('active', 'closed');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 CREATE TABLE IF NOT EXISTS virtual_accounts (
     id                  UUID           PRIMARY KEY,
@@ -74,7 +77,10 @@ ON CONFLICT (name) DO NOTHING;
 -- ---------------------------------------------------------------------------
 -- ledger_entries  (append-only double-entry ledger)
 -- ---------------------------------------------------------------------------
-CREATE TYPE entry_direction AS ENUM ('debit', 'credit');
+DO $$ BEGIN
+    CREATE TYPE entry_direction AS ENUM ('debit', 'credit');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 CREATE TABLE IF NOT EXISTS ledger_entries (
     id           UUID            PRIMARY KEY,
@@ -113,7 +119,10 @@ CREATE TABLE IF NOT EXISTS processed_events (
 -- ---------------------------------------------------------------------------
 -- reconciliation_runs
 -- ---------------------------------------------------------------------------
-CREATE TYPE recon_status AS ENUM ('ok', 'mismatch');
+DO $$ BEGIN
+    CREATE TYPE recon_status AS ENUM ('ok', 'mismatch');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 CREATE TABLE IF NOT EXISTS reconciliation_runs (
     id                    UUID         PRIMARY KEY,
@@ -130,7 +139,10 @@ CREATE INDEX IF NOT EXISTS idx_recon_runs_run_at
 -- ---------------------------------------------------------------------------
 -- webhook_deliveries  (outbound developer webhook queue)
 -- ---------------------------------------------------------------------------
-CREATE TYPE webhook_status AS ENUM ('pending', 'delivered', 'failed');
+DO $$ BEGIN
+    CREATE TYPE webhook_status AS ENUM ('pending', 'delivered', 'failed');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 CREATE TABLE IF NOT EXISTS webhook_deliveries (
     id            UUID           PRIMARY KEY,
