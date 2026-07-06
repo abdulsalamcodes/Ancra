@@ -156,6 +156,9 @@ type LedgerStore interface {
 	InsertEntries(ctx context.Context, entries []*LedgerEntry) error
 	// GetBalance returns the net balance (credits − debits) in kobo for an account.
 	GetBalance(ctx context.Context, accountID uuid.UUID) (int64, error)
+	// GetBalanceAsOf returns the net balance up to and including the given timestamp.
+	// Used to compute correct opening/closing balances for paginated statements.
+	GetBalanceAsOf(ctx context.Context, accountID uuid.UUID, asOf time.Time) (int64, error)
 	// ListEntries returns ledger entries for an account ordered by created_at DESC.
 	ListEntries(ctx context.Context, accountID uuid.UUID, limit, offset int) ([]*LedgerEntry, error)
 	// GetSystemAccount retrieves a named system account row.

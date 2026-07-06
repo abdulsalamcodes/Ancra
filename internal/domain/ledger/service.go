@@ -47,6 +47,11 @@ func (s *Service) PostCredit(ctx context.Context, req CreditRequest) (*PostingRe
 	txnGroupID := uuid.New()
 	now := time.Now().UTC()
 
+	customerEntryType := req.EntryType
+	if customerEntryType == "" {
+		customerEntryType = "inbound_credit"
+	}
+
 	entries := []*store.LedgerEntry{
 		{
 			ID:          uuid.New(),
@@ -56,7 +61,7 @@ func (s *Service) PostCredit(ctx context.Context, req CreditRequest) (*PostingRe
 			Currency:    req.Currency,
 			TxnGroupID:  txnGroupID,
 			ExternalRef: req.ExternalRef,
-			EntryType:   "inbound_credit",
+			EntryType:   customerEntryType,
 			CreatedAt:   now,
 		},
 		{

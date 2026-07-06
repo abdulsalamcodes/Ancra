@@ -25,6 +25,7 @@ type RouterDeps struct {
 	NombaClient *nomba.Client
 	Verifier    *nomba.Verifier
 	Accounts    store.AccountStore
+	Customers   store.CustomerStore
 	Events      store.EventStore
 	Webhooks    store.WebhookStore
 	APIKey      string
@@ -61,10 +62,14 @@ func NewRouter(d RouterDeps) http.Handler {
 	acctHandler := handlers.NewAccountHandler(d.AccountSvc, d.Log)
 	txnHandler := handlers.NewTransactionHandler(d.LedgerSvc, d.NombaClient, d.Log)
 	reconHandler := handlers.NewReconciliationHandler(d.ReconSvc, d.Log)
+	customerHandler := handlers.NewCustomerHandler(d.Customers, d.Log)
 
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.APIKeyAuth(d.APIKey))
 		r.Use(middleware.Idempotency)
+
+		// Customer endpoints
+		r.Post("/customers", customerHandler.Create)
 
 		// Account endpoints
 		r.Post("/accounts", acctHandler.Create)
@@ -88,7 +93,7 @@ func NewRouter(d RouterDeps) http.Handler {
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"status":"ok"}`)) //nolint:errcheck
+	w.Write([]byte(`{"status":"ok","service":"ancra","version":"0.1.0"}`)) //nolint:errcheck
 }
 
 // zapLogger is a minimal chi-compatible request logger using zap.

@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -57,6 +58,23 @@ func (s *LedgerStore) GetBalance(ctx context.Context, accountID uuid.UUID) (int6
 	var balance int64
 	if err := s.Pool.QueryRow(ctx, q, accountID).Scan(&balance); err != nil {
 		return 0, fmt.Errorf("ledger.GetBalance: %w", err)
+	}
+	return balance, nil
+}
+
+// GetBalanceAsOf returns the net balance up to and including asOf timestamp.
+// This is used to compute correct running balances on paginated statements.
+func (s *LedgerStore) GetBalanceAsOf(ctx context.Context, accountID uuid.UUID, asOf time.Time) (int64, error) {
+	const q = `
+		SELECT
+			COALESCE(SUM(CASE WHEN direction = 'credit' THEN amount ELSE 0 END), 0)
+			- COALESCE(SUM(CASE WHEN direction = 'debit'  THEN amount ELSE 0 END), 0)
+		FROM ledger_entries
+		WHERE account_id = $1 AND created_at <= $2`
+
+	var balance int64
+	if err := s.Pool.QueryRow(ctx, q, accountID, asOf).Scan(&balance); err != nil {
+		return 0, fmt.Errorf("ledger.GetBalanceAsOf: %w", err)
 	}
 	return balance, nil
 }

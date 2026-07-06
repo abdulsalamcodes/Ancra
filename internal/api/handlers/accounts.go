@@ -4,13 +4,16 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
 	"github.com/abdulsalamcodes/ancra/internal/domain/account"
+	"github.com/abdulsalamcodes/ancra/internal/store"
 )
+
 
 // AccountHandler exposes virtual-account endpoints.
 type AccountHandler struct {
@@ -63,7 +66,7 @@ func (h *AccountHandler) Create(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		h.log.Error("create account failed", zap.Error(err))
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "failed to provision account")
 		return
 	}
 
@@ -140,9 +143,25 @@ func (h *AccountHandler) ListTransactions(w http.ResponseWriter, r *http.Request
 // GET /accounts/{id}/statement  (alias — same as list transactions)
 // ---------------------------------------------------------------------------
 
-// GetStatement returns the full ledger statement for an account.
+// GetStatement returns a paginated account statement with a running balance
+// per entry that is correct across all pages.
 func (h *AccountHandler) GetStatement(w http.ResponseWriter, r *http.Request) {
-	h.ListTransactions(w, r)
+	id, ok := parseUUID(w, r, "id")
+	if !ok {
+		return
+	}
+
+	limit := queryInt(r, "limit", 20)
+	offset := queryInt(r, "offset", 0)
+
+	statement, err := h.svc.GetStatement(r.Context(), id, limit, offset)
+	if err != nil {
+		h.log.Error("get statement failed", zap.String("id", id.String()), zap.Error(err))
+		writeError(w, http.StatusInternalServerError, "failed to retrieve statement")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, statement)
 }
 
 // ---------------------------------------------------------------------------
@@ -175,7 +194,7 @@ func (h *AccountHandler) Update(w http.ResponseWriter, r *http.Request) {
 		DisplayName: req.DisplayName,
 	}); err != nil {
 		h.log.Error("update account failed", zap.String("id", id.String()), zap.Error(err))
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "failed to update account")
 		return
 	}
 
@@ -195,11 +214,64 @@ func (h *AccountHandler) Close(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.svc.Close(r.Context(), id); err != nil {
 		h.log.Error("close account failed", zap.String("id", id.String()), zap.Error(err))
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "failed to close account")
 		return
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "closed"})
+}
+
+// ---------------------------------------------------------------------------
+// CustomerHandler
+// ---------------------------------------------------------------------------
+
+// CustomerHandler exposes customer endpoints.
+type CustomerHandler struct {
+	customers store.CustomerStore
+	log       *zap.Logger
+}
+
+// NewCustomerHandler constructs a CustomerHandler.
+func NewCustomerHandler(customers store.CustomerStore, log *zap.Logger) *CustomerHandler {
+	return &CustomerHandler{customers: customers, log: log}
+}
+
+type createCustomerRequest struct {
+	KYCTier int `json:"kyc_tier"`
+}
+
+const (
+	minKYCTier = 1
+	maxKYCTier = 3
+)
+
+// Create provisions a new customer.
+func (h *CustomerHandler) Create(w http.ResponseWriter, r *http.Request) {
+	var req createCustomerRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	if req.KYCTier == 0 {
+		req.KYCTier = minKYCTier
+	}
+	if req.KYCTier < minKYCTier || req.KYCTier > maxKYCTier {
+		writeError(w, http.StatusBadRequest, "kyc_tier must be 1, 2, or 3")
+		return
+	}
+
+	c := &store.Customer{
+		ID:        uuid.New(),
+		KYCTier:   req.KYCTier,
+		CreatedAt: time.Now().UTC(),
+	}
+	if err := h.customers.CreateCustomer(r.Context(), c); err != nil {
+		h.log.Error("create customer failed", zap.Error(err))
+		writeError(w, http.StatusInternalServerError, "failed to create customer")
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, c)
 }
 
 // ---------------------------------------------------------------------------
@@ -237,5 +309,16 @@ func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 func writeError(w http.ResponseWriter, status int, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(map[string]string{"error": msg}) //nolint:errcheck
+	json.NewEncoder(w).Encode(map[string]interface{}{ //nolint:errcheck
+		"error": map[string]string{"message": msg},
+	})
 }
+
+// newValidationError returns an error with a user-facing validation message.
+func newValidationError(msg string) error {
+	return validationError(msg)
+}
+
+type validationError string
+
+func (e validationError) Error() string { return string(e) }

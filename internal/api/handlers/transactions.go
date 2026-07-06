@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 
 	"github.com/abdulsalamcodes/ancra/internal/domain/ledger"
@@ -26,21 +29,23 @@ func NewTransactionHandler(ledgerSvc *ledger.Service, nombaClient *nomba.Client,
 	}
 }
 
-// ---------------------------------------------------------------------------
-// POST /accounts/{id}/transfer  (optional extension endpoint)
-// ---------------------------------------------------------------------------
-
 type transferRequest struct {
-	Amount          int64  `json:"amount"` // kobo
-	Currency        string `json:"currency"`
-	Narration       string `json:"narration"`
-	Reference       string `json:"reference"`
+	Amount             int64  `json:"amount"` // kobo
+	Currency           string `json:"currency"`
+	Narration          string `json:"narration"`
+	Reference          string `json:"reference"`
 	DestinationBank    string `json:"destination_bank"`
 	DestinationAccount string `json:"destination_account"`
 	DestinationName    string `json:"destination_name"`
 }
 
 // Transfer initiates an outbound bank transfer from a customer's virtual account.
+//
+// Order of operations:
+//  1. Validate input.
+//  2. Post a ledger debit (validates sufficient funds atomically).
+//  3. Submit the transfer to Nomba.
+//  4. If Nomba rejects, reverse the ledger debit so the invariant is restored.
 func (h *TransactionHandler) Transfer(w http.ResponseWriter, r *http.Request) {
 	accountID, ok := parseUUID(w, r, "id")
 	if !ok {
@@ -53,15 +58,15 @@ func (h *TransactionHandler) Transfer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Amount <= 0 {
-		writeError(w, http.StatusBadRequest, "amount must be positive (in kobo)")
+	if err := validateTransferRequest(req); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+
 	if req.Currency == "" {
 		req.Currency = "NGN"
 	}
 
-	// 1. Post the debit to the ledger (this validates sufficient funds).
 	_, err := h.ledgerSvc.PostDebit(r.Context(), ledger.DebitRequest{
 		AccountID:   accountID,
 		Amount:      req.Amount,
@@ -72,12 +77,15 @@ func (h *TransactionHandler) Transfer(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.log.Error("transfer: ledger debit failed",
 			zap.String("account_id", accountID.String()), zap.Error(err))
-		writeError(w, http.StatusUnprocessableEntity, err.Error())
+		if strings.Contains(err.Error(), "insufficient funds") {
+			writeError(w, http.StatusUnprocessableEntity, "insufficient funds")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "failed to process transfer")
 		return
 	}
 
-	// 2. Initiate the actual transfer via Nomba.
-	nombaResp, err := h.nomba.Transfer(r.Context(), nomba.TransferRequest{
+	nombaResp, nombaErr := h.nomba.Transfer(r.Context(), nomba.TransferRequest{
 		Amount:             req.Amount,
 		Currency:           req.Currency,
 		Narration:          req.Narration,
@@ -86,16 +94,14 @@ func (h *TransactionHandler) Transfer(w http.ResponseWriter, r *http.Request) {
 		DestinationAccount: req.DestinationAccount,
 		DestinationName:    req.DestinationName,
 	})
-	if err != nil {
-		// NOTE: The ledger debit has already been posted. In production you
-		// would reverse it here or use a saga/outbox pattern. For now we log
-		// the discrepancy so the reconciliation sweep can detect it.
-		h.log.Error("transfer: nomba transfer failed — ledger debit already posted",
+	if nombaErr != nil {
+		h.log.Error("transfer: nomba rejected — reversing ledger debit",
 			zap.String("account_id", accountID.String()),
 			zap.String("reference", req.Reference),
-			zap.Error(err),
+			zap.Error(nombaErr),
 		)
-		writeError(w, http.StatusBadGateway, "transfer submitted to ledger but Nomba rejected: "+err.Error())
+		h.reverseLedgerDebit(r.Context(), accountID, req.Amount, req.Currency, req.Reference)
+		writeError(w, http.StatusBadGateway, "transfer rejected by payment provider")
 		return
 	}
 
@@ -109,4 +115,48 @@ func (h *TransactionHandler) Transfer(w http.ResponseWriter, r *http.Request) {
 		"status":            "submitted",
 		"nomba_transaction": nombaResp.Data,
 	})
+}
+
+// reverseLedgerDebit posts a compensating credit when a Nomba transfer fails
+// after the ledger debit has already been written. If the reversal itself fails,
+// the discrepancy will be caught by the next reconciliation sweep.
+func (h *TransactionHandler) reverseLedgerDebit(ctx context.Context, accountID uuid.UUID, amount int64, currency, reference string) {
+	_, err := h.ledgerSvc.PostCredit(ctx, ledger.CreditRequest{
+		AccountID:   accountID,
+		Amount:      amount,
+		Currency:    currency,
+		ExternalRef: reference + "_reversal",
+		Narration:   "reversal: nomba transfer rejected",
+		EntryType:   "transfer_reversal",
+	})
+	if err != nil {
+		h.log.Error("transfer: CRITICAL — ledger reversal failed; reconciliation sweep will detect delta",
+			zap.String("account_id", accountID.String()),
+			zap.String("reference", reference),
+			zap.Error(err),
+		)
+	}
+}
+
+func validateTransferRequest(req transferRequest) error {
+	var missing []string
+	if req.Amount <= 0 {
+		return newValidationError("amount must be a positive kobo value")
+	}
+	if req.Reference == "" {
+		missing = append(missing, "reference")
+	}
+	if req.DestinationBank == "" {
+		missing = append(missing, "destination_bank")
+	}
+	if req.DestinationAccount == "" {
+		missing = append(missing, "destination_account")
+	}
+	if req.DestinationName == "" {
+		missing = append(missing, "destination_name")
+	}
+	if len(missing) > 0 {
+		return newValidationError("missing required fields: " + strings.Join(missing, ", "))
+	}
+	return nil
 }

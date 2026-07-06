@@ -44,3 +44,26 @@ type TransactionPage struct {
 	Limit   int
 	Offset  int
 }
+
+// StatementEntry is a ledger entry annotated with a running balance.
+type StatementEntry struct {
+	ID             uuid.UUID         `json:"id"`
+	Direction      store.Direction   `json:"direction"`
+	Amount         int64             `json:"amount_kobo"`
+	Currency       string            `json:"currency"`
+	EntryType      string            `json:"entry_type"`
+	ExternalRef    string            `json:"external_ref"`
+	RunningBalance int64             `json:"running_balance_kobo"`
+	CreatedAt      time.Time         `json:"created_at"`
+}
+
+// StatementPage is a paginated account statement with correct running balances.
+type StatementPage struct {
+	AccountID      uuid.UUID        `json:"account_id"`
+	OpeningBalance int64            `json:"opening_balance_kobo"`
+	ClosingBalance int64            `json:"closing_balance_kobo"`
+	Currency       string           `json:"currency"`
+	Entries        []StatementEntry `json:"entries"`
+	Limit          int              `json:"limit"`
+	Offset         int              `json:"offset"`
+}

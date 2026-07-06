@@ -14,6 +14,9 @@ type CreditRequest struct {
 	Currency    string
 	ExternalRef string // Nomba transactionId
 	Narration   string
+	// EntryType overrides the default "inbound_credit" label on the customer leg.
+	// Leave empty for normal inbound credits; set to "transfer_reversal" for reversals.
+	EntryType string
 }
 
 // DebitRequest describes an outbound debit from a customer account.

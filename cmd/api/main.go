@@ -105,6 +105,7 @@ func main() {
 		NombaClient: nombaClient,
 		Verifier:    verifier,
 		Accounts:    accountStore,
+		Customers:   customerStore,
 		Events:      eventStore,
 		Webhooks:    webhookStore,
 		APIKey:      cfg.APIKey,
