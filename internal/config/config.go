@@ -10,15 +10,16 @@ import (
 
 // Config holds all runtime configuration loaded from environment variables.
 type Config struct {
-	Port                  string
-	DatabaseURL           string
-	NombaClientID         string
-	NombaClientSecret     string
-	NombaAccountID        string
-	NombaBaseURL          string
-	NombaWebhookSecret    string
-	APIKey                string
-	SweepIntervalSeconds  int
+	Port                 string
+	DatabaseURL          string
+	NombaClientID        string
+	NombaClientSecret    string
+	NombaAccountID       string
+	NombaSubAccountID    string
+	NombaBaseURL         string
+	NombaWebhookSecret   string
+	APIKey               string
+	SweepIntervalSeconds int
 }
 
 // Load reads the .env file (if present) and then reads environment variables.
@@ -34,8 +35,13 @@ func Load() (*Config, error) {
 	cfg.NombaClientID = mustGetEnv("NOMBA_CLIENT_ID")
 	cfg.NombaClientSecret = mustGetEnv("NOMBA_CLIENT_SECRET")
 	cfg.NombaAccountID = mustGetEnv("NOMBA_ACCOUNT_ID")
+	cfg.NombaSubAccountID = mustGetEnv("NOMBA_SUB_ACCOUNT_ID")
 	cfg.NombaBaseURL = getEnv("NOMBA_BASE_URL", "https://api.nomba.com/v1")
-	cfg.NombaWebhookSecret = mustGetEnv("NOMBA_WEBHOOK_SECRET")
+	// Support both NOMBA_WEBHOOK_SECRET and NOMBA_WEBHOOK_SIGNING_KEY (hackathon alias).
+	cfg.NombaWebhookSecret = getEnv("NOMBA_WEBHOOK_SECRET", "")
+	if cfg.NombaWebhookSecret == "" {
+		cfg.NombaWebhookSecret = mustGetEnv("NOMBA_WEBHOOK_SIGNING_KEY")
+	}
 	cfg.APIKey = mustGetEnv("API_KEY")
 
 	sweepStr := getEnv("SWEEP_INTERVAL_SECONDS", "60")

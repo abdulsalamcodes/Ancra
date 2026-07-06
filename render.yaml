@@ -5,6 +5,7 @@ services:
     repo: https://github.com/abdulsalamcodes/Ancra
     buildCommand: go build -o bin/ancra ./cmd/api
     startCommand: ./bin/ancra
+    healthCheckPath: /health
     envVars:
       - key: PORT
         value: 8080
@@ -21,6 +22,8 @@ services:
       - key: NOMBA_CLIENT_SECRET
         sync: false
       - key: NOMBA_ACCOUNT_ID
+        sync: false
+      - key: NOMBA_SUB_ACCOUNT_ID
         sync: false
       - key: NOMBA_WEBHOOK_SECRET
         sync: false

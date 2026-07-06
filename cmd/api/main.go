@@ -76,6 +76,7 @@ func main() {
 		cfg.NombaClientID,
 		cfg.NombaClientSecret,
 		cfg.NombaAccountID,
+		cfg.NombaSubAccountID,
 		log,
 	)
 	verifier := nomba.NewVerifier(cfg.NombaWebhookSecret)

@@ -18,12 +18,13 @@ import (
 // Client is an authenticated HTTP client for the Nomba API.
 // It manages an OAuth2 client-credentials token with automatic refresh.
 type Client struct {
-	httpClient  *http.Client
-	baseURL     string
-	clientID    string
+	httpClient   *http.Client
+	baseURL      string
+	clientID     string
 	clientSecret string
-	accountID   string
-	log         *zap.Logger
+	accountID    string // parent account ID — used in the accountId auth header
+	subAccountID string // sub-account ID — used for VA creation, transfers, transactions
+	log          *zap.Logger
 
 	mu          sync.Mutex
 	token       string
@@ -31,13 +32,14 @@ type Client struct {
 }
 
 // NewClient constructs a ready-to-use Nomba API client.
-func NewClient(baseURL, clientID, clientSecret, accountID string, log *zap.Logger) *Client {
+func NewClient(baseURL, clientID, clientSecret, accountID, subAccountID string, log *zap.Logger) *Client {
 	return &Client{
 		httpClient:   &http.Client{Timeout: 30 * time.Second},
 		baseURL:      baseURL,
 		clientID:     clientID,
 		clientSecret: clientSecret,
 		accountID:    accountID,
+		subAccountID: subAccountID,
 		log:          log,
 	}
 }
@@ -90,7 +92,7 @@ func (c *Client) CreateVirtualAccount(ctx context.Context, req CreateVirtualAcco
 	}
 
 	var resp CreateVirtualAccountResponse
-	path := fmt.Sprintf("/accounts/%s/virtual-accounts", c.accountID)
+	path := fmt.Sprintf("/accounts/%s/virtual-accounts", c.subAccountID)
 	if err := c.doJSON(ctx, http.MethodPost, path, token, req, &resp); err != nil {
 		return nil, fmt.Errorf("nomba: create virtual account: %w", err)
 	}
@@ -115,7 +117,7 @@ func (c *Client) GetWalletBalance(ctx context.Context) (*WalletBalanceResponse, 
 	}
 
 	var resp WalletBalanceResponse
-	path := fmt.Sprintf("/accounts/%s/balance", c.accountID)
+	path := fmt.Sprintf("/accounts/%s/balance", c.subAccountID)
 	if err := c.doJSON(ctx, http.MethodGet, path, token, nil, &resp); err != nil {
 		return nil, fmt.Errorf("nomba: get wallet balance: %w", err)
 	}
@@ -186,7 +188,7 @@ func (c *Client) Transfer(ctx context.Context, req TransferRequest) (*TransferRe
 	}
 
 	var resp TransferResponse
-	path := fmt.Sprintf("/accounts/%s/transfers", c.accountID)
+	path := fmt.Sprintf("/accounts/%s/transfers", c.subAccountID)
 	if err := c.doJSON(ctx, http.MethodPost, path, token, req, &resp); err != nil {
 		return nil, fmt.Errorf("nomba: transfer: %w", err)
 	}
@@ -221,6 +223,7 @@ func (c *Client) doJSON(ctx context.Context, method, path, token string, reqBody
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("accountId", c.accountID) // Nomba requires parent accountId on every request
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
