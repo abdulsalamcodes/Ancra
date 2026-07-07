@@ -11,6 +11,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -60,12 +61,16 @@ func NewService(
 func (s *Service) Run(ctx context.Context) (*store.ReconciliationRun, error) {
 	runAt := time.Now().UTC()
 
-	// 1. Nomba wallet balance (returned in naira; convert to kobo).
+	// 1. Nomba wallet balance (returned as a naira string; convert to kobo).
 	balResp, err := s.nomba.GetWalletBalance(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("reconciliation.Run: get nomba balance: %w", err)
 	}
-	nombaKobo := nairaToKobo(balResp.Data.AvailableFloat)
+	balanceNaira, parseErr := strconv.ParseFloat(balResp.Data.Amount, 64)
+	if parseErr != nil {
+		return nil, fmt.Errorf("reconciliation.Run: parse nomba balance %q: %w", balResp.Data.Amount, parseErr)
+	}
+	nombaKobo := nairaToKobo(balanceNaira)
 
 	// 2. Pool balance from ledger.
 	pool, err := s.ledger.GetSystemAccount(ctx, poolAccountName)
@@ -143,11 +148,22 @@ func (s *Service) BackfillMissedCredits(ctx context.Context, accounts store.Acco
 			continue
 		}
 
-		// Look up the destination virtual account by bank account number.
-		va, err := accounts.GetAccountByNumber(ctx, txn.RecipientNumber)
+		// Look up the destination virtual account by its assigned bank account number.
+		// For inbound virtual-account credits Nomba includes aliasAccountNumber;
+		// fall back to recipientNumber for any older / alternate response shapes.
+		accountNumber := txn.AliasAccountNumber
+		if accountNumber == "" {
+			accountNumber = txn.RecipientNumber
+		}
+		if accountNumber == "" {
+			s.log.Warn("backfill: no account number on credit transaction",
+				zap.String("txn_id", txn.TransactionID))
+			continue
+		}
+		va, err := accounts.GetAccountByNumber(ctx, accountNumber)
 		if err != nil {
 			s.log.Warn("backfill: unknown destination account",
-				zap.String("account_number", txn.RecipientNumber),
+				zap.String("account_number", accountNumber),
 				zap.String("txn_id", txn.TransactionID),
 			)
 			continue

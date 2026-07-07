@@ -15,6 +15,7 @@ import (
 	"github.com/abdulsalamcodes/ancra/internal/api"
 	"github.com/abdulsalamcodes/ancra/internal/config"
 	"github.com/abdulsalamcodes/ancra/internal/domain/account"
+	domainauth "github.com/abdulsalamcodes/ancra/internal/domain/auth"
 	"github.com/abdulsalamcodes/ancra/internal/domain/ledger"
 	"github.com/abdulsalamcodes/ancra/internal/domain/reconciliation"
 	"github.com/abdulsalamcodes/ancra/internal/nomba"
@@ -68,6 +69,9 @@ func main() {
 	reconStore := postgres.NewReconciliationStore(db)
 	webhookStore := postgres.NewWebhookStore(db)
 	apiKeyStore := postgres.NewAPIKeyStore(db)
+	orgStore := postgres.NewOrgStore(db)
+	userStore := postgres.NewUserStore(db)
+	refreshTokenStore := postgres.NewRefreshTokenStore(db)
 
 	// ---------------------------------------------------------------------------
 	// Nomba client
@@ -85,6 +89,7 @@ func main() {
 	// ---------------------------------------------------------------------------
 	// Domain services
 	// ---------------------------------------------------------------------------
+	authSvc := domainauth.NewService(orgStore, userStore, refreshTokenStore, []byte(cfg.JWTSecret), log)
 	accountSvc := account.NewService(accountStore, customerStore, ledgerStore, nombaClient, log)
 	ledgerSvc := ledger.NewService(ledgerStore, log)
 	reconSvc := reconciliation.NewService(ledgerStore, reconStore, accountStore, eventStore, nombaClient, log)
@@ -110,6 +115,7 @@ func main() {
 		AccountSvc:  accountSvc,
 		LedgerSvc:   ledgerSvc,
 		ReconSvc:    reconSvc,
+		AuthSvc:     authSvc,
 		NombaClient: nombaClient,
 		Verifier:    verifier,
 		Accounts:    accountStore,

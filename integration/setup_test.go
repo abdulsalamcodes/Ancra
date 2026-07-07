@@ -268,7 +268,7 @@ func newFakeNombaServer() *httptest.Server {
 	mux := http.NewServeMux()
 
 	// OAuth2 token — matches real Nomba envelope format
-	mux.HandleFunc("/auth/token/issue", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/v1/auth/token/issue", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{ //nolint:errcheck
 			"code":        "00",
@@ -281,8 +281,8 @@ func newFakeNombaServer() *httptest.Server {
 		})
 	})
 
-	// Create virtual account: POST /accounts/virtual
-	mux.HandleFunc("/accounts/virtual", func(w http.ResponseWriter, r *http.Request) {
+	// Create virtual account: POST /v1/accounts/virtual
+	mux.HandleFunc("/v1/accounts/virtual", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if r.Method != http.MethodPost {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -354,26 +354,24 @@ func newFakeNombaServer() *httptest.Server {
 		})
 	})
 
-	// Catch-all for /accounts/...
-	mux.HandleFunc("/accounts/", func(w http.ResponseWriter, r *http.Request) {
+	// Catch-all for /v1/accounts/...
+	mux.HandleFunc("/v1/accounts/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
 		switch {
 
-		// Wallet balance: GET /accounts/{subID}/balance
+		// Wallet balance: GET /v1/accounts/{subID}/balance
 		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/balance"):
 			json.NewEncoder(w).Encode(map[string]interface{}{ //nolint:errcheck
 				"code":        "00",
 				"description": "Successful",
 				"data": map[string]interface{}{
-					"accountId":      testSubAccountID,
-					"availableFloat": 0.0,
-					"ledgerBalance":  0.0,
-					"currency":       "NGN",
+					"amount":   "0.0", // naira decimal string as Nomba returns it
+					"currency": "NGN",
 				},
 			})
 
-		// Transactions: GET /accounts/{id}/transactions
+		// Transactions: GET /v1/accounts/{id}/transactions
 		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/transactions"):
 			json.NewEncoder(w).Encode(map[string]interface{}{ //nolint:errcheck
 				"code":        "00",

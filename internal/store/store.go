@@ -51,9 +51,47 @@ const (
 // Domain models
 // ---------------------------------------------------------------------------
 
+// UserRole is the access level of a user within their organisation.
+type UserRole string
+
+const (
+	UserRoleOwner  UserRole = "owner"
+	UserRoleMember UserRole = "member"
+)
+
+// Organization is the top-level tenant that owns all resources (customers,
+// accounts, API keys) in the multi-tenant model.
+type Organization struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	Slug      string    `json:"slug"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// User is a human member of an organisation who authenticates via email/password.
+type User struct {
+	ID           uuid.UUID `json:"id"`
+	OrgID        uuid.UUID `json:"org_id"`
+	Email        string    `json:"email"`
+	PasswordHash string    `json:"-"`
+	Role         UserRole  `json:"role"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+// RefreshToken is an opaque long-lived token stored as a SHA-256 hash.
+type RefreshToken struct {
+	ID        uuid.UUID  `json:"id"`
+	UserID    uuid.UUID  `json:"user_id"`
+	TokenHash string     `json:"-"`
+	ExpiresAt time.Time  `json:"expires_at"`
+	RevokedAt *time.Time `json:"revoked_at"`
+	CreatedAt time.Time  `json:"created_at"`
+}
+
 // APIKey represents a hashed developer API key.
 type APIKey struct {
 	ID         uuid.UUID  `json:"id"`
+	OrgID      *uuid.UUID `json:"org_id"` // nullable until Phase 2 backfill
 	Name       string     `json:"name"`
 	KeyHash    string     `json:"-"`
 	CreatedAt  time.Time  `json:"created_at"`
@@ -140,6 +178,28 @@ type WebhookDelivery struct {
 // ---------------------------------------------------------------------------
 // Store interfaces
 // ---------------------------------------------------------------------------
+
+// OrgStore manages organisation persistence.
+type OrgStore interface {
+	CreateOrg(ctx context.Context, org *Organization) error
+	GetOrgByID(ctx context.Context, id uuid.UUID) (*Organization, error)
+	GetOrgBySlug(ctx context.Context, slug string) (*Organization, error)
+}
+
+// UserStore manages human user persistence.
+type UserStore interface {
+	CreateUser(ctx context.Context, u *User) error
+	GetUserByEmail(ctx context.Context, email string) (*User, error)
+	GetUserByID(ctx context.Context, id uuid.UUID) (*User, error)
+}
+
+// RefreshTokenStore manages opaque refresh token persistence.
+type RefreshTokenStore interface {
+	CreateRefreshToken(ctx context.Context, t *RefreshToken) error
+	GetRefreshTokenByHash(ctx context.Context, hash string) (*RefreshToken, error)
+	RevokeRefreshToken(ctx context.Context, id uuid.UUID) error
+	RevokeAllUserTokens(ctx context.Context, userID uuid.UUID) error
+}
 
 // APIKeyStore manages developer API key persistence.
 type APIKeyStore interface {

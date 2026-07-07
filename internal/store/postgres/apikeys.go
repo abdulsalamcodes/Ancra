@@ -19,9 +19,9 @@ func NewAPIKeyStore(db *DB) *APIKeyStore { return &APIKeyStore{db} }
 // CreateKey inserts a new API key record.
 func (s *APIKeyStore) CreateKey(ctx context.Context, k *store.APIKey) error {
 	const q = `
-		INSERT INTO api_keys (id, name, key_hash, created_at)
-		VALUES ($1, $2, $3, $4)`
-	_, err := s.Pool.Exec(ctx, q, k.ID, k.Name, k.KeyHash, k.CreatedAt)
+		INSERT INTO api_keys (id, org_id, name, key_hash, created_at)
+		VALUES ($1, $2, $3, $4, $5)`
+	_, err := s.Pool.Exec(ctx, q, k.ID, k.OrgID, k.Name, k.KeyHash, k.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("apikeys.Create: %w", err)
 	}
@@ -31,7 +31,7 @@ func (s *APIKeyStore) CreateKey(ctx context.Context, k *store.APIKey) error {
 // GetByHash looks up an active (non-revoked) key by its SHA-256 hash.
 func (s *APIKeyStore) GetByHash(ctx context.Context, hash string) (*store.APIKey, error) {
 	const q = `
-		SELECT id, name, key_hash, created_at, last_used_at, revoked_at
+		SELECT id, org_id, name, key_hash, created_at, last_used_at, revoked_at
 		FROM api_keys
 		WHERE key_hash = $1 AND revoked_at IS NULL`
 	return scanKey(s.Pool.QueryRow(ctx, q, hash))
@@ -40,7 +40,7 @@ func (s *APIKeyStore) GetByHash(ctx context.Context, hash string) (*store.APIKey
 // GetByID retrieves any key (including revoked) by its primary key.
 func (s *APIKeyStore) GetByID(ctx context.Context, id uuid.UUID) (*store.APIKey, error) {
 	const q = `
-		SELECT id, name, key_hash, created_at, last_used_at, revoked_at
+		SELECT id, org_id, name, key_hash, created_at, last_used_at, revoked_at
 		FROM api_keys WHERE id = $1`
 	return scanKey(s.Pool.QueryRow(ctx, q, id))
 }
@@ -48,7 +48,7 @@ func (s *APIKeyStore) GetByID(ctx context.Context, id uuid.UUID) (*store.APIKey,
 // ListKeys returns all API keys ordered by creation time descending.
 func (s *APIKeyStore) ListKeys(ctx context.Context) ([]*store.APIKey, error) {
 	const q = `
-		SELECT id, name, key_hash, created_at, last_used_at, revoked_at
+		SELECT id, org_id, name, key_hash, created_at, last_used_at, revoked_at
 		FROM api_keys
 		ORDER BY created_at DESC`
 	rows, err := s.Pool.Query(ctx, q)
@@ -91,7 +91,7 @@ func (s *APIKeyStore) TouchLastUsed(ctx context.Context, id uuid.UUID) error {
 func scanKey(row scanner) (*store.APIKey, error) {
 	var k store.APIKey
 	if err := row.Scan(
-		&k.ID, &k.Name, &k.KeyHash, &k.CreatedAt, &k.LastUsedAt, &k.RevokedAt,
+		&k.ID, &k.OrgID, &k.Name, &k.KeyHash, &k.CreatedAt, &k.LastUsedAt, &k.RevokedAt,
 	); err != nil {
 		return nil, fmt.Errorf("apikeys.scan: %w", err)
 	}

@@ -15,12 +15,16 @@ var migration001 string
 //go:embed migrations/000002_api_keys.up.sql
 var migration002 string
 
+//go:embed migrations/000003_auth.up.sql
+var migration003 string
+
 // migrations lists all SQL migration scripts in order.
 // Every statement must use IF NOT EXISTS / DO-EXCEPTION guards so this is
 // safe to call on every startup without a migration tracking table.
 var migrations = []string{
 	migration001,
 	migration002,
+	migration003,
 }
 
 // RunMigrations applies all schema migrations in order.

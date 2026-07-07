@@ -68,7 +68,7 @@ func (c *Client) GetToken(ctx context.Context) (string, error) {
 
 	var resp TokenResponse
 	// Token request uses the parent account ID in the header.
-	if err := c.doJSON(ctx, http.MethodPost, "/auth/token/issue", "", c.accountID, body, &resp); err != nil {
+	if err := c.doJSON(ctx, http.MethodPost, "/v1/auth/token/issue", "", c.accountID, body, &resp); err != nil {
 		return "", fmt.Errorf("nomba: token refresh: %w", err)
 	}
 
@@ -105,7 +105,7 @@ func (c *Client) CreateVirtualAccount(ctx context.Context, req CreateVirtualAcco
 	}
 
 	var resp CreateVirtualAccountResponse
-	if err := c.doJSON(ctx, http.MethodPost, "/accounts/virtual", token, c.accountID, req, &resp); err != nil {
+	if err := c.doJSON(ctx, http.MethodPost, "/v1/accounts/virtual", token, c.accountID, req, &resp); err != nil {
 		return nil, fmt.Errorf("nomba: create virtual account: %w", err)
 	}
 	if resp.Code != "00" {
@@ -126,7 +126,7 @@ func (c *Client) GetWalletBalance(ctx context.Context) (*WalletBalanceResponse, 
 	}
 
 	var resp WalletBalanceResponse
-	path := fmt.Sprintf("/accounts/%s/balance", c.subAccountID)
+	path := fmt.Sprintf("/v1/accounts/%s/balance", c.subAccountID)
 	if err := c.doJSON(ctx, http.MethodGet, path, token, c.subAccountID, nil, &resp); err != nil {
 		return nil, fmt.Errorf("nomba: get wallet balance: %w", err)
 	}
@@ -166,7 +166,7 @@ func (c *Client) ListTransactions(ctx context.Context, req ListTransactionsReque
 		accountID = c.subAccountID
 	}
 
-	path := fmt.Sprintf("/accounts/%s/transactions?%s", accountID, q.Encode())
+	path := fmt.Sprintf("/v1/accounts/%s/transactions?%s", accountID, q.Encode())
 
 	var resp ListTransactionsResponse
 	if err := c.doJSON(ctx, http.MethodGet, path, token, c.subAccountID, nil, &resp); err != nil {

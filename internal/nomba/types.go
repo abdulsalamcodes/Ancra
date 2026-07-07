@@ -62,14 +62,13 @@ type CreateVirtualAccountResponse struct {
 // ---------------------------------------------------------------------------
 
 // WalletBalanceResponse is returned by the wallet-balance endpoint.
+// Nomba returns amount as a decimal string, e.g. "281946.0" (naira).
 type WalletBalanceResponse struct {
 	Code        string `json:"code"`
 	Description string `json:"description"`
 	Data        struct {
-		AccountID      string  `json:"accountId"`
-		AvailableFloat float64 `json:"availableFloat"` // in naira; convert × 100 for kobo
-		LedgerBalance  float64 `json:"ledgerBalance"`
-		Currency       string  `json:"currency"`
+		Amount   string `json:"amount"`   // naira decimal string; parse before converting to kobo
+		Currency string `json:"currency"`
 	} `json:"data"`
 }
 
@@ -88,21 +87,23 @@ type ListTransactionsRequest struct {
 
 // NombaTransaction represents a single transaction record from Nomba.
 type NombaTransaction struct {
-	TransactionID   string    `json:"transactionId"`
-	AccountID       string    `json:"accountId"`
-	Amount          float64   `json:"amount"`   // naira; × 100 = kobo
-	Fee             float64   `json:"fee"`
-	Currency        string    `json:"currency"`
-	Type            string    `json:"type"`            // CREDIT / DEBIT
-	Status          string    `json:"status"`          // SUCCESSFUL / FAILED / PENDING
-	Narration       string    `json:"narration"`
-	Reference       string    `json:"reference"`
-	CreatedAt       time.Time `json:"createdAt"`
-	SenderName      string    `json:"senderName,omitempty"`
-	SenderBank      string    `json:"senderBank,omitempty"`
-	RecipientName   string    `json:"recipientName,omitempty"`
-	RecipientBank   string    `json:"recipientBank,omitempty"`
-	RecipientNumber string    `json:"recipientNumber,omitempty"`
+	TransactionID      string    `json:"transactionId"`
+	AccountID          string    `json:"accountId"`
+	Amount             float64   `json:"amount"`             // naira; × 100 = kobo
+	Fee                float64   `json:"fee"`
+	Currency           string    `json:"currency"`
+	Type               string    `json:"type"`               // CREDIT / DEBIT
+	Status             string    `json:"status"`             // SUCCESSFUL / FAILED / PENDING
+	Narration          string    `json:"narration"`
+	Reference          string    `json:"reference"`
+	CreatedAt          time.Time `json:"createdAt"`
+	// AliasAccountNumber is present on inbound virtual-account credits.
+	AliasAccountNumber string    `json:"aliasAccountNumber,omitempty"`
+	SenderName         string    `json:"senderName,omitempty"`
+	SenderBank         string    `json:"senderBank,omitempty"`
+	RecipientName      string    `json:"recipientName,omitempty"`
+	RecipientBank      string    `json:"recipientBank,omitempty"`
+	RecipientNumber    string    `json:"recipientNumber,omitempty"`
 }
 
 // ListTransactionsResponse wraps the paginated transaction list.

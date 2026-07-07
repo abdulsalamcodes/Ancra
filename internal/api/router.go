@@ -11,6 +11,7 @@ import (
 	"github.com/abdulsalamcodes/ancra/internal/api/handlers"
 	"github.com/abdulsalamcodes/ancra/internal/api/middleware"
 	"github.com/abdulsalamcodes/ancra/internal/domain/account"
+	domainauth "github.com/abdulsalamcodes/ancra/internal/domain/auth"
 	"github.com/abdulsalamcodes/ancra/internal/domain/ledger"
 	"github.com/abdulsalamcodes/ancra/internal/domain/reconciliation"
 	"github.com/abdulsalamcodes/ancra/internal/nomba"
@@ -23,6 +24,7 @@ type RouterDeps struct {
 	AccountSvc  *account.Service
 	LedgerSvc   *ledger.Service
 	ReconSvc    *reconciliation.Service
+	AuthSvc     *domainauth.Service
 	NombaClient *nomba.Client
 	Verifier    *nomba.Verifier
 	Accounts    store.AccountStore
@@ -59,11 +61,26 @@ func NewRouter(d RouterDeps) http.Handler {
 	r.Get("/app", web.AppHandler())
 	r.Get("/dashboard", web.DashboardHandler())
 
+	// Auth endpoints — no token required
+	authHandler := handlers.NewAuthHandler(d.AuthSvc, d.Log)
+	r.Post("/auth/signup", authHandler.Signup)
+	r.Post("/auth/login", authHandler.Login)
+	r.Post("/auth/refresh", authHandler.Refresh)
+	r.Post("/auth/logout", authHandler.Logout)
+
 	// Nomba webhook — public but HMAC-verified inside the handler.
 	whHandler := handlers.NewWebhookHandler(
 		d.Verifier, d.LedgerSvc, d.Accounts, d.Events, d.Webhooks, d.Log,
 	)
 	r.Post("/webhooks/nomba", whHandler.HandleNomba)
+
+	// ---------------------------------------------------------------------------
+	// JWT-protected routes (dashboard / session-based access)
+	// ---------------------------------------------------------------------------
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.JWTAuth(d.AuthSvc))
+		r.Get("/auth/me", authHandler.Me)
+	})
 
 	// ---------------------------------------------------------------------------
 	// Admin routes — protected by Admin-Secret header only
