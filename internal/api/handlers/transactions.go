@@ -80,6 +80,11 @@ type transferRequest struct {
 //  3. Submit the transfer to Nomba.
 //  4. If Nomba rejects, reverse the ledger debit so the invariant is restored.
 func (h *TransactionHandler) Transfer(w http.ResponseWriter, r *http.Request) {
+	orgID, ok := requireOrgID(w, r)
+	if !ok {
+		return
+	}
+
 	accountID, ok := parseUUID(w, r, "id")
 	if !ok {
 		return
@@ -97,6 +102,7 @@ func (h *TransactionHandler) Transfer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err := h.ledgerSvc.PostDebit(r.Context(), ledger.DebitRequest{
+		OrgID:       orgID,
 		AccountID:   accountID,
 		Amount:      req.Amount,
 		Currency:    "NGN",
@@ -128,7 +134,7 @@ func (h *TransactionHandler) Transfer(w http.ResponseWriter, r *http.Request) {
 			zap.String("reference", req.Reference),
 			zap.Error(nombaErr),
 		)
-		h.reverseLedgerDebit(r.Context(), accountID, req.Amount, "NGN", req.Reference)
+		h.reverseLedgerDebit(r.Context(), orgID, accountID, req.Amount, "NGN", req.Reference)
 		writeError(w, http.StatusBadGateway, "transfer rejected by payment provider")
 		return
 	}
@@ -148,8 +154,9 @@ func (h *TransactionHandler) Transfer(w http.ResponseWriter, r *http.Request) {
 // reverseLedgerDebit posts a compensating credit when a Nomba transfer fails
 // after the ledger debit has already been written. If the reversal itself fails,
 // the discrepancy will be caught by the next reconciliation sweep.
-func (h *TransactionHandler) reverseLedgerDebit(ctx context.Context, accountID uuid.UUID, amount int64, currency, reference string) {
+func (h *TransactionHandler) reverseLedgerDebit(ctx context.Context, orgID uuid.UUID, accountID uuid.UUID, amount int64, currency, reference string) {
 	_, err := h.ledgerSvc.PostCredit(ctx, ledger.CreditRequest{
+		OrgID:       orgID,
 		AccountID:   accountID,
 		Amount:      amount,
 		Currency:    currency,

@@ -14,6 +14,7 @@ import (
 	dbpkg "github.com/abdulsalamcodes/ancra/db"
 	"github.com/abdulsalamcodes/ancra/internal/api"
 	"github.com/abdulsalamcodes/ancra/internal/config"
+	"github.com/abdulsalamcodes/ancra/internal/crypto"
 	"github.com/abdulsalamcodes/ancra/internal/domain/account"
 	domainauth "github.com/abdulsalamcodes/ancra/internal/domain/auth"
 	"github.com/abdulsalamcodes/ancra/internal/domain/ledger"
@@ -72,27 +73,45 @@ func main() {
 	orgStore := postgres.NewOrgStore(db)
 	userStore := postgres.NewUserStore(db)
 	refreshTokenStore := postgres.NewRefreshTokenStore(db)
+	nombaConfigStore := &postgres.NombaConfigStore{Pool: db.Pool}
+	webhookConfigStore := &postgres.WebhookConfigStore{Pool: db.Pool}
 
 	// ---------------------------------------------------------------------------
-	// Nomba client
+	// Encryption
 	// ---------------------------------------------------------------------------
-	nombaClient := nomba.NewClient(
-		cfg.NombaBaseURL,
-		cfg.NombaClientID,
-		cfg.NombaClientSecret,
-		cfg.NombaAccountID,
-		cfg.NombaSubAccountID,
-		log,
-	)
-	verifier := nomba.NewVerifier(cfg.NombaWebhookSecret)
+	encryptor, err := crypto.NewEncryptor([]byte(cfg.EncryptionKey))
+	if err != nil {
+		log.Fatal("failed to create encryptor — ENCRYPTION_KEY must be exactly 32 bytes", zap.Error(err))
+	}
+
+	// ---------------------------------------------------------------------------
+	// Nomba client (global — optional when all orgs use BYOK)
+	// ---------------------------------------------------------------------------
+	var nombaClient *nomba.Client
+	var verifier *nomba.Verifier
+	if cfg.NombaClientID != "" {
+		nombaClient = nomba.NewClient(
+			cfg.NombaBaseURL,
+			cfg.NombaClientID,
+			cfg.NombaClientSecret,
+			cfg.NombaAccountID,
+			cfg.NombaSubAccountID,
+			log,
+		)
+	}
+	if cfg.NombaWebhookSecret != "" {
+		verifier = nomba.NewVerifier(cfg.NombaWebhookSecret)
+	}
+
+	nombaFactory := nomba.NewClientFactory(nombaConfigStore, encryptor, cfg.NombaBaseURL, log)
 
 	// ---------------------------------------------------------------------------
 	// Domain services
 	// ---------------------------------------------------------------------------
-	authSvc := domainauth.NewService(orgStore, userStore, refreshTokenStore, []byte(cfg.JWTSecret), log)
+	authSvc := domainauth.NewService(orgStore, userStore, refreshTokenStore, ledgerStore, []byte(cfg.JWTSecret), log)
 	accountSvc := account.NewService(accountStore, customerStore, ledgerStore, nombaClient, log)
 	ledgerSvc := ledger.NewService(ledgerStore, log)
-	reconSvc := reconciliation.NewService(ledgerStore, reconStore, accountStore, eventStore, nombaClient, log)
+	reconSvc := reconciliation.NewService(ledgerStore, reconStore, accountStore, eventStore, nombaFactory, log)
 
 	// ---------------------------------------------------------------------------
 	// Background workers
@@ -100,32 +119,35 @@ func main() {
 	workerCtx, cancelWorkers := context.WithCancel(ctx)
 	defer cancelWorkers()
 
-	sweepWorker := worker.NewSweepWorker(reconSvc, accountStore, ledgerStore, cfg.SweepIntervalSeconds, log)
+	sweepWorker := worker.NewSweepWorker(reconSvc, orgStore, accountStore, ledgerStore, cfg.SweepIntervalSeconds, log)
 	go sweepWorker.Run(workerCtx)
 
-	// Outbound webhook worker — endpoint URL can be set via WEBHOOK_ENDPOINT env var.
-	webhookEndpoint := os.Getenv("WEBHOOK_ENDPOINT")
-	outboundWorker := worker.NewOutboundWorker(webhookStore, webhookEndpoint, cfg.APIKey, log)
+	outboundWorker := worker.NewOutboundWorker(webhookStore, webhookConfigStore, encryptor, log)
 	go outboundWorker.Run(workerCtx)
 
 	// ---------------------------------------------------------------------------
 	// HTTP server
 	// ---------------------------------------------------------------------------
 	router := api.NewRouter(api.RouterDeps{
-		AccountSvc:  accountSvc,
-		LedgerSvc:   ledgerSvc,
-		ReconSvc:    reconSvc,
-		AuthSvc:     authSvc,
-		NombaClient: nombaClient,
-		Verifier:    verifier,
-		Accounts:    accountStore,
-		Customers:   customerStore,
-		Events:      eventStore,
-		Webhooks:    webhookStore,
-		APIKeys:     apiKeyStore,
-		StaticKey:   cfg.APIKey,
-		AdminSecret: cfg.AdminSecret,
-		Log:         log,
+		AccountSvc:   accountSvc,
+		LedgerSvc:    ledgerSvc,
+		ReconSvc:     reconSvc,
+		AuthSvc:      authSvc,
+		NombaClient:  nombaClient,
+		NombaFactory: nombaFactory,
+		Verifier:     verifier,
+		Accounts:     accountStore,
+		Orgs:         orgStore,
+		Customers:    customerStore,
+		Events:       eventStore,
+		Webhooks:     webhookStore,
+		APIKeys:      apiKeyStore,
+		NombaConfigs:   nombaConfigStore,
+		WebhookConfigs: webhookConfigStore,
+		Encryptor:      encryptor,
+		StaticKey:      cfg.APIKey,
+		AdminSecret:    cfg.AdminSecret,
+		Log:            log,
 	})
 
 	srv := &http.Server{

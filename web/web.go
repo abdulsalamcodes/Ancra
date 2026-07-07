@@ -24,8 +24,11 @@ func fileHandler(name string) http.HandlerFunc {
 // LandingHandler serves the public marketing landing page.
 func LandingHandler() http.HandlerFunc { return fileHandler("landing.html") }
 
-// AppHandler serves the developer portal (API key management, webhook config).
-func AppHandler() http.HandlerFunc { return fileHandler("app.html") }
+// AuthHandler serves the signup / login page.
+func AuthHandler() http.HandlerFunc { return fileHandler("auth.html") }
 
-// DashboardHandler serves the internal admin dashboard.
-func DashboardHandler() http.HandlerFunc { return fileHandler("index.html") }
+// DashboardHandler serves the JWT-gated developer dashboard.
+func DashboardHandler() http.HandlerFunc { return fileHandler("dashboard.html") }
+
+// AdminHandler serves the operator admin dashboard.
+func AdminHandler() http.HandlerFunc { return fileHandler("admin.html") }

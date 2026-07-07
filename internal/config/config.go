@@ -13,12 +13,16 @@ type Config struct {
 	Port                 string
 	DatabaseURL          string
 	JWTSecret            string // signs access tokens; must be at least 32 chars
-	NombaClientID        string
-	NombaClientSecret    string
-	NombaAccountID       string
-	NombaSubAccountID    string
-	NombaBaseURL         string
-	NombaWebhookSecret   string
+	EncryptionKey        string // hex-encoded 32-byte key for AES-256-GCM (ENCRYPTION_KEY)
+
+	// Global Nomba credentials — optional when all orgs supply their own BYOK config.
+	NombaClientID      string
+	NombaClientSecret  string
+	NombaAccountID     string
+	NombaSubAccountID  string
+	NombaBaseURL       string
+	NombaWebhookSecret string
+
 	APIKey               string // legacy static key; optional when DB keys are used
 	AdminSecret          string // protects /admin/* endpoints
 	SweepIntervalSeconds int
@@ -35,17 +39,21 @@ func Load() (*Config, error) {
 	cfg.Port = getEnv("PORT", "8080")
 	cfg.DatabaseURL = mustGetEnv("DATABASE_URL")
 	cfg.JWTSecret = mustGetEnv("JWT_SECRET")
-	cfg.NombaClientID = mustGetEnv("NOMBA_CLIENT_ID")
-	cfg.NombaClientSecret = mustGetEnv("NOMBA_CLIENT_SECRET")
-	cfg.NombaAccountID = mustGetEnv("NOMBA_ACCOUNT_ID")
-	cfg.NombaSubAccountID = mustGetEnv("NOMBA_SUB_ACCOUNT_ID")
+	cfg.EncryptionKey = mustGetEnv("ENCRYPTION_KEY")
+
+	// Global Nomba credentials are optional when all orgs use BYOK.
+	cfg.NombaClientID = getEnv("NOMBA_CLIENT_ID", "")
+	cfg.NombaClientSecret = getEnv("NOMBA_CLIENT_SECRET", "")
+	cfg.NombaAccountID = getEnv("NOMBA_ACCOUNT_ID", "")
+	cfg.NombaSubAccountID = getEnv("NOMBA_SUB_ACCOUNT_ID", "")
 	cfg.NombaBaseURL = getEnv("NOMBA_BASE_URL", "https://api.nomba.com")
 	// Support both NOMBA_WEBHOOK_SECRET and NOMBA_WEBHOOK_SIGNING_KEY (hackathon alias).
 	cfg.NombaWebhookSecret = getEnv("NOMBA_WEBHOOK_SECRET", "")
 	if cfg.NombaWebhookSecret == "" {
-		cfg.NombaWebhookSecret = mustGetEnv("NOMBA_WEBHOOK_SIGNING_KEY")
+		cfg.NombaWebhookSecret = getEnv("NOMBA_WEBHOOK_SIGNING_KEY", "")
 	}
-	cfg.APIKey = getEnv("API_KEY", "")      // optional; legacy static key
+
+	cfg.APIKey = getEnv("API_KEY", "")           // optional; legacy static key
 	cfg.AdminSecret = getEnv("ADMIN_SECRET", "") // optional; admin routes disabled if unset
 
 	sweepStr := getEnv("SWEEP_INTERVAL_SECONDS", "60")

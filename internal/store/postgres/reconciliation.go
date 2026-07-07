@@ -20,11 +20,11 @@ func NewReconciliationStore(db *DB) *ReconciliationStore { return &Reconciliatio
 func (s *ReconciliationStore) InsertRun(ctx context.Context, run *store.ReconciliationRun) error {
 	const q = `
 		INSERT INTO reconciliation_runs
-			(id, run_at, nomba_wallet_balance, computed_pool_balance, delta, status)
-		VALUES ($1,$2,$3,$4,$5,$6)`
+			(id, org_id, run_at, nomba_wallet_balance, computed_pool_balance, delta, status)
+		VALUES ($1,$2,$3,$4,$5,$6,$7)`
 
 	_, err := s.Pool.Exec(ctx, q,
-		run.ID, run.RunAt,
+		run.ID, run.OrgID, run.RunAt,
 		run.NombaWalletBalance, run.ComputedPoolBalance,
 		run.Delta, string(run.Status),
 	)
@@ -34,15 +34,16 @@ func (s *ReconciliationStore) InsertRun(ctx context.Context, run *store.Reconcil
 	return nil
 }
 
-// ListRuns returns reconciliation runs ordered newest first.
-func (s *ReconciliationStore) ListRuns(ctx context.Context, limit, offset int) ([]*store.ReconciliationRun, error) {
+// ListRuns returns reconciliation runs for an org, ordered newest first.
+func (s *ReconciliationStore) ListRuns(ctx context.Context, orgID uuid.UUID, limit, offset int) ([]*store.ReconciliationRun, error) {
 	const q = `
-		SELECT id, run_at, nomba_wallet_balance, computed_pool_balance, delta, status
+		SELECT id, org_id, run_at, nomba_wallet_balance, computed_pool_balance, delta, status
 		FROM reconciliation_runs
+		WHERE org_id = $1
 		ORDER BY run_at DESC
-		LIMIT $1 OFFSET $2`
+		LIMIT $2 OFFSET $3`
 
-	rows, err := s.Pool.Query(ctx, q, limit, offset)
+	rows, err := s.Pool.Query(ctx, q, orgID, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("reconciliation.ListRuns: %w", err)
 	}
@@ -59,29 +60,28 @@ func (s *ReconciliationStore) ListRuns(ctx context.Context, limit, offset int) (
 	return runs, rows.Err()
 }
 
-// GetLatestRun returns the most recent reconciliation run.
-func (s *ReconciliationStore) GetLatestRun(ctx context.Context) (*store.ReconciliationRun, error) {
+// GetLatestRun returns the most recent reconciliation run for an org.
+func (s *ReconciliationStore) GetLatestRun(ctx context.Context, orgID uuid.UUID) (*store.ReconciliationRun, error) {
 	const q = `
-		SELECT id, run_at, nomba_wallet_balance, computed_pool_balance, delta, status
+		SELECT id, org_id, run_at, nomba_wallet_balance, computed_pool_balance, delta, status
 		FROM reconciliation_runs
+		WHERE org_id = $1
 		ORDER BY run_at DESC
 		LIMIT 1`
 
-	return scanRun(s.Pool.QueryRow(ctx, q))
+	return scanRun(s.Pool.QueryRow(ctx, q, orgID))
 }
 
 func scanRun(row scanner) (*store.ReconciliationRun, error) {
 	var r store.ReconciliationRun
 	var status string
-	var runAt time.Time
 	if err := row.Scan(
-		&r.ID, &runAt,
+		&r.ID, &r.OrgID, &r.RunAt,
 		&r.NombaWalletBalance, &r.ComputedPoolBalance,
 		&r.Delta, &status,
 	); err != nil {
 		return nil, fmt.Errorf("reconciliation.scan: %w", err)
 	}
-	r.RunAt = runAt
 	r.Status = store.ReconciliationStatus(status)
 	return &r, nil
 }
@@ -177,6 +177,31 @@ func (s *WebhookStore) ListDeliveries(ctx context.Context, orgID uuid.UUID, limi
 	rows, err := s.Pool.Query(ctx, q, orgID, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("webhook.ListDeliveries: %w", err)
+	}
+	defer rows.Close()
+
+	var deliveries []*store.WebhookDelivery
+	for rows.Next() {
+		d, err := scanDelivery(rows)
+		if err != nil {
+			return nil, err
+		}
+		deliveries = append(deliveries, d)
+	}
+	return deliveries, rows.Err()
+}
+
+// ListAllDeliveries returns webhook deliveries across every org, newest first.
+func (s *WebhookStore) ListAllDeliveries(ctx context.Context, limit, offset int) ([]*store.WebhookDelivery, error) {
+	const q = `
+		SELECT id, org_id, event_type, payload, status, attempts, next_retry_at, created_at
+		FROM webhook_deliveries
+		ORDER BY created_at DESC
+		LIMIT $1 OFFSET $2`
+
+	rows, err := s.Pool.Query(ctx, q, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("webhook.ListAllDeliveries: %w", err)
 	}
 	defer rows.Close()
 

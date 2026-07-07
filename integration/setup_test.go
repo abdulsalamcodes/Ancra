@@ -25,6 +25,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/abdulsalamcodes/ancra/internal/api"
+	"github.com/abdulsalamcodes/ancra/internal/crypto"
 	"github.com/abdulsalamcodes/ancra/internal/domain/account"
 	"github.com/abdulsalamcodes/ancra/internal/domain/ledger"
 	"github.com/abdulsalamcodes/ancra/internal/domain/reconciliation"
@@ -39,6 +40,7 @@ const (
 	testWebhookSecret = "test-webhook-secret"
 	testSubAccountID  = "sub-test-001"
 	testAccountID     = "acct-test-001"
+	testOrgID         = "00000000-0000-0000-0000-000000000001"
 )
 
 // ---------------------------------------------------------------------------
@@ -73,26 +75,36 @@ func newTestEnv(t *testing.T) *testEnv {
 		log,
 	)
 
+	// Build a ClientFactory for the reconciliation service. It wraps the same
+	// fake Nomba server so reconciliation tests hit the in-memory HTTP stub.
+	enc := mustTestEncryptor(t)
+	nombaConfigs := newFakeNombaConfigStore(t, enc, nServer.URL)
+	factory := nomba.NewClientFactory(nombaConfigs, enc, nServer.URL, log)
+
 	acctSvc := account.NewService(fs.accounts, fs.customers, fs.ledger, nombaClient, log)
 	ledgerSvc := ledger.NewService(fs.ledger, log)
-	reconSvc := reconciliation.NewService(fs.ledger, fs.recon, fs.accounts, fs.events, nombaClient, log)
+	reconSvc := reconciliation.NewService(fs.ledger, fs.recon, fs.accounts, fs.events, factory, log)
 
 	verifier := nomba.NewVerifier(testWebhookSecret)
 
 	router := api.NewRouter(api.RouterDeps{
-		AccountSvc:  acctSvc,
-		LedgerSvc:   ledgerSvc,
-		ReconSvc:    reconSvc,
-		NombaClient: nombaClient,
-		Verifier:    verifier,
-		Accounts:    fs.accounts,
-		Customers:   fs.customers,
-		Events:      fs.events,
-		Webhooks:    fs.webhooks,
-		APIKeys:     fs.apiKeys,
-		StaticKey:   testStaticKey,
-		AdminSecret: testAdminSecret,
-		Log:         log,
+		AccountSvc:     acctSvc,
+		LedgerSvc:      ledgerSvc,
+		ReconSvc:       reconSvc,
+		NombaClient:    nombaClient,
+		NombaFactory:   factory,
+		Verifier:       verifier,
+		Accounts:       fs.accounts,
+		Orgs:           fs.orgs,
+		Customers:      fs.customers,
+		Events:         fs.events,
+		Webhooks:       fs.webhooks,
+		APIKeys:        fs.apiKeys,
+		NombaConfigs:   nombaConfigs,
+		StaticKey:      testStaticKey,
+		StaticKeyOrgID: testOrgID,
+		AdminSecret:    testAdminSecret,
+		Log:            log,
 	})
 
 	srv := httptest.NewServer(router)
@@ -398,20 +410,21 @@ func newFakeNombaServer() *httptest.Server {
 // ---------------------------------------------------------------------------
 
 type fakeStores struct {
-	accounts *fakeAccountStore
+	accounts  *fakeAccountStore
 	customers *fakeCustomerStore
-	ledger   *fakeLedgerStore
-	events   *fakeEventStore
-	webhooks *fakeWebhookStore
-	recon    *fakeReconStore
-	apiKeys  *fakeAPIKeyStore
+	ledger    *fakeLedgerStore
+	events    *fakeEventStore
+	webhooks  *fakeWebhookStore
+	recon     *fakeReconStore
+	apiKeys   *fakeAPIKeyStore
+	orgs      *fakeOrgStore
 }
 
 func newFakeStores() *fakeStores {
 	return &fakeStores{
-		accounts:  &fakeAccountStore{data: map[uuid.UUID]*store.VirtualAccount{}},
+		accounts: &fakeAccountStore{data: map[uuid.UUID]*store.VirtualAccount{}},
 		customers: &fakeCustomerStore{
-			customers: map[uuid.UUID]*store.Customer{},
+			customers:  map[uuid.UUID]*store.Customer{},
 			identities: []*store.IdentityVersion{},
 		},
 		ledger:   newFakeLedgerStore(),
@@ -419,6 +432,7 @@ func newFakeStores() *fakeStores {
 		webhooks: &fakeWebhookStore{data: []*store.WebhookDelivery{}},
 		recon:    &fakeReconStore{runs: []*store.ReconciliationRun{}},
 		apiKeys:  &fakeAPIKeyStore{data: map[uuid.UUID]*store.APIKey{}},
+		orgs:     &fakeOrgStore{data: map[uuid.UUID]*store.Organization{}},
 	}
 }
 
@@ -432,11 +446,14 @@ type fakeAccountStore struct {
 func (s *fakeAccountStore) CreateAccount(_ context.Context, a *store.VirtualAccount) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if a.OrgID == (uuid.UUID{}) {
+		a.OrgID = uuid.MustParse(testOrgID)
+	}
 	s.data[a.ID] = a
 	return nil
 }
 
-func (s *fakeAccountStore) GetAccount(_ context.Context, id uuid.UUID) (*store.VirtualAccount, error) {
+func (s *fakeAccountStore) GetAccount(_ context.Context, _ uuid.UUID, id uuid.UUID) (*store.VirtualAccount, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	a, ok := s.data[id]
@@ -457,7 +474,7 @@ func (s *fakeAccountStore) GetAccountByNumber(_ context.Context, number string) 
 	return nil, errors.New("account not found")
 }
 
-func (s *fakeAccountStore) ListAccounts(_ context.Context, limit, offset int) ([]*store.VirtualAccount, error) {
+func (s *fakeAccountStore) ListAccounts(_ context.Context, _ uuid.UUID, limit, offset int) ([]*store.VirtualAccount, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	var all []*store.VirtualAccount
@@ -474,7 +491,7 @@ func (s *fakeAccountStore) ListAccounts(_ context.Context, limit, offset int) ([
 	return all[offset:end], nil
 }
 
-func (s *fakeAccountStore) ListAccountsByCustomer(_ context.Context, customerID uuid.UUID) ([]*store.VirtualAccount, error) {
+func (s *fakeAccountStore) ListAccountsByCustomer(_ context.Context, _ uuid.UUID, customerID uuid.UUID) ([]*store.VirtualAccount, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	var out []*store.VirtualAccount
@@ -503,16 +520,21 @@ type fakeCustomerStore struct {
 	mu         sync.RWMutex
 	customers  map[uuid.UUID]*store.Customer
 	identities []*store.IdentityVersion
+	kycHistory []*store.KYCTierChange
 }
 
 func (s *fakeCustomerStore) CreateCustomer(_ context.Context, c *store.Customer) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	// Ensure the test org is always set so org-scoped lookups succeed.
+	if c.OrgID == (uuid.UUID{}) {
+		c.OrgID = uuid.MustParse(testOrgID)
+	}
 	s.customers[c.ID] = c
 	return nil
 }
 
-func (s *fakeCustomerStore) GetCustomer(_ context.Context, id uuid.UUID) (*store.Customer, error) {
+func (s *fakeCustomerStore) GetCustomer(_ context.Context, _ uuid.UUID, id uuid.UUID) (*store.Customer, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	c, ok := s.customers[id]
@@ -522,7 +544,7 @@ func (s *fakeCustomerStore) GetCustomer(_ context.Context, id uuid.UUID) (*store
 	return c, nil
 }
 
-func (s *fakeCustomerStore) ListCustomers(_ context.Context, limit, offset int) ([]*store.Customer, error) {
+func (s *fakeCustomerStore) ListCustomers(_ context.Context, _ uuid.UUID, limit, offset int) ([]*store.Customer, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	var all []*store.Customer
@@ -571,6 +593,43 @@ func (s *fakeCustomerStore) CloseIdentityVersion(_ context.Context, id uuid.UUID
 		}
 	}
 	return errors.New("identity version not found")
+}
+
+func (s *fakeCustomerStore) UpgradeKYCTier(_ context.Context, _ uuid.UUID, customerID uuid.UUID, newTier int, now time.Time) (*store.KYCTierChange, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	c, ok := s.customers[customerID]
+	if !ok {
+		return nil, errors.New("customer not found")
+	}
+	if newTier <= c.KYCTier {
+		return nil, store.ErrKYCTierDowngrade
+	}
+	change := &store.KYCTierChange{
+		ID:         uuid.New(),
+		CustomerID: customerID,
+		FromTier:   c.KYCTier,
+		ToTier:     newTier,
+		UpgradedAt: now,
+	}
+	c.KYCTier = newTier
+	s.kycHistory = append(s.kycHistory, change)
+	return change, nil
+}
+
+func (s *fakeCustomerStore) ListKYCTierHistory(_ context.Context, _ uuid.UUID, customerID uuid.UUID) ([]*store.KYCTierChange, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var out []*store.KYCTierChange
+	for _, ch := range s.kycHistory {
+		if ch.CustomerID == customerID {
+			out = append(out, ch)
+		}
+	}
+	if out == nil {
+		out = []*store.KYCTierChange{}
+	}
+	return out, nil
 }
 
 // --- fakeLedgerStore ---
@@ -661,7 +720,7 @@ func (s *fakeLedgerStore) ListEntries(_ context.Context, accountID uuid.UUID, li
 	return matching[offset:end], nil
 }
 
-func (s *fakeLedgerStore) GetSystemAccount(_ context.Context, name string) (*store.SystemAccount, error) {
+func (s *fakeLedgerStore) GetSystemAccount(_ context.Context, _ uuid.UUID, name string) (*store.SystemAccount, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	a, ok := s.systemAccounts[name]
@@ -669,6 +728,10 @@ func (s *fakeLedgerStore) GetSystemAccount(_ context.Context, name string) (*sto
 		return nil, errors.New("system account not found: " + name)
 	}
 	return a, nil
+}
+
+func (s *fakeLedgerStore) SeedSystemAccounts(_ context.Context, _ uuid.UUID) error {
+	return nil
 }
 
 // --- fakeEventStore ---
@@ -735,7 +798,20 @@ func (s *fakeWebhookStore) ListPending(_ context.Context, now time.Time, limit i
 	return out, nil
 }
 
-func (s *fakeWebhookStore) ListDeliveries(_ context.Context, limit, offset int) ([]*store.WebhookDelivery, error) {
+func (s *fakeWebhookStore) ListDeliveries(_ context.Context, _ uuid.UUID, limit, offset int) ([]*store.WebhookDelivery, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if offset >= len(s.data) {
+		return []*store.WebhookDelivery{}, nil
+	}
+	end := offset + limit
+	if end > len(s.data) {
+		end = len(s.data)
+	}
+	return s.data[offset:end], nil
+}
+
+func (s *fakeWebhookStore) ListAllDeliveries(_ context.Context, limit, offset int) ([]*store.WebhookDelivery, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	if offset >= len(s.data) {
@@ -774,7 +850,7 @@ func (s *fakeReconStore) InsertRun(_ context.Context, run *store.ReconciliationR
 	return nil
 }
 
-func (s *fakeReconStore) ListRuns(_ context.Context, limit, offset int) ([]*store.ReconciliationRun, error) {
+func (s *fakeReconStore) ListRuns(_ context.Context, _ uuid.UUID, limit, offset int) ([]*store.ReconciliationRun, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	if offset >= len(s.runs) {
@@ -787,7 +863,7 @@ func (s *fakeReconStore) ListRuns(_ context.Context, limit, offset int) ([]*stor
 	return s.runs[offset:end], nil
 }
 
-func (s *fakeReconStore) GetLatestRun(_ context.Context) (*store.ReconciliationRun, error) {
+func (s *fakeReconStore) GetLatestRun(_ context.Context, _ uuid.UUID) (*store.ReconciliationRun, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	if len(s.runs) == 0 {
@@ -831,10 +907,23 @@ func (s *fakeAPIKeyStore) GetByID(_ context.Context, id uuid.UUID) (*store.APIKe
 	return k, nil
 }
 
-func (s *fakeAPIKeyStore) ListKeys(_ context.Context) ([]*store.APIKey, error) {
+func (s *fakeAPIKeyStore) ListKeys(_ context.Context, orgID uuid.UUID) ([]*store.APIKey, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	var out []*store.APIKey
+	for _, k := range s.data {
+		// uuid.Nil is the sentinel for "all orgs" (admin list endpoint).
+		if orgID == (uuid.UUID{}) || (k.OrgID != nil && *k.OrgID == orgID) {
+			out = append(out, k)
+		}
+	}
+	return out, nil
+}
+
+func (s *fakeAPIKeyStore) ListAllKeys(_ context.Context) ([]*store.APIKey, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := make([]*store.APIKey, 0, len(s.data))
 	for _, k := range s.data {
 		out = append(out, k)
 	}
@@ -863,6 +952,51 @@ func (s *fakeAPIKeyStore) TouchLastUsed(_ context.Context, id uuid.UUID) error {
 	now := time.Now().UTC()
 	k.LastUsedAt = &now
 	return nil
+}
+
+// --- fakeOrgStore ---
+
+type fakeOrgStore struct {
+	mu   sync.RWMutex
+	data map[uuid.UUID]*store.Organization
+}
+
+func (s *fakeOrgStore) CreateOrg(_ context.Context, org *store.Organization) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.data[org.ID] = org
+	return nil
+}
+
+func (s *fakeOrgStore) GetOrgByID(_ context.Context, id uuid.UUID) (*store.Organization, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	org, ok := s.data[id]
+	if !ok {
+		return nil, errors.New("org not found")
+	}
+	return org, nil
+}
+
+func (s *fakeOrgStore) GetOrgBySlug(_ context.Context, slug string) (*store.Organization, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, org := range s.data {
+		if org.Slug == slug {
+			return org, nil
+		}
+	}
+	return nil, errors.New("org not found")
+}
+
+func (s *fakeOrgStore) ListAllOrgs(_ context.Context) ([]*store.Organization, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := make([]*store.Organization, 0, len(s.data))
+	for _, org := range s.data {
+		out = append(out, org)
+	}
+	return out, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -900,6 +1034,74 @@ func createAccount(t *testing.T, env *testEnv, customerID string) map[string]int
 	}
 	return acct
 }
+
+// ---------------------------------------------------------------------------
+// fakeNombaConfigStore — returns pre-configured credentials for any orgID
+// so the reconciliation service can build a Nomba client via the factory.
+// ---------------------------------------------------------------------------
+
+type fakeNombaConfigStore struct {
+	mu   sync.RWMutex
+	data map[uuid.UUID]*store.OrgNombaConfig
+}
+
+func newFakeNombaConfigStore(t *testing.T, enc *crypto.Encryptor, _ string) *fakeNombaConfigStore {
+	t.Helper()
+	encSecret, err := enc.Encrypt("client-secret")
+	if err != nil {
+		t.Fatalf("encrypt client secret: %v", err)
+	}
+	encWebhook, err := enc.Encrypt(testWebhookSecret)
+	if err != nil {
+		t.Fatalf("encrypt webhook secret: %v", err)
+	}
+	orgID := uuid.MustParse(testOrgID)
+	cfg := &store.OrgNombaConfig{
+		OrgID:                  orgID,
+		ClientID:               "client-id",
+		ClientSecretEncrypted:  encSecret,
+		AccountID:              testAccountID,
+		SubAccountID:           testSubAccountID,
+		WebhookSecretEncrypted: encWebhook,
+		Sandbox:                false,
+		CreatedAt:              time.Now().UTC(),
+		UpdatedAt:              time.Now().UTC(),
+	}
+	s := &fakeNombaConfigStore{data: map[uuid.UUID]*store.OrgNombaConfig{}}
+	s.data[orgID] = cfg
+	return s
+}
+
+func (s *fakeNombaConfigStore) UpsertNombaConfig(_ context.Context, cfg *store.OrgNombaConfig) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.data[cfg.OrgID] = cfg
+	return nil
+}
+
+func (s *fakeNombaConfigStore) GetNombaConfig(_ context.Context, orgID uuid.UUID) (*store.OrgNombaConfig, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	cfg, ok := s.data[orgID]
+	if !ok {
+		return nil, errors.New("nomba config not found")
+	}
+	return cfg, nil
+}
+
+// mustTestEncryptor returns a crypto.Encryptor seeded with a fixed 32-byte
+// test key. Fatals the test on construction failure.
+func mustTestEncryptor(t *testing.T) *crypto.Encryptor {
+	t.Helper()
+	key := []byte("ancra-test-enc-key-32-bytes-long")
+	enc, err := crypto.NewEncryptor(key)
+	if err != nil {
+		t.Fatalf("new encryptor: %v", err)
+	}
+	return enc
+}
+
+// ---------------------------------------------------------------------------
 
 // postWebhook sends a signed webhook to /webhooks/nomba.
 // sig and timestamp are the values returned by webhookBody.

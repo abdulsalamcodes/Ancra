@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ancra — Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --canvas:   #f5f5f5;
+      --paper:    #ffffff;
+      --surface:  #fafafa;
+      --ink:      #0a0a0a;
+      --ink-soft: #171717;
+      --gray:     #737373;
+      --gray-light: #a3a3a3;
+      --hairline: #e5e5e5;
+      --ember:    #e7000b;
+      --green:    #16a34a;
+      --amber:    #d97706;
+      --shadow:   0 0 0 1px rgba(23,23,23,0.05), 0 1px 3px rgba(0,0,0,0.10), 0 1px 2px -1px rgba(0,0,0,0.10);
+      --r-card:   16px;
+      --r-pill:   18px;
+      --sidebar:  220px;
+      --font:     'Inter', ui-sans-serif, system-ui, sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: var(--font);
+      background: var(--canvas);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Shell ── */
+    .shell {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: var(--sidebar);
+      flex-shrink: 0;
+      background: var(--paper);
+      border-right: 1px solid var(--hairline);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 20px 16px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+      border-bottom: 1px solid var(--hairline);
+    }
+    .logo-mark {
+      width: 24px; height: 24px; border-radius: 6px;
+      background: var(--ink); display: grid; place-items: center; flex-shrink: 0;
+    }
+    .logo-mark svg { width: 12px; height: 12px; fill: #fafafa; }
+
+    .sidebar-section {
+      padding: 12px 8px 4px;
+    }
+    .sidebar-section-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--gray-light);
+      padding: 0 8px;
+      margin-bottom: 4px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 7px 10px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--gray);
+      background: none;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: left;
+      transition: color 0.12s, background 0.12s;
+      font-family: var(--font);
+    }
+    .nav-item:hover { color: var(--ink); background: var(--canvas); }
+    .nav-item.active { color: var(--ink); background: var(--canvas); font-weight: 600; }
+    .nav-item svg { width: 15px; height: 15px; flex-shrink: 0; opacity: 0.6; }
+    .nav-item.active svg { opacity: 1; }
+
+    .sidebar-bottom {
+      margin-top: auto;
+      padding: 12px 8px;
+      border-top: 1px solid var(--hairline);
+    }
+    .org-row {
+      padding: 8px 10px;
+      border-radius: 8px;
+      margin-bottom: 4px;
+    }
+    .org-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .org-email {
+      font-size: 11px;
+      color: var(--gray);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── Main content ── */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      height: 56px;
+      border-bottom: 1px solid var(--hairline);
+      background: var(--paper);
+      flex-shrink: 0;
+    }
+    .page-title {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .content {
+      padding: 28px;
+      flex: 1;
+    }
+
+    /* ── Cards & sections ── */
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-card);
+      box-shadow: var(--shadow);
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--hairline);
+    }
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .card-body { padding: 20px; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--paper);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-card);
+      padding: 18px 20px;
+      box-shadow: var(--shadow);
+    }
+    .stat-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--gray);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .stat-value {
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+    }
+    .stat-sub {
+      font-size: 11px;
+      color: var(--gray);
+      margin-top: 4px;
+    }
+
+    /* ── Table ── */
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th {
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--gray);
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--hairline);
+    }
+    td {
+      padding: 11px 16px;
+      border-bottom: 1px solid var(--hairline);
+      color: var(--ink-soft);
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--canvas); }
+
+    .mono {
+      font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+      font-size: 12px;
+    }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .badge-green { background: #dcfce7; color: #15803d; }
+    .badge-red   { background: #fee2e2; color: #b91c1c; }
+    .badge-amber { background: #fef9c3; color: #a16207; }
+    .badge-gray  { background: var(--canvas); color: var(--gray); }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: var(--r-pill);
+      border: none;
+      cursor: pointer;
+      font-family: var(--font);
+      transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.82; }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-primary { background: var(--ink); color: #fafafa; }
+    .btn-ghost   { background: var(--canvas); color: var(--ink); }
+    .btn-danger  { background: #fee2e2; color: #b91c1c; }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+    /* ── Forms ── */
+    .form-group { margin-bottom: 16px; }
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--gray);
+      margin-bottom: 5px;
+      letter-spacing: 0.02em;
+    }
+    .form-input {
+      width: 100%;
+      background: var(--canvas);
+      border: none;
+      border-radius: var(--r-pill);
+      padding: 9px 14px;
+      font-size: 13px;
+      font-family: var(--font);
+      color: var(--ink);
+      outline: none;
+      transition: box-shadow 0.15s;
+    }
+    .form-input:focus { box-shadow: 0 0 0 1.5px var(--hairline); }
+    .form-input::placeholder { color: var(--gray); }
+
+    /* ── Alert ── */
+    .alert {
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+    .alert-error   { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .alert-success { background: #dcfce7; color: #14532d; border: 1px solid #86efac; }
+    .alert-info    { background: #eff6ff; color: #1e3a8a; border: 1px solid #93c5fd; }
+
+    /* ── Spinner ── */
+    .spinner {
+      width: 13px; height: 13px;
+      border: 1.5px solid rgba(0,0,0,0.15);
+      border-top-color: var(--ink);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+    }
+    .spinner-white {
+      border-color: rgba(255,255,255,0.35);
+      border-top-color: #fff;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Empty state ── */
+    .empty {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--gray);
+      font-size: 13px;
+    }
+    .empty-icon {
+      font-size: 28px;
+      margin-bottom: 10px;
+    }
+
+    /* ── Secret reveal box ── */
+    .secret-box {
+      background: var(--canvas);
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+      font-size: 12px;
+      word-break: break-all;
+      margin-bottom: 12px;
+      border: 1px solid var(--hairline);
+    }
+
+    /* ── Panels ── */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* ── Divider ── */
+    .divider { height: 1px; background: var(--hairline); margin: 20px 0; }
+
+    /* ── Key chip ── */
+    .key-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--canvas);
+      border: 1px solid var(--hairline);
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+      font-size: 12px;
+      color: var(--ink-soft);
+    }
+  </style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <span class="logo-mark">
+        <svg viewBox="0 0 14 14"><rect x="2" y="2" width="10" height="10" rx="2.5"/></svg>
+      </span>
+      Ancra
+    </div>
+
+    <div class="sidebar-section">
+      <button class="nav-item active" onclick="navigate('overview')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="1.5" width="5" height="5" rx="1"/><rect x="9.5" y="1.5" width="5" height="5" rx="1"/><rect x="1.5" y="9.5" width="5" height="5" rx="1"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/></svg>
+        Overview
+      </button>
+      <button class="nav-item" onclick="navigate('api-keys')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10.5 5.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path d="m7.5 8.5-4 4m2-2 1 1"/></svg>
+        API Keys
+      </button>
+      <button class="nav-item" onclick="navigate('webhooks')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 5H3m10 6H3M1.5 8h13"/></svg>
+        Webhook Deliveries
+      </button>
+      <button class="nav-item" onclick="navigate('reconciliation')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8h12M2 4h8M2 12h5"/></svg>
+        Reconciliation
+      </button>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Settings</div>
+      <button class="nav-item" onclick="navigate('settings-nomba')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.42 1.42M11.54 11.54l1.41 1.41M3.05 12.95l1.42-1.42M11.54 4.46l1.41-1.41"/></svg>
+        Nomba Config
+      </button>
+      <button class="nav-item" onclick="navigate('settings-webhook')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3a3 3 0 0 0 0 6h1m3 4a3 3 0 0 0 0-6H9m-3 0h6"/></svg>
+        Webhook Config
+      </button>
+    </div>
+
+    <div class="sidebar-bottom">
+      <div class="org-row">
+        <div class="org-name" id="sidebar-org-name">—</div>
+        <div class="org-email" id="sidebar-user-email">—</div>
+      </div>
+      <button class="nav-item" onclick="handleLogout()">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3M10.5 11 14 8l-3.5-3M14 8H6"/></svg>
+        Log out
+      </button>
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <div class="main">
+    <div class="topbar">
+      <span class="page-title" id="topbar-title">Overview</span>
+      <div id="topbar-actions"></div>
+    </div>
+
+    <div class="content">
+
+      <!-- ── Overview ── -->
+      <div class="panel active" id="panel-overview">
+        <div class="stats-grid" id="overview-stats">
+          <div class="stat-card">
+            <div class="stat-label">Organisation</div>
+            <div class="stat-value" id="stat-org-name" style="font-size:16px;">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Slug</div>
+            <div class="stat-value mono" id="stat-org-slug" style="font-size:14px;">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Joined</div>
+            <div class="stat-value" id="stat-org-joined" style="font-size:14px;">—</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Quick Start</span></div>
+          <div class="card-body" style="font-size:13px; color:var(--gray); line-height:1.7;">
+            <p>1. Create an <strong style="color:var(--ink)">API Key</strong> to authenticate your server-side requests.</p>
+            <p>2. Configure your <strong style="color:var(--ink)">Nomba credentials</strong> under Settings → Nomba Config.</p>
+            <p>3. Set a <strong style="color:var(--ink)">Webhook endpoint</strong> to receive real-time account events.</p>
+            <p>4. Use the <strong style="color:var(--ink)">/accounts</strong> API to provision virtual accounts for your customers.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── API Keys ── -->
+      <div class="panel" id="panel-api-keys">
+        <div id="apikeys-alert"></div>
+        <div class="card" style="margin-bottom:24px;">
+          <div class="card-header">
+            <span class="card-title">Create API Key</span>
+          </div>
+          <div class="card-body">
+            <div id="new-key-reveal" style="display:none;">
+              <div class="alert alert-success">Copy this key now — it will not be shown again.</div>
+              <div class="secret-box" id="new-key-value"></div>
+              <button class="btn btn-ghost btn-sm" onclick="copyText(document.getElementById('new-key-value').textContent, this)">Copy</button>
+            </div>
+            <div id="new-key-form">
+              <div class="form-group">
+                <label class="form-label" for="key-label">Label (optional)</label>
+                <input class="form-input" id="key-label" type="text" placeholder="e.g. production-server" />
+              </div>
+              <button class="btn btn-primary" id="create-key-btn" onclick="createAPIKey()">Generate key</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><span class="card-title">Active Keys</span></div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Label</th>
+                  <th>Key (prefix)</th>
+                  <th>Created</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="apikeys-tbody">
+                <tr><td colspan="4"><div class="empty"><div class="spinner"></div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Webhook Deliveries ── -->
+      <div class="panel" id="panel-webhooks">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Webhook Deliveries</span></div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Event</th>
+                  <th>Status</th>
+                  <th>Attempts</th>
+                  <th>Delivery ID</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody id="webhooks-tbody">
+                <tr><td colspan="5"><div class="empty"><div class="spinner"></div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Reconciliation ── -->
+      <div class="panel" id="panel-reconciliation">
+        <div id="recon-alert"></div>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+          <div></div>
+          <button class="btn btn-primary" id="trigger-recon-btn" onclick="triggerReconciliation()">Run reconciliation</button>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Latest Run</span></div>
+          <div class="card-body" id="recon-body">
+            <div class="empty"><div class="spinner"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Settings: Nomba ── -->
+      <div class="panel" id="panel-settings-nomba">
+        <div id="nomba-alert"></div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Nomba Credentials</span></div>
+          <div class="card-body">
+            <div class="form-group">
+              <label class="form-label" for="nomba-client-id">Client ID</label>
+              <input class="form-input" id="nomba-client-id" type="text" placeholder="your-client-id" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="nomba-client-secret">Client Secret</label>
+              <input class="form-input" id="nomba-client-secret" type="password" placeholder="Leave blank to keep current" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="nomba-account-id">Account ID</label>
+              <input class="form-input" id="nomba-account-id" type="text" placeholder="your-account-id" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="nomba-sub-account-id">Sub-Account ID (optional)</label>
+              <input class="form-input" id="nomba-sub-account-id" type="text" placeholder="optional" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="nomba-webhook-secret">Webhook Secret</label>
+              <input class="form-input" id="nomba-webhook-secret" type="password" placeholder="Leave blank to keep current" />
+            </div>
+            <div style="display:flex; gap:10px; margin-top:8px;">
+              <button class="btn btn-primary" id="nomba-save-btn" onclick="saveNombaConfig()">Save</button>
+              <button class="btn btn-ghost" id="nomba-test-btn" onclick="testNombaConnection()">Test connection</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Settings: Webhook ── -->
+      <div class="panel" id="panel-settings-webhook">
+        <div id="webhook-alert"></div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Outbound Webhook</span></div>
+          <div class="card-body">
+            <div id="webhook-secret-reveal" style="display:none;">
+              <div class="alert alert-success">Your new signing secret — copy it now, it will not be shown again.</div>
+              <div class="secret-box" id="webhook-secret-value"></div>
+              <button class="btn btn-ghost btn-sm" onclick="copyText(document.getElementById('webhook-secret-value').textContent, this)" style="margin-bottom:16px;">Copy</button>
+              <div class="divider"></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="webhook-endpoint">Endpoint URL</label>
+              <input class="form-input" id="webhook-endpoint" type="url" placeholder="https://your-server.com/webhooks/ancra" />
+            </div>
+            <div class="alert alert-info" style="margin-top:8px;">
+              Saving rotates the signing secret. Verify <code>X-Ancra-Signature: sha256=&lt;hex&gt;</code> on incoming requests.
+            </div>
+            <button class="btn btn-primary" id="webhook-save-btn" onclick="saveWebhookConfig()" style="margin-top:14px;">Save &amp; rotate secret</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- .content -->
+  </div><!-- .main -->
+</div><!-- .shell -->
+
+<script>
+  // ---------------------------------------------------------------------------
+  // Auth guard
+  // ---------------------------------------------------------------------------
+  const accessToken = localStorage.getItem('access_token');
+  if (!accessToken) {
+    window.location.replace('/auth');
+  }
+
+  // ---------------------------------------------------------------------------
+  // HTTP client with transparent token refresh
+  // ---------------------------------------------------------------------------
+  let isRefreshing = false;
+  let refreshQueue = [];
+
+  async function apiFetch(path, options = {}) {
+    const token = localStorage.getItem('access_token');
+    const headers = { 'Content-Type': 'application/json', ...options.headers };
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+
+    const res = await fetch(path, { ...options, headers });
+
+    if (res.status !== 401) return res;
+
+    // Refresh flow — queue concurrent calls while one refresh is in flight.
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        refreshQueue.push({ resolve, reject, path, options });
+      });
+    }
+
+    isRefreshing = true;
+    const refreshed = await attemptRefresh();
+    isRefreshing = false;
+
+    if (!refreshed) {
+      clearAuthAndRedirect();
+      return res;
+    }
+
+    // Drain the queue.
+    const queued = refreshQueue.splice(0);
+    queued.forEach(({ resolve, reject, path: p, options: o }) =>
+      apiFetch(p, o).then(resolve).catch(reject)
+    );
+
+    return apiFetch(path, options);
+  }
+
+  async function attemptRefresh() {
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (!refreshToken) return false;
+    try {
+      const res = await fetch('/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      localStorage.setItem('access_token', data.access_token);
+      localStorage.setItem('refresh_token', data.refresh_token);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function clearAuthAndRedirect() {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    window.location.replace('/auth');
+  }
+
+  // ---------------------------------------------------------------------------
+  // Navigation
+  // ---------------------------------------------------------------------------
+  const panelTitles = {
+    'overview':          'Overview',
+    'api-keys':          'API Keys',
+    'webhooks':          'Webhook Deliveries',
+    'reconciliation':    'Reconciliation',
+    'settings-nomba':    'Nomba Config',
+    'settings-webhook':  'Webhook Config',
+  };
+
+  let currentPanel = 'overview';
+
+  function navigate(panel) {
+    document.getElementById('panel-' + currentPanel).classList.remove('active');
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+
+    currentPanel = panel;
+    document.getElementById('panel-' + panel).classList.add('active');
+    document.getElementById('topbar-title').textContent = panelTitles[panel] ?? panel;
+
+    // Mark sidebar item active.
+    document.querySelectorAll('.nav-item').forEach(el => {
+      if (el.getAttribute('onclick') === `navigate('${panel}')`) {
+        el.classList.add('active');
+      }
+    });
+
+    // Lazy-load panel data.
+    const loaders = {
+      'api-keys':       loadAPIKeys,
+      'webhooks':       loadWebhooks,
+      'reconciliation': loadReconciliation,
+      'settings-nomba': loadNombaConfig,
+      'settings-webhook': loadWebhookConfig,
+    };
+    loaders[panel]?.();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Overview — /auth/me
+  // ---------------------------------------------------------------------------
+  async function loadMe() {
+    try {
+      const res = await apiFetch('/auth/me');
+      if (!res.ok) return;
+      const { org, user } = await res.json();
+
+      document.getElementById('sidebar-org-name').textContent = org.name ?? '—';
+      document.getElementById('sidebar-user-email').textContent = user.email ?? '—';
+      document.getElementById('stat-org-name').textContent = org.name ?? '—';
+      document.getElementById('stat-org-slug').textContent = org.slug ?? '—';
+      document.getElementById('stat-org-joined').textContent = org.created_at
+        ? new Date(org.created_at).toLocaleDateString('en-GB', { year:'numeric', month:'short', day:'numeric' })
+        : '—';
+    } catch {
+      // Non-fatal — sidebar stays with placeholder values.
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // API Keys
+  // ---------------------------------------------------------------------------
+  async function loadAPIKeys() {
+    const tbody = document.getElementById('apikeys-tbody');
+    tbody.innerHTML = '<tr><td colspan="4"><div class="empty"><div class="spinner"></div></div></td></tr>';
+
+    try {
+      const res = await apiFetch('/api-keys');
+      const data = await res.json();
+      if (!res.ok) { renderAPIKeysError(data.error); return; }
+      renderAPIKeys(data.keys ?? data ?? []);
+    } catch {
+      renderAPIKeysError('Failed to load API keys.');
+    }
+  }
+
+  function renderAPIKeys(keys) {
+    const tbody = document.getElementById('apikeys-tbody');
+    if (!keys.length) {
+      tbody.innerHTML = '<tr><td colspan="4"><div class="empty">No API keys yet.</div></td></tr>';
+      return;
+    }
+    tbody.innerHTML = keys.map(k => `
+      <tr>
+        <td>${escHtml(k.label ?? '—')}</td>
+        <td><span class="key-chip">${escHtml(k.key_prefix ?? k.prefix ?? k.id?.slice(0,8) ?? '—')}…</span></td>
+        <td>${formatDate(k.created_at)}</td>
+        <td style="text-align:right;">
+          <button class="btn btn-danger btn-sm" onclick="revokeAPIKey('${k.id}', this)">Revoke</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function renderAPIKeysError(msg) {
+    document.getElementById('apikeys-tbody').innerHTML =
+      `<tr><td colspan="4"><div class="empty">${escHtml(msg)}</div></td></tr>`;
+  }
+
+  async function createAPIKey() {
+    const btn = document.getElementById('create-key-btn');
+    const label = document.getElementById('key-label').value.trim();
+    setButtonLoading(btn, true);
+    clearAlert('apikeys-alert');
+
+    try {
+      const res = await apiFetch('/api-keys', {
+        method: 'POST',
+        body: JSON.stringify({ label: label || undefined }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showAlert('apikeys-alert', data.error || 'Failed to create key.', 'error'); return; }
+
+      // Show the raw key once.
+      const rawKey = data.key ?? data.raw_key ?? data.token;
+      if (rawKey) {
+        document.getElementById('new-key-value').textContent = rawKey;
+        document.getElementById('new-key-reveal').style.display = 'block';
+        document.getElementById('new-key-form').style.display = 'none';
+      }
+      loadAPIKeys();
+    } catch {
+      showAlert('apikeys-alert', 'Network error.', 'error');
+    } finally {
+      setButtonLoading(btn, false, 'Generate key');
+    }
+  }
+
+  async function revokeAPIKey(id, btn) {
+    if (!confirm('Revoke this key? Any requests using it will stop working immediately.')) return;
+    btn.disabled = true;
+    try {
+      const res = await apiFetch('/api-keys/' + id, { method: 'DELETE' });
+      if (!res.ok) { btn.disabled = false; return; }
+      loadAPIKeys();
+    } catch {
+      btn.disabled = false;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Webhook Deliveries
+  // ---------------------------------------------------------------------------
+  async function loadWebhooks() {
+    const tbody = document.getElementById('webhooks-tbody');
+    tbody.innerHTML = '<tr><td colspan="5"><div class="empty"><div class="spinner"></div></div></td></tr>';
+
+    try {
+      const res = await apiFetch('/webhooks');
+      const data = await res.json();
+      if (!res.ok) {
+        tbody.innerHTML = `<tr><td colspan="5"><div class="empty">${escHtml(data.error)}</div></td></tr>`;
+        return;
+      }
+      renderWebhooks(data.deliveries ?? data ?? []);
+    } catch {
+      tbody.innerHTML = '<tr><td colspan="5"><div class="empty">Failed to load deliveries.</div></td></tr>';
+    }
+  }
+
+  function renderWebhooks(deliveries) {
+    const tbody = document.getElementById('webhooks-tbody');
+    if (!deliveries.length) {
+      tbody.innerHTML = '<tr><td colspan="5"><div class="empty">No webhook deliveries yet.</div></td></tr>';
+      return;
+    }
+    tbody.innerHTML = deliveries.map(d => `
+      <tr>
+        <td><span class="badge badge-gray">${escHtml(d.event_type ?? d.event ?? '—')}</span></td>
+        <td>${statusBadge(d.status)}</td>
+        <td>${d.attempts ?? 0}</td>
+        <td class="mono">${escHtml((d.id ?? '').slice(0, 8))}…</td>
+        <td>${formatDate(d.created_at)}</td>
+      </tr>
+    `).join('');
+  }
+
+  function statusBadge(status) {
+    const map = {
+      delivered: 'badge-green',
+      failed:    'badge-red',
+      pending:   'badge-amber',
+    };
+    const cls = map[status] ?? 'badge-gray';
+    return `<span class="badge ${cls}">${escHtml(status ?? '—')}</span>`;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Reconciliation
+  // ---------------------------------------------------------------------------
+  async function loadReconciliation() {
+    const body = document.getElementById('recon-body');
+    body.innerHTML = '<div class="empty"><div class="spinner"></div></div>';
+    clearAlert('recon-alert');
+
+    try {
+      const res = await apiFetch('/reconciliation');
+      const data = await res.json();
+      if (!res.ok) { body.innerHTML = `<div class="empty">${escHtml(data.error)}</div>`; return; }
+      renderReconciliation(body, data);
+    } catch {
+      body.innerHTML = '<div class="empty">Failed to load reconciliation data.</div>';
+    }
+  }
+
+  function renderReconciliation(container, data) {
+    // Accept either a top-level run object or {run: {...}} shape.
+    const run = data.run ?? data;
+    if (!run || !run.id) {
+      container.innerHTML = '<div class="empty">No reconciliation runs yet.</div>';
+      return;
+    }
+    container.innerHTML = `
+      <div class="stats-grid" style="margin-bottom:0;">
+        <div class="stat-card">
+          <div class="stat-label">Status</div>
+          <div class="stat-value" style="font-size:14px;">${statusBadge(run.status)}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Matched</div>
+          <div class="stat-value">${run.matched_count ?? '—'}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Discrepancies</div>
+          <div class="stat-value">${run.discrepancy_count ?? '—'}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Run at</div>
+          <div class="stat-value" style="font-size:13px;">${formatDate(run.created_at)}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  async function triggerReconciliation() {
+    const btn = document.getElementById('trigger-recon-btn');
+    setButtonLoading(btn, true);
+    clearAlert('recon-alert');
+
+    try {
+      const res = await apiFetch('/reconciliation/trigger', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) { showAlert('recon-alert', data.error || 'Failed to trigger run.', 'error'); return; }
+      showAlert('recon-alert', 'Reconciliation run started.', 'success');
+      await loadReconciliation();
+    } catch {
+      showAlert('recon-alert', 'Network error.', 'error');
+    } finally {
+      setButtonLoading(btn, false, 'Run reconciliation');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Settings — Nomba
+  // ---------------------------------------------------------------------------
+  async function loadNombaConfig() {
+    clearAlert('nomba-alert');
+    try {
+      const res = await apiFetch('/settings/nomba');
+      if (res.status === 404) return; // Not configured yet — leave form blank.
+      if (!res.ok) return;
+      const data = await res.json();
+      document.getElementById('nomba-client-id').value    = data.client_id    ?? '';
+      document.getElementById('nomba-account-id').value   = data.account_id   ?? '';
+      document.getElementById('nomba-sub-account-id').value = data.sub_account_id ?? '';
+    } catch {
+      // Non-fatal.
+    }
+  }
+
+  async function saveNombaConfig() {
+    const btn = document.getElementById('nomba-save-btn');
+    setButtonLoading(btn, true);
+    clearAlert('nomba-alert');
+
+    const body = {
+      client_id:      document.getElementById('nomba-client-id').value.trim(),
+      account_id:     document.getElementById('nomba-account-id').value.trim(),
+      sub_account_id: document.getElementById('nomba-sub-account-id').value.trim() || undefined,
+    };
+    const clientSecret  = document.getElementById('nomba-client-secret').value;
+    const webhookSecret = document.getElementById('nomba-webhook-secret').value;
+    if (clientSecret)  body.client_secret  = clientSecret;
+    if (webhookSecret) body.webhook_secret = webhookSecret;
+
+    try {
+      const res = await apiFetch('/settings/nomba', { method: 'PUT', body: JSON.stringify(body) });
+      const data = await res.json();
+      if (!res.ok) { showAlert('nomba-alert', data.error || 'Failed to save.', 'error'); return; }
+      showAlert('nomba-alert', 'Credentials saved.', 'success');
+      document.getElementById('nomba-client-secret').value  = '';
+      document.getElementById('nomba-webhook-secret').value = '';
+    } catch {
+      showAlert('nomba-alert', 'Network error.', 'error');
+    } finally {
+      setButtonLoading(btn, false, 'Save');
+    }
+  }
+
+  async function testNombaConnection() {
+    const btn = document.getElementById('nomba-test-btn');
+    setButtonLoading(btn, true);
+    clearAlert('nomba-alert');
+
+    try {
+      const res = await apiFetch('/settings/nomba/test', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) { showAlert('nomba-alert', data.error || 'Connection test failed.', 'error'); return; }
+      showAlert('nomba-alert', 'Connection successful.', 'success');
+    } catch {
+      showAlert('nomba-alert', 'Network error.', 'error');
+    } finally {
+      setButtonLoading(btn, false, 'Test connection');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Settings — Webhook
+  // ---------------------------------------------------------------------------
+  async function loadWebhookConfig() {
+    clearAlert('webhook-alert');
+    document.getElementById('webhook-secret-reveal').style.display = 'none';
+    try {
+      const res = await apiFetch('/settings/webhook');
+      if (res.status === 404) return;
+      if (!res.ok) return;
+      const data = await res.json();
+      document.getElementById('webhook-endpoint').value = data.endpoint_url ?? '';
+    } catch {
+      // Non-fatal.
+    }
+  }
+
+  async function saveWebhookConfig() {
+    const btn = document.getElementById('webhook-save-btn');
+    setButtonLoading(btn, true);
+    clearAlert('webhook-alert');
+
+    const endpoint = document.getElementById('webhook-endpoint').value.trim();
+    if (!endpoint) {
+      showAlert('webhook-alert', 'Endpoint URL is required.', 'error');
+      setButtonLoading(btn, false, 'Save &amp; rotate secret');
+      return;
+    }
+
+    try {
+      const res = await apiFetch('/settings/webhook', {
+        method: 'PUT',
+        body: JSON.stringify({ endpoint_url: endpoint }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showAlert('webhook-alert', data.error || 'Failed to save.', 'error'); return; }
+
+      if (data.signing_secret) {
+        document.getElementById('webhook-secret-value').textContent = data.signing_secret;
+        document.getElementById('webhook-secret-reveal').style.display = 'block';
+      }
+      showAlert('webhook-alert', 'Webhook config saved. Secret rotated.', 'success');
+    } catch {
+      showAlert('webhook-alert', 'Network error.', 'error');
+    } finally {
+      setButtonLoading(btn, false, 'Save &amp; rotate secret');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Logout
+  // ---------------------------------------------------------------------------
+  async function handleLogout() {
+    try {
+      await apiFetch('/auth/logout', { method: 'POST' });
+    } catch {
+      // Ignore — clear locally regardless.
+    }
+    clearAuthAndRedirect();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Utilities
+  // ---------------------------------------------------------------------------
+  function escHtml(str) {
+    return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleDateString('en-GB', { year:'numeric', month:'short', day:'numeric' });
+  }
+
+  function showAlert(id, message, type) {
+    const el = document.getElementById(id);
+    el.innerHTML = `<div class="alert alert-${type === 'error' ? 'error' : 'success'}">${escHtml(message)}</div>`;
+  }
+
+  function clearAlert(id) {
+    document.getElementById(id).innerHTML = '';
+  }
+
+  function setButtonLoading(btn, loading, idleLabel) {
+    btn.disabled = loading;
+    if (loading) {
+      btn.innerHTML = '<span class="spinner spinner-white"></span>';
+    } else if (idleLabel) {
+      btn.innerHTML = idleLabel;
+    }
+  }
+
+  async function copyText(text, btn) {
+    try {
+      await navigator.clipboard.writeText(text);
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = orig; }, 1500);
+    } catch {
+      // Clipboard API unavailable.
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Bootstrap
+  // ---------------------------------------------------------------------------
+  loadMe();
+</script>
+
+</body>
+</html>

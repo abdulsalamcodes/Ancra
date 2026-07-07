@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 // ---------------------------------------------------------------------------
@@ -48,7 +50,7 @@ func TestPaymentToClosedAccount_GoesToSuspense(t *testing.T) {
 	}
 
 	// Suspense must hold the 200 NGN = 20000 kobo
-	suspenseAcct, err := env.stores.ledger.GetSystemAccount(context.Background(), "suspense")
+	suspenseAcct, err := env.stores.ledger.GetSystemAccount(context.Background(), uuid.Nil, "suspense")
 	if err != nil {
 		t.Fatalf("get suspense account: %v", err)
 	}

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -326,6 +327,75 @@ func (h *CustomerHandler) GetCustomerByID(w http.ResponseWriter, r *http.Request
 	}
 
 	writeJSON(w, http.StatusOK, customer)
+}
+
+// UpgradeKYCTier raises a customer's KYC tier. Only upgrades are accepted;
+// requesting the same or a lower tier returns 422.
+//
+// PUT /customers/{id}/kyc-tier
+func (h *CustomerHandler) UpgradeKYCTier(w http.ResponseWriter, r *http.Request) {
+	orgID, ok := requireOrgID(w, r)
+	if !ok {
+		return
+	}
+	customerID, ok := parseUUID(w, r, "id")
+	if !ok {
+		return
+	}
+
+	var req struct {
+		KYCTier int `json:"kyc_tier"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	if req.KYCTier < minKYCTier || req.KYCTier > maxKYCTier {
+		writeError(w, http.StatusBadRequest, "kyc_tier must be 1, 2, or 3")
+		return
+	}
+
+	change, err := h.customers.UpgradeKYCTier(r.Context(), orgID, customerID, req.KYCTier, time.Now().UTC())
+	if errors.Is(err, store.ErrKYCTierDowngrade) {
+		writeError(w, http.StatusUnprocessableEntity, "kyc_tier can only be upgraded, not downgraded or set to the same value")
+		return
+	}
+	if err != nil {
+		h.log.Error("upgrade kyc tier failed",
+			zap.String("customer_id", customerID.String()), zap.Error(err))
+		writeError(w, http.StatusInternalServerError, "failed to upgrade kyc tier")
+		return
+	}
+
+	h.log.Info("kyc tier upgraded",
+		zap.String("customer_id", customerID.String()),
+		zap.Int("from_tier", change.FromTier),
+		zap.Int("to_tier", change.ToTier),
+	)
+	writeJSON(w, http.StatusOK, change)
+}
+
+// ListKYCTierHistory returns the audit trail of KYC tier upgrades for a customer.
+//
+// GET /customers/{id}/kyc-tier/history
+func (h *CustomerHandler) ListKYCTierHistory(w http.ResponseWriter, r *http.Request) {
+	orgID, ok := requireOrgID(w, r)
+	if !ok {
+		return
+	}
+	customerID, ok := parseUUID(w, r, "id")
+	if !ok {
+		return
+	}
+
+	history, err := h.customers.ListKYCTierHistory(r.Context(), orgID, customerID)
+	if err != nil {
+		h.log.Error("list kyc tier history failed",
+			zap.String("customer_id", customerID.String()), zap.Error(err))
+		writeError(w, http.StatusInternalServerError, "failed to list kyc tier history")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{"history": history})
 }
 
 // List returns a paginated list of customers for the requesting org.

@@ -28,7 +28,9 @@ var (
 // APIKeyAuth returns middleware that validates the Authorization: Bearer header
 // against the api_keys table (with a 60-second in-process cache).
 // If staticKey is non-empty it is also accepted as a fallback legacy key.
-func APIKeyAuth(keys store.APIKeyStore, staticKey string) func(http.Handler) http.Handler {
+// staticKeyOrgID pins the org context injected for requests that use the static
+// key; in single-tenant deployments both values come from the same env block.
+func APIKeyAuth(keys store.APIKeyStore, staticKey, staticKeyOrgID string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			raw := extractBearer(r)
@@ -37,9 +39,15 @@ func APIKeyAuth(keys store.APIKeyStore, staticKey string) func(http.Handler) htt
 				return
 			}
 
-			// Fast path: legacy static key.
+			// Fast path: legacy static key — inject the pinned org context so that
+			// all org-scoped handlers see a consistent tenant, even without a DB key.
 			if staticKey != "" && raw == staticKey {
-				next.ServeHTTP(w, r)
+				if staticKeyOrgID != "" {
+					ctx := tenant.WithOrgID(r.Context(), staticKeyOrgID)
+					next.ServeHTTP(w, r.WithContext(ctx))
+				} else {
+					next.ServeHTTP(w, r)
+				}
 				return
 			}
 

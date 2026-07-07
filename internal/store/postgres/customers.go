@@ -103,3 +103,84 @@ func (s *CustomerStore) CloseIdentityVersion(ctx context.Context, id uuid.UUID, 
 	}
 	return nil
 }
+
+// UpgradeKYCTier atomically raises a customer's KYC tier and records the change.
+// The read, validation, update, and audit insert are performed in a single
+// transaction to prevent a concurrent upgrade from creating an inconsistent history.
+func (s *CustomerStore) UpgradeKYCTier(ctx context.Context, orgID, customerID uuid.UUID, newTier int, now time.Time) (*store.KYCTierChange, error) {
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("customers.UpgradeKYCTier: begin: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	var currentTier int
+	err = tx.QueryRow(ctx,
+		`SELECT kyc_tier FROM customers WHERE id = $1 AND org_id = $2 FOR UPDATE`,
+		customerID, orgID,
+	).Scan(&currentTier)
+	if err != nil {
+		return nil, fmt.Errorf("customers.UpgradeKYCTier: get customer: %w", err)
+	}
+
+	if newTier <= currentTier {
+		return nil, store.ErrKYCTierDowngrade
+	}
+
+	if _, err = tx.Exec(ctx,
+		`UPDATE customers SET kyc_tier = $1 WHERE id = $2`,
+		newTier, customerID,
+	); err != nil {
+		return nil, fmt.Errorf("customers.UpgradeKYCTier: update tier: %w", err)
+	}
+
+	change := &store.KYCTierChange{
+		ID:         uuid.New(),
+		CustomerID: customerID,
+		FromTier:   currentTier,
+		ToTier:     newTier,
+		UpgradedAt: now,
+	}
+	if _, err = tx.Exec(ctx,
+		`INSERT INTO kyc_tier_history (id, customer_id, from_tier, to_tier, upgraded_at) VALUES ($1,$2,$3,$4,$5)`,
+		change.ID, change.CustomerID, change.FromTier, change.ToTier, change.UpgradedAt,
+	); err != nil {
+		return nil, fmt.Errorf("customers.UpgradeKYCTier: history insert: %w", err)
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("customers.UpgradeKYCTier: commit: %w", err)
+	}
+	return change, nil
+}
+
+// ListKYCTierHistory returns all tier upgrade records for a customer, newest first.
+// The JOIN on customers ensures the caller's org owns the requested customer.
+func (s *CustomerStore) ListKYCTierHistory(ctx context.Context, orgID, customerID uuid.UUID) ([]*store.KYCTierChange, error) {
+	const q = `
+		SELECT h.id, h.customer_id, h.from_tier, h.to_tier, h.upgraded_at
+		FROM kyc_tier_history h
+		JOIN customers c ON c.id = h.customer_id
+		WHERE h.customer_id = $1 AND c.org_id = $2
+		ORDER BY h.upgraded_at DESC`
+
+	rows, err := s.Pool.Query(ctx, q, customerID, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("customers.ListKYCTierHistory: %w", err)
+	}
+	defer rows.Close()
+
+	var history []*store.KYCTierChange
+	for rows.Next() {
+		var ch store.KYCTierChange
+		if err := rows.Scan(&ch.ID, &ch.CustomerID, &ch.FromTier, &ch.ToTier, &ch.UpgradedAt); err != nil {
+			return nil, fmt.Errorf("customers.ListKYCTierHistory scan: %w", err)
+		}
+		history = append(history, &ch)
+	}
+	if history == nil {
+		history = []*store.KYCTierChange{}
+	}
+	return history, rows.Err()
+}
+

@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ancra — Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --canvas:     #f5f5f5;
+      --paper:      #ffffff;
+      --surface:    #fafafa;
+      --ink:        #0a0a0a;
+      --ink-soft:   #171717;
+      --gray:       #737373;
+      --gray-light: #a3a3a3;
+      --hairline:   #e5e5e5;
+      --ember:      #e7000b;
+      --green:      #16a34a;
+      --amber:      #d97706;
+      --shadow:     0 0 0 1px rgba(23,23,23,0.05), 0 1px 3px rgba(0,0,0,0.10), 0 1px 2px -1px rgba(0,0,0,0.10);
+      --r-card:     16px;
+      --r-pill:     18px;
+      --sidebar:    220px;
+      --font:       'Inter', ui-sans-serif, system-ui, sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: var(--font);
+      background: var(--canvas);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Lock screen ── */
+    .lock-screen {
+      position: fixed;
+      inset: 0;
+      background: var(--canvas);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .lock-box {
+      background: var(--paper);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-card);
+      box-shadow: var(--shadow);
+      padding: 40px;
+      width: 360px;
+      text-align: center;
+    }
+    .lock-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: var(--ink);
+      display: grid;
+      place-items: center;
+      margin: 0 auto 20px;
+    }
+    .lock-icon svg { width: 20px; height: 20px; fill: none; stroke: #fafafa; stroke-width: 2; }
+    .lock-title {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+      margin-bottom: 6px;
+    }
+    .lock-sub {
+      font-size: 13px;
+      color: var(--gray);
+      margin-bottom: 24px;
+    }
+    .lock-error {
+      font-size: 12px;
+      color: var(--ember);
+      margin-bottom: 12px;
+      min-height: 16px;
+    }
+
+    /* ── Shell ── */
+    .shell {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: var(--sidebar);
+      flex-shrink: 0;
+      background: var(--paper);
+      border-right: 1px solid var(--hairline);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 20px 16px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+      border-bottom: 1px solid var(--hairline);
+    }
+    .logo-mark {
+      width: 24px; height: 24px; border-radius: 6px;
+      background: var(--ink); display: grid; place-items: center; flex-shrink: 0;
+    }
+    .logo-mark svg { width: 12px; height: 12px; fill: #fafafa; }
+    .logo-badge {
+      font-size: 10px;
+      font-weight: 600;
+      background: var(--ember);
+      color: #fff;
+      padding: 1px 5px;
+      border-radius: 4px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .sidebar-section { padding: 12px 8px 4px; }
+    .sidebar-section-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--gray-light);
+      padding: 0 8px;
+      margin-bottom: 4px;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 7px 10px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--gray);
+      background: none;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: left;
+      transition: color 0.12s, background 0.12s;
+      font-family: var(--font);
+    }
+    .nav-item:hover { color: var(--ink); background: var(--canvas); }
+    .nav-item.active { color: var(--ink); background: var(--canvas); font-weight: 600; }
+    .nav-item svg { width: 15px; height: 15px; flex-shrink: 0; opacity: 0.6; }
+    .nav-item.active svg { opacity: 1; }
+
+    .sidebar-bottom {
+      margin-top: auto;
+      padding: 12px 8px;
+      border-top: 1px solid var(--hairline);
+    }
+
+    /* ── Main content ── */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      height: 56px;
+      border-bottom: 1px solid var(--hairline);
+      background: var(--paper);
+      flex-shrink: 0;
+    }
+    .page-title { font-size: 14px; font-weight: 600; }
+    .content { padding: 28px; flex: 1; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-card);
+      box-shadow: var(--shadow);
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--hairline);
+    }
+    .card-title { font-size: 13px; font-weight: 600; }
+    .card-body { padding: 20px; }
+
+    /* ── Stats ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--paper);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-card);
+      padding: 18px 20px;
+      box-shadow: var(--shadow);
+    }
+    .stat-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--gray);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .stat-value { font-size: 22px; font-weight: 600; letter-spacing: -0.5px; }
+    .stat-sub { font-size: 11px; color: var(--gray); margin-top: 4px; }
+
+    /* ── Table ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--gray);
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--hairline);
+    }
+    td {
+      padding: 11px 16px;
+      border-bottom: 1px solid var(--hairline);
+      color: var(--ink-soft);
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--canvas); }
+
+    .mono {
+      font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+      font-size: 12px;
+    }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .badge-green { background: #dcfce7; color: #15803d; }
+    .badge-red   { background: #fee2e2; color: #b91c1c; }
+    .badge-amber { background: #fef9c3; color: #a16207; }
+    .badge-gray  { background: var(--canvas); color: var(--gray); }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: var(--r-pill);
+      border: none;
+      cursor: pointer;
+      font-family: var(--font);
+      transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.82; }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-primary { background: var(--ink); color: #fafafa; }
+    .btn-ghost   { background: var(--canvas); color: var(--ink); }
+    .btn-danger  { background: #fee2e2; color: #b91c1c; }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+    /* ── Forms ── */
+    .form-group { margin-bottom: 16px; }
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--gray);
+      margin-bottom: 5px;
+      letter-spacing: 0.02em;
+    }
+    .form-input {
+      width: 100%;
+      background: var(--canvas);
+      border: none;
+      border-radius: var(--r-pill);
+      padding: 9px 14px;
+      font-size: 13px;
+      font-family: var(--font);
+      color: var(--ink);
+      outline: none;
+    }
+    .form-input:focus { box-shadow: 0 0 0 2px var(--ink); }
+    .form-row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+    }
+    .form-row .form-group { flex: 1; margin-bottom: 0; }
+
+    /* ── Spinner ── */
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid var(--hairline);
+      border-top-color: var(--gray);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 20px;
+      color: var(--gray);
+      font-size: 13px;
+    }
+
+    /* ── Error / empty states ── */
+    .state-box {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--gray);
+      font-size: 13px;
+    }
+    .state-box.error { color: var(--ember); }
+
+    /* ── Panel ── */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* ── Inline action feedback ── */
+    .inline-msg {
+      font-size: 11px;
+      margin-left: 8px;
+    }
+    .inline-msg.ok  { color: var(--green); }
+    .inline-msg.err { color: var(--ember); }
+
+    /* ── Key reveal ── */
+    .key-reveal {
+      background: var(--canvas);
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+      font-size: 12px;
+      word-break: break-all;
+      margin-top: 12px;
+      border: 1px solid var(--hairline);
+    }
+    .key-reveal-label {
+      font-size: 11px;
+      color: var(--green);
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    /* ── Quick-start callout ── */
+    .callout {
+      background: var(--canvas);
+      border: 1px solid var(--hairline);
+      border-radius: 10px;
+      padding: 16px 18px;
+      font-size: 13px;
+      color: var(--gray);
+      line-height: 1.6;
+      margin-top: 16px;
+    }
+    .callout strong { color: var(--ink); }
+  </style>
+</head>
+<body>
+
+<!-- ── Lock screen ── -->
+<div class="lock-screen" id="lockScreen">
+  <div class="lock-box">
+    <div class="lock-icon">
+      <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    </div>
+    <div class="lock-title">Operator Access</div>
+    <div class="lock-sub">Enter your admin secret to unlock the control plane.</div>
+    <div class="lock-error" id="lockError"></div>
+    <div class="form-group">
+      <input
+        class="form-input"
+        id="secretInput"
+        type="password"
+        placeholder="Admin secret…"
+        autocomplete="current-password"
+      />
+    </div>
+    <button class="btn btn-primary" style="width:100%" id="unlockBtn">Unlock</button>
+  </div>
+</div>
+
+<!-- ── App shell ── -->
+<div class="shell" id="appShell" style="display:none">
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">
+        <svg viewBox="0 0 12 12"><path d="M6 1L11 10H1L6 1Z"/></svg>
+      </div>
+      Ancra
+      <span class="logo-badge">Admin</span>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Platform</div>
+      <button class="nav-item active" data-panel="overview" onclick="showPanel('overview',this)">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="1" y="1" width="6" height="6" rx="1"/>
+          <rect x="9" y="1" width="6" height="6" rx="1"/>
+          <rect x="1" y="9" width="6" height="6" rx="1"/>
+          <rect x="9" y="9" width="6" height="6" rx="1"/>
+        </svg>
+        Overview
+      </button>
+      <button class="nav-item" data-panel="orgs" onclick="showPanel('orgs',this)">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M2 14V6l6-4 6 4v8"/>
+          <rect x="5" y="9" width="2.5" height="5"/>
+          <rect x="8.5" y="9" width="2.5" height="5"/>
+        </svg>
+        Organisations
+      </button>
+      <button class="nav-item" data-panel="keys" onclick="showPanel('keys',this)">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="6" cy="8" r="4"/>
+          <path d="M10 8h5M13 6v4"/>
+        </svg>
+        API Keys
+      </button>
+      <button class="nav-item" data-panel="webhooks" onclick="showPanel('webhooks',this)">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M2 4h12M2 8h8M2 12h5"/>
+        </svg>
+        Webhook Deliveries
+      </button>
+    </div>
+
+    <div class="sidebar-bottom">
+      <button class="nav-item" onclick="lock()">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="7" width="10" height="7" rx="1"/>
+          <path d="M5 7V5a3 3 0 0 1 6 0v2"/>
+        </svg>
+        Lock
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <span class="page-title" id="topbarTitle">Overview</span>
+    </div>
+    <div class="content">
+
+      <!-- ── Overview panel ── -->
+      <div class="panel active" id="panel-overview">
+        <div class="stats-grid" id="statsGrid">
+          <div class="loading-row"><div class="spinner"></div> Loading stats…</div>
+        </div>
+        <div class="callout">
+          <strong>Operator control plane.</strong> This dashboard is accessible only with the
+          <code>Admin-Secret</code> header. Use it to inspect organisations, manage API keys across
+          all tenants, and trigger per-org reconciliation sweeps. Changes here affect every tenant
+          on the platform — proceed with care.
+        </div>
+      </div>
+
+      <!-- ── Orgs panel ── -->
+      <div class="panel" id="panel-orgs">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Organisations</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Slug</th>
+                  <th>Joined</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="orgsBody">
+                <tr><td colspan="4"><div class="loading-row"><div class="spinner"></div> Loading…</div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── API Keys panel ── -->
+      <div class="panel" id="panel-keys">
+        <!-- Create key form -->
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-header">
+            <span class="card-title">Create API Key</span>
+          </div>
+          <div class="card-body">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Org ID</label>
+                <input class="form-input" id="newKeyOrgID" type="text" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Key Name</label>
+                <input class="form-input" id="newKeyName" type="text" placeholder="e.g. production-key" />
+              </div>
+              <button class="btn btn-primary" id="createKeyBtn" onclick="createKey()">Create</button>
+            </div>
+            <div id="createKeyResult"></div>
+          </div>
+        </div>
+
+        <!-- Keys table -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">All API Keys</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Org ID</th>
+                  <th>Created</th>
+                  <th>Last Used</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="keysBody">
+                <tr><td colspan="6"><div class="loading-row"><div class="spinner"></div> Loading…</div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Webhooks panel ── -->
+      <div class="panel" id="panel-webhooks">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Webhook Deliveries</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Event Type</th>
+                  <th>Status</th>
+                  <th>Attempts</th>
+                  <th>Org ID</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody id="webhooksBody">
+                <tr><td colspan="5"><div class="loading-row"><div class="spinner"></div> Loading…</div></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="padding:16px;border-top:1px solid var(--hairline);display:flex;align-items:center;gap:12px">
+            <button class="btn btn-ghost btn-sm" id="loadMoreBtn" onclick="loadMoreWebhooks()">Load more</button>
+            <span id="webhooksMeta" style="font-size:12px;color:var(--gray)"></span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ────────────────────────────────────────────────
+     State
+  ──────────────────────────────────────────────── */
+  let adminSecret = '';
+  let webhookOffset = 0;
+  const WEBHOOK_LIMIT = 20;
+
+  /* ────────────────────────────────────────────────
+     Auth helpers
+  ──────────────────────────────────────────────── */
+  function getSecret() {
+    return sessionStorage.getItem('admin_secret') || '';
+  }
+
+  function lock() {
+    sessionStorage.removeItem('admin_secret');
+    document.getElementById('appShell').style.display = 'none';
+    document.getElementById('lockScreen').style.display = 'flex';
+    document.getElementById('lockError').textContent = '';
+    document.getElementById('secretInput').value = '';
+  }
+
+  function handleUnauthorised() {
+    sessionStorage.removeItem('admin_secret');
+    document.getElementById('lockError').textContent = 'Invalid admin secret.';
+    document.getElementById('appShell').style.display = 'none';
+    document.getElementById('lockScreen').style.display = 'flex';
+  }
+
+  async function apiFetch(path, opts = {}) {
+    const secret = getSecret();
+    const res = await fetch(path, {
+      ...opts,
+      headers: {
+        'Admin-Secret': secret,
+        'Content-Type': 'application/json',
+        ...(opts.headers || {}),
+      },
+    });
+    if (res.status === 403) {
+      handleUnauthorised();
+      throw new Error('unauthorised');
+    }
+    return res;
+  }
+
+  /* ────────────────────────────────────────────────
+     Unlock
+  ──────────────────────────────────────────────── */
+  document.getElementById('unlockBtn').addEventListener('click', unlock);
+  document.getElementById('secretInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') unlock();
+  });
+
+  async function unlock() {
+    const secret = document.getElementById('secretInput').value.trim();
+    if (!secret) return;
+
+    // Probe with a cheap endpoint
+    try {
+      const res = await fetch('/admin/stats', {
+        headers: { 'Admin-Secret': secret },
+      });
+      if (res.status === 403) {
+        document.getElementById('lockError').textContent = 'Invalid admin secret.';
+        return;
+      }
+      sessionStorage.setItem('admin_secret', secret);
+      document.getElementById('lockScreen').style.display = 'none';
+      document.getElementById('appShell').style.display = 'flex';
+      initApp();
+    } catch {
+      document.getElementById('lockError').textContent = 'Could not reach server.';
+    }
+  }
+
+  /* ────────────────────────────────────────────────
+     Navigation
+  ──────────────────────────────────────────────── */
+  const panelTitles = {
+    overview: 'Overview',
+    orgs:     'Organisations',
+    keys:     'API Keys',
+    webhooks: 'Webhook Deliveries',
+  };
+
+  function showPanel(name, btn) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('active');
+    btn.classList.add('active');
+    document.getElementById('topbarTitle').textContent = panelTitles[name] || name;
+    loadPanel(name);
+  }
+
+  /* ────────────────────────────────────────────────
+     Panel loaders
+  ──────────────────────────────────────────────── */
+  function initApp() {
+    loadOverview();
+  }
+
+  function loadPanel(name) {
+    if (name === 'overview') loadOverview();
+    else if (name === 'orgs') loadOrgs();
+    else if (name === 'keys') loadKeys();
+    else if (name === 'webhooks') { webhookOffset = 0; loadWebhooks(false); }
+  }
+
+  /* Overview */
+  async function loadOverview() {
+    const grid = document.getElementById('statsGrid');
+    grid.innerHTML = '<div class="loading-row"><div class="spinner"></div> Loading stats…</div>';
+    try {
+      const res = await apiFetch('/admin/stats');
+      const data = await res.json();
+      grid.innerHTML = `
+        ${statCard('Total Orgs', data.total_orgs, '')}
+        ${statCard('Total API Keys', data.total_keys, '')}
+        ${statCard('Active Keys', data.active_keys, '')}
+      `;
+    } catch (e) {
+      if (e.message !== 'unauthorised') {
+        grid.innerHTML = '<div class="state-box error">Failed to load stats.</div>';
+      }
+    }
+  }
+
+  function statCard(label, value, sub) {
+    return `
+      <div class="stat-card">
+        <div class="stat-label">${label}</div>
+        <div class="stat-value">${value ?? '—'}</div>
+        ${sub ? `<div class="stat-sub">${sub}</div>` : ''}
+      </div>`;
+  }
+
+  /* Orgs */
+  async function loadOrgs() {
+    const tbody = document.getElementById('orgsBody');
+    tbody.innerHTML = '<tr><td colspan="4"><div class="loading-row"><div class="spinner"></div> Loading…</div></td></tr>';
+    try {
+      const res = await apiFetch('/admin/orgs');
+      const data = await res.json();
+      const orgs = data.orgs || [];
+      if (!orgs.length) {
+        tbody.innerHTML = '<tr><td colspan="4"><div class="state-box">No organisations yet.</div></td></tr>';
+        return;
+      }
+      tbody.innerHTML = orgs.map(o => `
+        <tr>
+          <td>${esc(o.name)}</td>
+          <td>${esc(o.slug)}</td>
+          <td>${fmtDate(o.created_at)}</td>
+          <td>
+            <button class="btn btn-ghost btn-sm" onclick="triggerRecon('${o.id}', this)">Trigger Recon</button>
+            <span class="inline-msg" id="recon-${o.id}"></span>
+          </td>
+        </tr>
+      `).join('');
+    } catch (e) {
+      if (e.message !== 'unauthorised') {
+        tbody.innerHTML = '<tr><td colspan="4"><div class="state-box error">Failed to load organisations.</div></td></tr>';
+      }
+    }
+  }
+
+  async function triggerRecon(orgID, btn) {
+    const msgEl = document.getElementById('recon-' + orgID);
+    btn.disabled = true;
+    msgEl.textContent = '';
+    try {
+      const res = await apiFetch(`/admin/orgs/${orgID}/reconciliation/trigger`, { method: 'POST' });
+      if (res.ok) {
+        msgEl.className = 'inline-msg ok';
+        msgEl.textContent = 'Done';
+      } else {
+        const d = await res.json().catch(() => ({}));
+        msgEl.className = 'inline-msg err';
+        msgEl.textContent = d.error || 'Failed';
+      }
+    } catch (e) {
+      if (e.message !== 'unauthorised') {
+        msgEl.className = 'inline-msg err';
+        msgEl.textContent = 'Error';
+      }
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  /* API Keys */
+  async function loadKeys() {
+    const tbody = document.getElementById('keysBody');
+    tbody.innerHTML = '<tr><td colspan="6"><div class="loading-row"><div class="spinner"></div> Loading…</div></td></tr>';
+    try {
+      const res = await apiFetch('/admin/api-keys');
+      const data = await res.json();
+      const keys = data.keys || [];
+      if (!keys.length) {
+        tbody.innerHTML = '<tr><td colspan="6"><div class="state-box">No keys found.</div></td></tr>';
+        return;
+      }
+      tbody.innerHTML = keys.map(k => {
+        const revoked = !!k.revoked_at;
+        const badge = revoked
+          ? '<span class="badge badge-red">revoked</span>'
+          : '<span class="badge badge-green">active</span>';
+        const revokeBtn = revoked
+          ? ''
+          : `<button class="btn btn-danger btn-sm" onclick="revokeKey('${k.id}', this)">Revoke</button>`;
+        return `
+          <tr id="key-row-${k.id}">
+            <td>${esc(k.name)}</td>
+            <td><span class="mono">${shortID(k.org_id)}</span></td>
+            <td>${fmtDate(k.created_at)}</td>
+            <td>${k.last_used_at ? fmtDate(k.last_used_at) : '—'}</td>
+            <td>${badge}</td>
+            <td>${revokeBtn}</td>
+          </tr>`;
+      }).join('');
+    } catch (e) {
+      if (e.message !== 'unauthorised') {
+        tbody.innerHTML = '<tr><td colspan="6"><div class="state-box error">Failed to load keys.</div></td></tr>';
+      }
+    }
+  }
+
+  async function revokeKey(id, btn) {
+    if (!confirm('Revoke this API key? This cannot be undone.')) return;
+    btn.disabled = true;
+    try {
+      const res = await apiFetch(`/admin/api-keys/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        loadKeys();
+      } else {
+        btn.disabled = false;
+        alert('Failed to revoke key.');
+      }
+    } catch (e) {
+      btn.disabled = false;
+    }
+  }
+
+  async function createKey() {
+    const orgID = document.getElementById('newKeyOrgID').value.trim();
+    const name  = document.getElementById('newKeyName').value.trim();
+    const resultEl = document.getElementById('createKeyResult');
+    const btn = document.getElementById('createKeyBtn');
+
+    if (!orgID || !name) {
+      resultEl.innerHTML = '<p style="font-size:12px;color:var(--ember);margin-top:10px">Org ID and name are required.</p>';
+      return;
+    }
+
+    btn.disabled = true;
+    resultEl.innerHTML = '';
+
+    try {
+      const res = await apiFetch('/admin/api-keys', {
+        method: 'POST',
+        body: JSON.stringify({ org_id: orgID, name }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        resultEl.innerHTML = `
+          <div class="key-reveal-label">Key created — copy it now. It will never be shown again.</div>
+          <div class="key-reveal">${esc(data.key)}</div>`;
+        document.getElementById('newKeyOrgID').value = '';
+        document.getElementById('newKeyName').value = '';
+        loadKeys();
+      } else {
+        resultEl.innerHTML = `<p style="font-size:12px;color:var(--ember);margin-top:10px">${esc(data.error || 'Failed to create key.')}</p>`;
+      }
+    } catch (e) {
+      if (e.message !== 'unauthorised') {
+        resultEl.innerHTML = '<p style="font-size:12px;color:var(--ember);margin-top:10px">Request failed.</p>';
+      }
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  /* Webhooks */
+  async function loadWebhooks(append = false) {
+    const tbody = document.getElementById('webhooksBody');
+    const metaEl = document.getElementById('webhooksMeta');
+    const btn = document.getElementById('loadMoreBtn');
+
+    if (!append) {
+      tbody.innerHTML = '<tr><td colspan="5"><div class="loading-row"><div class="spinner"></div> Loading…</div></td></tr>';
+    } else {
+      btn.disabled = true;
+      btn.textContent = 'Loading…';
+    }
+
+    try {
+      const res = await apiFetch(`/admin/webhooks?limit=${WEBHOOK_LIMIT}&offset=${webhookOffset}`);
+      const data = await res.json();
+      const deliveries = data.deliveries || [];
+
+      if (!append) {
+        if (!deliveries.length) {
+          tbody.innerHTML = '<tr><td colspan="5"><div class="state-box">No webhook deliveries yet.</div></td></tr>';
+          metaEl.textContent = '';
+          btn.style.display = 'none';
+          return;
+        }
+        tbody.innerHTML = '';
+      }
+
+      btn.style.display = '';
+      deliveries.forEach(d => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${esc(d.event_type)}</td>
+          <td>${webhookBadge(d.status)}</td>
+          <td>${d.attempts}</td>
+          <td><span class="mono">${shortID(d.org_id)}</span></td>
+          <td>${fmtDate(d.created_at)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      webhookOffset += deliveries.length;
+      metaEl.textContent = `Showing ${webhookOffset} record${webhookOffset !== 1 ? 's' : ''}`;
+
+      if (deliveries.length < WEBHOOK_LIMIT) {
+        btn.style.display = 'none';
+      }
+    } catch (e) {
+      if (e.message !== 'unauthorised') {
+        if (!append) {
+          tbody.innerHTML = '<tr><td colspan="5"><div class="state-box error">Failed to load deliveries.</div></td></tr>';
+        }
+      }
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Load more';
+    }
+  }
+
+  function loadMoreWebhooks() {
+    loadWebhooks(true);
+  }
+
+  /* ────────────────────────────────────────────────
+     Utility
+  ──────────────────────────────────────────────── */
+  function esc(s) {
+    if (!s) return '';
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return `${String(d.getDate()).padStart(2,'0')} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  }
+
+  function shortID(id) {
+    if (!id) return '—';
+    return esc(id.substring(0, 8)) + '…';
+  }
+
+  function webhookBadge(status) {
+    switch (status) {
+      case 'delivered': return '<span class="badge badge-green">delivered</span>';
+      case 'failed':    return '<span class="badge badge-red">failed</span>';
+      case 'pending':   return '<span class="badge badge-amber">pending</span>';
+      default:          return `<span class="badge badge-gray">${esc(status)}</span>`;
+    }
+  }
+
+  /* ────────────────────────────────────────────────
+     Bootstrap
+  ──────────────────────────────────────────────── */
+  (function init() {
+    const secret = sessionStorage.getItem('admin_secret');
+    if (secret) {
+      document.getElementById('lockScreen').style.display = 'none';
+      document.getElementById('appShell').style.display = 'flex';
+      initApp();
+    }
+  })();
+</script>
+</body>
+</html>

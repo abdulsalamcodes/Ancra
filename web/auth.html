@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ancra — Sign in</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --canvas:   #f5f5f5;
+      --paper:    #ffffff;
+      --ink:      #0a0a0a;
+      --ink-soft: #171717;
+      --gray:     #737373;
+      --hairline: #e5e5e5;
+      --ember:    #e7000b;
+      --shadow:   0 0 0 1px rgba(23,23,23,0.05), 0 1px 3px rgba(0,0,0,0.10), 0 1px 2px -1px rgba(0,0,0,0.10);
+      --r-card:   20px;
+      --r-pill:   18px;
+      --font:     'Inter', ui-sans-serif, system-ui, sans-serif;
+    }
+
+    html, body {
+      min-height: 100vh;
+      font-family: var(--font);
+      background: var(--canvas);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 400px;
+      background: var(--paper);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-card);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    /* ── Logo ── */
+    .logo-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: center;
+      padding: 28px 24px 0;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+    }
+    .logo-mark {
+      width: 26px; height: 26px; border-radius: 7px;
+      background: var(--ink); display: grid; place-items: center;
+    }
+    .logo-mark svg { width: 13px; height: 13px; fill: #fafafa; }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      gap: 0;
+      padding: 16px 24px 0;
+      border-bottom: 1px solid var(--hairline);
+      margin-top: 20px;
+    }
+    .tab {
+      flex: 1;
+      padding: 10px 0;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--gray);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+      font-family: var(--font);
+      text-align: center;
+      margin-bottom: -1px;
+    }
+    .tab:hover { color: var(--ink); }
+    .tab.active { color: var(--ink); border-bottom-color: var(--ink); }
+
+    /* ── Form ── */
+    .form-body { padding: 24px; }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .field { margin-bottom: 16px; }
+    label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--gray);
+      display: block;
+      margin-bottom: 5px;
+      letter-spacing: 0.02em;
+    }
+    .input {
+      width: 100%;
+      background: var(--canvas);
+      border: none;
+      border-radius: var(--r-pill);
+      padding: 10px 14px;
+      font-size: 14px;
+      font-family: var(--font);
+      color: var(--ink);
+      outline: none;
+      transition: box-shadow 0.15s;
+    }
+    .input:focus { box-shadow: 0 0 0 1.5px var(--hairline); }
+    .input::placeholder { color: var(--gray); }
+
+    /* ── Button ── */
+    .btn-primary {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 14px;
+      background: var(--ink);
+      color: #fafafa;
+      border: none;
+      border-radius: var(--r-pill);
+      font-size: 13px;
+      font-weight: 500;
+      font-family: var(--font);
+      cursor: pointer;
+      transition: opacity 0.15s;
+      margin-top: 8px;
+    }
+    .btn-primary:hover { opacity: 0.85; }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    /* ── Spinner ── */
+    .spinner {
+      width: 13px; height: 13px;
+      border: 1.5px solid rgba(255,255,255,0.35);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Alert ── */
+    .alert {
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+    .alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+
+    /* ── Footer link ── */
+    .switch-link {
+      text-align: center;
+      font-size: 12px;
+      color: var(--gray);
+      padding: 16px 24px;
+      border-top: 1px solid var(--hairline);
+    }
+    .switch-link a { color: var(--ink); font-weight: 500; cursor: pointer; text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<div class="page">
+  <div class="card">
+
+    <div class="logo-row">
+      <span class="logo-mark">
+        <svg viewBox="0 0 14 14"><rect x="2" y="2" width="10" height="10" rx="2.5"/></svg>
+      </span>
+      Ancra
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" id="tab-login" onclick="switchTab('login')">Log in</button>
+      <button class="tab" id="tab-signup" onclick="switchTab('signup')">Sign up</button>
+    </div>
+
+    <div class="form-body">
+
+      <!-- Login panel -->
+      <div class="panel active" id="panel-login">
+        <div class="alert alert-error" id="login-error" style="display:none;"></div>
+        <div class="field">
+          <label for="login-email">Email</label>
+          <input class="input" id="login-email" type="email" placeholder="you@example.com" autocomplete="email" />
+        </div>
+        <div class="field">
+          <label for="login-password">Password</label>
+          <input class="input" id="login-password" type="password" placeholder="••••••••" autocomplete="current-password" />
+        </div>
+        <button class="btn-primary" id="login-btn" onclick="handleLogin()">
+          Log in
+        </button>
+      </div>
+
+      <!-- Signup panel -->
+      <div class="panel" id="panel-signup">
+        <div class="alert alert-error" id="signup-error" style="display:none;"></div>
+        <div class="field">
+          <label for="signup-org">Organisation name</label>
+          <input class="input" id="signup-org" type="text" placeholder="Acme Inc." autocomplete="organization" />
+        </div>
+        <div class="field">
+          <label for="signup-email">Email</label>
+          <input class="input" id="signup-email" type="email" placeholder="you@example.com" autocomplete="email" />
+        </div>
+        <div class="field">
+          <label for="signup-password">Password</label>
+          <input class="input" id="signup-password" type="password" placeholder="At least 8 characters" autocomplete="new-password" />
+        </div>
+        <button class="btn-primary" id="signup-btn" onclick="handleSignup()">
+          Create account
+        </button>
+      </div>
+
+    </div><!-- .form-body -->
+
+    <div class="switch-link" id="switch-link">
+      Don't have an account? <a onclick="switchTab('signup')">Sign up</a>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // Redirect to dashboard if already authenticated.
+  if (localStorage.getItem('access_token')) {
+    window.location.replace('/dashboard');
+  }
+
+  function switchTab(tab) {
+    document.getElementById('panel-login').classList.toggle('active', tab === 'login');
+    document.getElementById('panel-signup').classList.toggle('active', tab === 'signup');
+    document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+    document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
+
+    const link = document.getElementById('switch-link');
+    if (tab === 'login') {
+      link.innerHTML = 'Don\'t have an account? <a onclick="switchTab(\'signup\')">Sign up</a>';
+    } else {
+      link.innerHTML = 'Already have an account? <a onclick="switchTab(\'login\')">Log in</a>';
+    }
+  }
+
+  function setLoading(btnId, loading) {
+    const btn = document.getElementById(btnId);
+    btn.disabled = loading;
+    btn.innerHTML = loading
+      ? '<span class="spinner"></span>'
+      : (btnId === 'login-btn' ? 'Log in' : 'Create account');
+  }
+
+  function showError(id, message) {
+    const el = document.getElementById(id);
+    el.textContent = message;
+    el.style.display = 'block';
+  }
+
+  function clearError(id) {
+    document.getElementById(id).style.display = 'none';
+  }
+
+  function storeTokensAndRedirect(data) {
+    localStorage.setItem('access_token', data.access_token);
+    localStorage.setItem('refresh_token', data.refresh_token);
+    window.location.replace('/dashboard');
+  }
+
+  async function handleLogin() {
+    clearError('login-error');
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+
+    if (!email || !password) {
+      showError('login-error', 'Email and password are required.');
+      return;
+    }
+
+    setLoading('login-btn', true);
+    try {
+      const res = await fetch('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showError('login-error', data.error || 'Login failed.');
+        return;
+      }
+      storeTokensAndRedirect(data);
+    } catch {
+      showError('login-error', 'Network error. Please try again.');
+    } finally {
+      setLoading('login-btn', false);
+    }
+  }
+
+  async function handleSignup() {
+    clearError('signup-error');
+    const org_name = document.getElementById('signup-org').value.trim();
+    const email    = document.getElementById('signup-email').value.trim();
+    const password = document.getElementById('signup-password').value;
+
+    if (!org_name || !email || !password) {
+      showError('signup-error', 'All fields are required.');
+      return;
+    }
+    if (password.length < 8) {
+      showError('signup-error', 'Password must be at least 8 characters.');
+      return;
+    }
+
+    setLoading('signup-btn', true);
+    try {
+      const res = await fetch('/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ org_name, email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showError('signup-error', data.error || 'Signup failed.');
+        return;
+      }
+      storeTokensAndRedirect(data);
+    } catch {
+      showError('signup-error', 'Network error. Please try again.');
+    } finally {
+      setLoading('signup-btn', false);
+    }
+  }
+
+  // Allow Enter key to submit.
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    const loginActive = document.getElementById('panel-login').classList.contains('active');
+    loginActive ? handleLogin() : handleSignup();
+  });
+</script>
+
+</body>
+</html>

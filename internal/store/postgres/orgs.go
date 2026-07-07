@@ -43,6 +43,28 @@ func (s *OrgStore) GetOrgBySlug(ctx context.Context, slug string) (*store.Organi
 	return scanOrg(s.Pool.QueryRow(ctx, q, slug))
 }
 
+// ListAllOrgs returns every organisation, ordered by created_at ascending.
+// Used by background workers that need to iterate over all tenants.
+func (s *OrgStore) ListAllOrgs(ctx context.Context) ([]*store.Organization, error) {
+	const q = `SELECT id, name, slug, created_at FROM organizations ORDER BY created_at ASC`
+
+	rows, err := s.Pool.Query(ctx, q)
+	if err != nil {
+		return nil, fmt.Errorf("orgs.ListAll: %w", err)
+	}
+	defer rows.Close()
+
+	var orgs []*store.Organization
+	for rows.Next() {
+		org, err := scanOrg(rows)
+		if err != nil {
+			return nil, err
+		}
+		orgs = append(orgs, org)
+	}
+	return orgs, rows.Err()
+}
+
 func scanOrg(row scanner) (*store.Organization, error) {
 	var org store.Organization
 	if err := row.Scan(&org.ID, &org.Name, &org.Slug, &org.CreatedAt); err != nil {

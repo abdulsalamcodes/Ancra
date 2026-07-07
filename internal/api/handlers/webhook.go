@@ -17,6 +17,10 @@ import (
 	"github.com/abdulsalamcodes/ancra/internal/store/postgres"
 )
 
+// nilOrgID is used when posting to the global suspense account because
+// the org cannot be determined (e.g. the bank account number is unknown).
+var nilOrgID = uuid.Nil
+
 // WebhookHandler processes inbound Nomba webhook events.
 type WebhookHandler struct {
 	verifier *nomba.Verifier
@@ -124,7 +128,8 @@ func (h *WebhookHandler) handleCredit(w http.ResponseWriter, r *http.Request, pa
 			zap.String("txn_id", txn.TransactionID),
 		)
 		amountKobo := nairaToKobo(txn.TransactionAmount)
-		_, _ = h.ledger.PostSuspense(ctx, amountKobo, "NGN", txn.TransactionID)
+		// Org is unknown — post to global (NULL org) suspense for manual review.
+		_, _ = h.ledger.PostSuspense(ctx, nilOrgID, amountKobo, "NGN", txn.TransactionID)
 		writeJSON(w, http.StatusOK, map[string]string{"status": "suspense"})
 		return
 	}
@@ -138,12 +143,13 @@ func (h *WebhookHandler) handleCredit(w http.ResponseWriter, r *http.Request, pa
 			zap.String("account_id", va.ID.String()),
 			zap.String("txn_id", txn.TransactionID),
 		)
-		_, _ = h.ledger.PostSuspense(ctx, amountKobo, "NGN", txn.TransactionID)
+		_, _ = h.ledger.PostSuspense(ctx, va.OrgID, amountKobo, "NGN", txn.TransactionID)
 		writeJSON(w, http.StatusOK, map[string]string{"status": "suspense"})
 		return
 	}
 
 	_, err = h.ledger.PostCredit(ctx, ledger.CreditRequest{
+		OrgID:       va.OrgID,
 		AccountID:   va.ID,
 		Amount:      amountKobo,
 		Currency:    "NGN",

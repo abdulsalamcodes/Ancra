@@ -10,6 +10,7 @@ import (
 
 	"github.com/abdulsalamcodes/ancra/internal/api/handlers"
 	"github.com/abdulsalamcodes/ancra/internal/api/middleware"
+	"github.com/abdulsalamcodes/ancra/internal/crypto"
 	"github.com/abdulsalamcodes/ancra/internal/domain/account"
 	domainauth "github.com/abdulsalamcodes/ancra/internal/domain/auth"
 	"github.com/abdulsalamcodes/ancra/internal/domain/ledger"
@@ -21,20 +22,26 @@ import (
 
 // RouterDeps bundles everything the router needs to wire handlers.
 type RouterDeps struct {
-	AccountSvc  *account.Service
-	LedgerSvc   *ledger.Service
-	ReconSvc    *reconciliation.Service
-	AuthSvc     *domainauth.Service
-	NombaClient *nomba.Client
-	Verifier    *nomba.Verifier
-	Accounts    store.AccountStore
-	Customers   store.CustomerStore
-	Events      store.EventStore
-	Webhooks    store.WebhookStore
-	APIKeys     store.APIKeyStore
-	StaticKey   string // legacy env var key, optional
-	AdminSecret string
-	Log         *zap.Logger
+	AccountSvc     *account.Service
+	LedgerSvc      *ledger.Service
+	ReconSvc       *reconciliation.Service
+	AuthSvc        *domainauth.Service
+	NombaClient    *nomba.Client  // optional; nil when all orgs use BYOK
+	NombaFactory   *nomba.ClientFactory
+	Verifier       *nomba.Verifier // optional; nil when all orgs use BYOK
+	Accounts       store.AccountStore
+	Orgs           store.OrgStore
+	Customers      store.CustomerStore
+	Events         store.EventStore
+	Webhooks       store.WebhookStore
+	APIKeys        store.APIKeyStore
+	NombaConfigs   store.NombaConfigStore
+	WebhookConfigs store.WebhookConfigStore
+	Encryptor      *crypto.Encryptor
+	StaticKey      string // legacy env var key, optional
+	StaticKeyOrgID string // org pinned to the static key (single-tenant mode)
+	AdminSecret    string
+	Log            *zap.Logger
 }
 
 // NewRouter constructs and returns the fully wired chi router.
@@ -58,8 +65,13 @@ func NewRouter(d RouterDeps) http.Handler {
 
 	// Web pages
 	r.Get("/", web.LandingHandler())
-	r.Get("/app", web.AppHandler())
+	r.Get("/auth", web.AuthHandler())
 	r.Get("/dashboard", web.DashboardHandler())
+	r.Get("/admin", web.AdminHandler())
+	// /app was the old connect-to-instance portal — redirect to the new auth page.
+	r.Get("/app", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/auth", http.StatusMovedPermanently)
+	})
 
 	// Auth endpoints — no token required
 	authHandler := handlers.NewAuthHandler(d.AuthSvc, d.Log)
@@ -79,6 +91,8 @@ func NewRouter(d RouterDeps) http.Handler {
 	acctHandler := handlers.NewAccountHandler(d.AccountSvc, d.Log)
 	txnHandler := handlers.NewTransactionHandler(d.LedgerSvc, d.NombaClient, d.Log)
 	customerHandler := handlers.NewCustomerHandler(d.Customers, d.Log)
+	nombaConfigHandler := handlers.NewNombaConfigHandler(d.NombaConfigs, d.Encryptor, d.NombaFactory, d.Log)
+	webhookConfigHandler := handlers.NewWebhookConfigHandler(d.WebhookConfigs, d.Encryptor, d.Log)
 
 	// ---------------------------------------------------------------------------
 	// JWT-protected routes — dashboard / session-based access
@@ -96,28 +110,53 @@ func NewRouter(d RouterDeps) http.Handler {
 
 		// Webhook deliveries for this org
 		r.Get("/webhooks", reconHandler.ListWebhooks)
+
+		// Nomba BYOK credential settings
+		r.Get("/settings/nomba", nombaConfigHandler.Get)
+		r.Put("/settings/nomba", nombaConfigHandler.Upsert)
+		r.Post("/settings/nomba/test", nombaConfigHandler.TestConnection)
+
+		// Outbound webhook endpoint settings
+		r.Get("/settings/webhook", webhookConfigHandler.Get)
+		r.Put("/settings/webhook", webhookConfigHandler.Upsert)
+
+		// Reconciliation — also in the JWT group so the dashboard can access it.
+		r.Get("/reconciliation", reconHandler.GetLatest)
+		r.Post("/reconciliation/trigger", reconHandler.Trigger)
 	})
 
 	// ---------------------------------------------------------------------------
 	// Admin routes — protected by Admin-Secret header only (operator use)
 	// ---------------------------------------------------------------------------
+	adminHandler := handlers.NewAdminHandler(d.Orgs, d.APIKeys, d.ReconSvc, d.Log)
+
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.AdminAuth(d.AdminSecret))
 
-		r.Get("/admin/webhooks", reconHandler.ListWebhooks)
+		r.Get("/admin/orgs", adminHandler.ListOrgs)
+		r.Get("/admin/stats", adminHandler.GetStats)
+		r.Post("/admin/orgs/{orgID}/reconciliation/trigger", adminHandler.TriggerOrgReconciliation)
+
+		r.Post("/admin/api-keys", apiKeyHandler.AdminCreateKey)
+		r.Get("/admin/api-keys", apiKeyHandler.AdminListAllKeys)
+		r.Delete("/admin/api-keys/{id}", apiKeyHandler.Revoke)
+
+		r.Get("/admin/webhooks", reconHandler.AdminListWebhooks)
 	})
 
 	// ---------------------------------------------------------------------------
 	// Authenticated developer API — API key bearer token
 	// ---------------------------------------------------------------------------
 	r.Group(func(r chi.Router) {
-		r.Use(middleware.APIKeyAuth(d.APIKeys, d.StaticKey))
+		r.Use(middleware.APIKeyAuth(d.APIKeys, d.StaticKey, d.StaticKeyOrgID))
 		r.Use(chimw.StripSlashes)
 
 		// Customer endpoints
 		r.Post("/customers", customerHandler.Create)
 		r.Get("/customers", customerHandler.List)
 		r.Get("/customers/{id}", customerHandler.GetCustomerByID)
+		r.Put("/customers/{id}/kyc-tier", customerHandler.UpgradeKYCTier)
+		r.Get("/customers/{id}/kyc-tier/history", customerHandler.ListKYCTierHistory)
 
 		// Account endpoints
 		r.Post("/accounts", acctHandler.Create)

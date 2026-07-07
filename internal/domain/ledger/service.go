@@ -39,7 +39,7 @@ func NewService(ledger store.LedgerStore, log *zap.Logger) *Service {
 //   - CREDIT customer account (money arrived)
 //   - DEBIT  pool system account (pool liability increases)
 func (s *Service) PostCredit(ctx context.Context, req CreditRequest) (*PostingResult, error) {
-	pool, err := s.ledger.GetSystemAccount(ctx, poolAccountName)
+	pool, err := s.ledger.GetSystemAccount(ctx, req.OrgID, poolAccountName)
 	if err != nil {
 		return nil, fmt.Errorf("ledger.PostCredit: pool account: %w", err)
 	}
@@ -105,7 +105,7 @@ func (s *Service) PostDebit(ctx context.Context, req DebitRequest) (*PostingResu
 		return nil, fmt.Errorf("ledger.PostDebit: insufficient funds — balance %d kobo, requested %d kobo", balance, req.Amount)
 	}
 
-	pool, err := s.ledger.GetSystemAccount(ctx, poolAccountName)
+	pool, err := s.ledger.GetSystemAccount(ctx, req.OrgID, poolAccountName)
 	if err != nil {
 		return nil, fmt.Errorf("ledger.PostDebit: pool account: %w", err)
 	}
@@ -162,9 +162,13 @@ func (s *Service) GetBalance(ctx context.Context, accountID uuid.UUID) (int64, e
 }
 
 // PostSuspense moves an amount into the suspense system account when the
-// destination customer account cannot be determined (e.g. unknown bank number).
-func (s *Service) PostSuspense(ctx context.Context, amount int64, currency, externalRef string) (*PostingResult, error) {
-	suspense, err := s.ledger.GetSystemAccount(ctx, suspenseAccountName)
+// destination customer account cannot be determined (e.g. unknown bank number)
+// or belongs to a closed account.
+//
+// Pass uuid.Nil for orgID when the org is unknown (e.g. unresolvable bank number);
+// in that case the global (NULL org_id) suspense account is used.
+func (s *Service) PostSuspense(ctx context.Context, orgID uuid.UUID, amount int64, currency, externalRef string) (*PostingResult, error) {
+	suspense, err := s.ledger.GetSystemAccount(ctx, orgID, suspenseAccountName)
 	if err != nil {
 		return nil, fmt.Errorf("ledger.PostSuspense: suspense account: %w", err)
 	}

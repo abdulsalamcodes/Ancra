@@ -16,6 +16,7 @@ import (
 	"github.com/abdulsalamcodes/ancra/internal/store"
 )
 
+
 // Sentinel errors returned by the service layer.
 var (
 	ErrEmailTaken         = errors.New("auth: email already registered")
@@ -52,6 +53,7 @@ type Service struct {
 	orgs          store.OrgStore
 	users         store.UserStore
 	refreshTokens store.RefreshTokenStore
+	ledger        store.LedgerStore
 	jwtSecret     []byte
 	log           *zap.Logger
 }
@@ -61,6 +63,7 @@ func NewService(
 	orgs store.OrgStore,
 	users store.UserStore,
 	refreshTokens store.RefreshTokenStore,
+	ledger store.LedgerStore,
 	jwtSecret []byte,
 	log *zap.Logger,
 ) *Service {
@@ -68,6 +71,7 @@ func NewService(
 		orgs:          orgs,
 		users:         users,
 		refreshTokens: refreshTokens,
+		ledger:        ledger,
 		jwtSecret:     jwtSecret,
 		log:           log,
 	}
@@ -88,6 +92,10 @@ func (s *Service) Signup(ctx context.Context, req SignupRequest) (*AuthResponse,
 	}
 	if err := s.orgs.CreateOrg(ctx, org); err != nil {
 		return nil, fmt.Errorf("auth.Signup: create org: %w", err)
+	}
+
+	if err := s.ledger.SeedSystemAccounts(ctx, org.ID); err != nil {
+		return nil, fmt.Errorf("auth.Signup: seed system accounts: %w", err)
 	}
 
 	user := &store.User{

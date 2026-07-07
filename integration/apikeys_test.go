@@ -15,7 +15,7 @@ func TestAPIKey_FullLifecycle(t *testing.T) {
 
 	// 1. Create a new API key via the admin endpoint.
 	createResp := env.do(t, http.MethodPost, "/admin/api-keys",
-		map[string]string{"name": "integration-test-key"}, admin())
+		map[string]string{"name": "integration-test-key", "org_id": testOrgID}, admin())
 	mustStatus(t, createResp, http.StatusCreated)
 
 	var created map[string]interface{}
@@ -63,9 +63,9 @@ func TestAPIKey_List(t *testing.T) {
 
 	// Create two keys
 	env.do(t, http.MethodPost, "/admin/api-keys",
-		map[string]string{"name": "key-one"}, admin())
+		map[string]string{"name": "key-one", "org_id": testOrgID}, admin())
 	env.do(t, http.MethodPost, "/admin/api-keys",
-		map[string]string{"name": "key-two"}, admin())
+		map[string]string{"name": "key-two", "org_id": testOrgID}, admin())
 
 	resp := env.do(t, http.MethodGet, "/admin/api-keys", nil, admin())
 	mustStatus(t, resp, http.StatusOK)

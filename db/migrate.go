@@ -21,6 +21,18 @@ var migration003 string
 //go:embed migrations/000004_org_scoping.up.sql
 var migration004 string
 
+//go:embed migrations/000005_nomba_configs.up.sql
+var migration005 string
+
+//go:embed migrations/000006_kyc_tier_history.up.sql
+var migration006 string
+
+//go:embed migrations/000007_org_system_accounts.up.sql
+var migration007 string
+
+//go:embed migrations/000008_org_webhook_configs.up.sql
+var migration008 string
+
 // migrations lists all SQL migration scripts in order.
 // Every statement must use IF NOT EXISTS / DO-EXCEPTION guards so this is
 // safe to call on every startup without a migration tracking table.
@@ -29,6 +41,10 @@ var migrations = []string{
 	migration002,
 	migration003,
 	migration004,
+	migration005,
+	migration006,
+	migration007,
+	migration008,
 }
 
 // RunMigrations applies all schema migrations in order.

@@ -12,10 +12,8 @@ import (
 	"fmt"
 	"math"
 	"time"
-
 	"github.com/google/uuid"
 	"go.uber.org/zap"
-
 	"github.com/abdulsalamcodes/ancra/internal/nomba"
 	"github.com/abdulsalamcodes/ancra/internal/store"
 )
@@ -24,12 +22,12 @@ const poolAccountName = "pool"
 
 // Service performs reconciliation sweeps.
 type Service struct {
-	ledger   store.LedgerStore
-	recon    store.ReconciliationStore
+	ledger  store.LedgerStore
+	recon   store.ReconciliationStore
 	accounts store.AccountStore
-	events   store.EventStore
-	nomba    *nomba.Client
-	log      *zap.Logger
+	events  store.EventStore
+	factory *nomba.ClientFactory
+	log     *zap.Logger
 }
 
 // NewService constructs a reconciliation Service.
@@ -38,7 +36,7 @@ func NewService(
 	recon store.ReconciliationStore,
 	accounts store.AccountStore,
 	events store.EventStore,
-	nombaClient *nomba.Client,
+	factory *nomba.ClientFactory,
 	log *zap.Logger,
 ) *Service {
 	return &Service{
@@ -46,22 +44,27 @@ func NewService(
 		recon:    recon,
 		accounts: accounts,
 		events:   events,
-		nomba:    nombaClient,
+		factory:  factory,
 		log:      log,
 	}
 }
 
-// Run executes a single reconciliation sweep:
-//  1. Fetch the current Nomba wallet balance.
-//  2. Compute the pool account net balance from the ledger.
+// Run executes a single reconciliation sweep for the given org:
+//  1. Fetch the org's Nomba wallet balance.
+//  2. Compute the org's pool account net balance from the ledger.
 //  3. Compute the delta.
 //  4. Persist a reconciliation_run row.
 //  5. Return the run result.
-func (s *Service) Run(ctx context.Context) (*store.ReconciliationRun, error) {
+func (s *Service) Run(ctx context.Context, orgID uuid.UUID) (*store.ReconciliationRun, error) {
 	runAt := time.Now().UTC()
 
-	// 1. Nomba wallet balance (returned as a naira number-string; convert to kobo).
-	balResp, err := s.nomba.GetWalletBalance(ctx)
+	// 1. Load the org's Nomba client and fetch its wallet balance.
+	nombaClient, err := s.factory.ForOrg(ctx, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("reconciliation.Run: load nomba client: %w", err)
+	}
+
+	balResp, err := nombaClient.GetWalletBalance(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("reconciliation.Run: get nomba balance: %w", err)
 	}
@@ -71,8 +74,8 @@ func (s *Service) Run(ctx context.Context) (*store.ReconciliationRun, error) {
 	}
 	nombaKobo := nairaToKobo(balanceNaira)
 
-	// 2. Pool balance from ledger.
-	pool, err := s.ledger.GetSystemAccount(ctx, poolAccountName)
+	// 2. Pool balance from the org's ledger.
+	pool, err := s.ledger.GetSystemAccount(ctx, orgID, poolAccountName)
 	if err != nil {
 		return nil, fmt.Errorf("reconciliation.Run: pool account: %w", err)
 	}
@@ -88,12 +91,14 @@ func (s *Service) Run(ctx context.Context) (*store.ReconciliationRun, error) {
 	if delta != 0 {
 		status = store.ReconciliationStatusMismatch
 		s.log.Warn("reconciliation mismatch detected",
+			zap.String("org_id", orgID.String()),
 			zap.Int64("nomba_kobo", nombaKobo),
 			zap.Int64("pool_kobo", poolKobo),
 			zap.Int64("delta_kobo", delta),
 		)
 	} else {
 		s.log.Info("reconciliation OK",
+			zap.String("org_id", orgID.String()),
 			zap.Int64("balance_kobo", nombaKobo),
 		)
 	}
@@ -101,6 +106,7 @@ func (s *Service) Run(ctx context.Context) (*store.ReconciliationRun, error) {
 	// 4. Persist.
 	run := &store.ReconciliationRun{
 		ID:                  uuid.New(),
+		OrgID:               orgID,
 		RunAt:               runAt,
 		NombaWalletBalance:  nombaKobo,
 		ComputedPoolBalance: poolKobo,
@@ -114,10 +120,15 @@ func (s *Service) Run(ctx context.Context) (*store.ReconciliationRun, error) {
 	return run, nil
 }
 
-// BackfillMissedCredits fetches recent Nomba transactions and posts any credits
-// that were not captured by the webhook (e.g. due to downtime). It limits the
-// look-back to the window provided by the caller.
-func (s *Service) BackfillMissedCredits(ctx context.Context, accounts store.AccountStore, ledger store.LedgerStore, since time.Time) error {
+// BackfillMissedCredits fetches recent Nomba transactions for an org and posts
+// any credits that were not captured by the webhook (e.g. due to downtime).
+// It limits the look-back to the window provided by the caller.
+func (s *Service) BackfillMissedCredits(ctx context.Context, orgID uuid.UUID, accounts store.AccountStore, ledger store.LedgerStore, since time.Time) error {
+	nombaClient, err := s.factory.ForOrg(ctx, orgID)
+	if err != nil {
+		return fmt.Errorf("reconciliation.Backfill: load nomba client: %w", err)
+	}
+
 	listReq := nomba.ListTransactionsRequest{
 		StartDate: since,
 		EndDate:   time.Now().UTC(),
@@ -125,7 +136,7 @@ func (s *Service) BackfillMissedCredits(ctx context.Context, accounts store.Acco
 		Limit:     100,
 	}
 
-	resp, err := s.nomba.ListTransactions(ctx, listReq)
+	resp, err := nombaClient.ListTransactions(ctx, listReq)
 	if err != nil {
 		return fmt.Errorf("reconciliation.Backfill: list transactions: %w", err)
 	}
@@ -211,14 +222,14 @@ func (s *Service) BackfillMissedCredits(ctx context.Context, accounts store.Acco
 	return nil
 }
 
-// GetLatestRun returns the most recent reconciliation run for display.
-func (s *Service) GetLatestRun(ctx context.Context) (*store.ReconciliationRun, error) {
-	return s.recon.GetLatestRun(ctx)
+// GetLatestRun returns the most recent reconciliation run for the given org.
+func (s *Service) GetLatestRun(ctx context.Context, orgID uuid.UUID) (*store.ReconciliationRun, error) {
+	return s.recon.GetLatestRun(ctx, orgID)
 }
 
-// ListRuns returns a page of reconciliation runs.
-func (s *Service) ListRuns(ctx context.Context, limit, offset int) ([]*store.ReconciliationRun, error) {
-	return s.recon.ListRuns(ctx, limit, offset)
+// ListRuns returns a page of reconciliation runs for the given org.
+func (s *Service) ListRuns(ctx context.Context, orgID uuid.UUID, limit, offset int) ([]*store.ReconciliationRun, error) {
+	return s.recon.ListRuns(ctx, orgID, limit, offset)
 }
 
 // ---------------------------------------------------------------------------

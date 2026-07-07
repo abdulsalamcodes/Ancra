@@ -111,12 +111,38 @@ func (s *LedgerStore) ListEntries(ctx context.Context, accountID uuid.UUID, limi
 	return entries, rows.Err()
 }
 
-// GetSystemAccount retrieves a named system account (pool, suspense, fees, returns_clearing).
-func (s *LedgerStore) GetSystemAccount(ctx context.Context, name string) (*store.SystemAccount, error) {
-	const q = `SELECT id, name FROM system_accounts WHERE name = $1`
+// GetSystemAccount retrieves a named system account scoped to the given org.
+// Pass uuid.Nil to retrieve the global (NULL org_id) system account.
+func (s *LedgerStore) GetSystemAccount(ctx context.Context, orgID uuid.UUID, name string) (*store.SystemAccount, error) {
 	var sa store.SystemAccount
-	if err := s.Pool.QueryRow(ctx, q, name).Scan(&sa.ID, &sa.Name); err != nil {
-		return nil, fmt.Errorf("ledger.GetSystemAccount(%q): %w", name, err)
+	if orgID == (uuid.UUID{}) {
+		const q = `SELECT id, org_id, name FROM system_accounts WHERE org_id IS NULL AND name = $1`
+		if err := s.Pool.QueryRow(ctx, q, name).Scan(&sa.ID, &sa.OrgID, &sa.Name); err != nil {
+			return nil, fmt.Errorf("ledger.GetSystemAccount(global, %q): %w", name, err)
+		}
+		return &sa, nil
+	}
+
+	const q = `SELECT id, org_id, name FROM system_accounts WHERE org_id = $1 AND name = $2`
+	if err := s.Pool.QueryRow(ctx, q, orgID, name).Scan(&sa.ID, &sa.OrgID, &sa.Name); err != nil {
+		return nil, fmt.Errorf("ledger.GetSystemAccount(%s, %q): %w", orgID, name, err)
 	}
 	return &sa, nil
+}
+
+// SeedSystemAccounts inserts the four canonical system accounts for a new org.
+// Uses ON CONFLICT DO NOTHING so it is safe to call multiple times.
+func (s *LedgerStore) SeedSystemAccounts(ctx context.Context, orgID uuid.UUID) error {
+	const q = `
+		INSERT INTO system_accounts (id, org_id, name) VALUES
+			(gen_random_uuid(), $1, 'pool'),
+			(gen_random_uuid(), $1, 'suspense'),
+			(gen_random_uuid(), $1, 'fees'),
+			(gen_random_uuid(), $1, 'returns_clearing')
+		ON CONFLICT DO NOTHING`
+
+	if _, err := s.Pool.Exec(ctx, q, orgID); err != nil {
+		return fmt.Errorf("ledger.SeedSystemAccounts(%s): %w", orgID, err)
+	}
+	return nil
 }

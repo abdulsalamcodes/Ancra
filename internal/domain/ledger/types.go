@@ -9,6 +9,7 @@ import (
 // CreditRequest describes an inbound credit to be posted to the ledger.
 // Money flows: Nomba pool account → customer virtual account.
 type CreditRequest struct {
+	OrgID       uuid.UUID // required — used to locate the org's pool system account
 	AccountID   uuid.UUID
 	Amount      int64  // kobo
 	Currency    string
@@ -22,6 +23,7 @@ type CreditRequest struct {
 // DebitRequest describes an outbound debit from a customer account.
 // Money flows: customer virtual account → Nomba pool account (then onward).
 type DebitRequest struct {
+	OrgID       uuid.UUID // required — used to locate the org's pool system account
 	AccountID   uuid.UUID
 	Amount      int64  // kobo
 	Currency    string

@@ -5,24 +5,27 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 
 	"github.com/abdulsalamcodes/ancra/internal/domain/reconciliation"
 	"github.com/abdulsalamcodes/ancra/internal/store"
 )
 
-// SweepWorker runs periodic reconciliation sweeps.
+// SweepWorker runs periodic reconciliation sweeps across all registered orgs.
 type SweepWorker struct {
 	recon    *reconciliation.Service
+	orgs     store.OrgStore
 	accounts store.AccountStore
 	ledger   store.LedgerStore
 	interval time.Duration
 	log      *zap.Logger
 }
 
-// NewSweepWorker constructs a SweepWorker that fires every interval seconds.
+// NewSweepWorker constructs a SweepWorker that fires every intervalSeconds.
 func NewSweepWorker(
 	recon *reconciliation.Service,
+	orgs store.OrgStore,
 	accounts store.AccountStore,
 	ledger store.LedgerStore,
 	intervalSeconds int,
@@ -30,6 +33,7 @@ func NewSweepWorker(
 ) *SweepWorker {
 	return &SweepWorker{
 		recon:    recon,
+		orgs:     orgs,
 		accounts: accounts,
 		ledger:   ledger,
 		interval: time.Duration(intervalSeconds) * time.Second,
@@ -44,7 +48,7 @@ func (w *SweepWorker) Run(ctx context.Context) {
 	defer ticker.Stop()
 
 	// Run once immediately so the first result is available straight away.
-	w.runOnce(ctx)
+	w.sweepAllOrgs(ctx)
 
 	for {
 		select {
@@ -52,29 +56,42 @@ func (w *SweepWorker) Run(ctx context.Context) {
 			w.log.Info("sweep worker stopping")
 			return
 		case <-ticker.C:
-			w.runOnce(ctx)
+			w.sweepAllOrgs(ctx)
 		}
 	}
 }
 
-func (w *SweepWorker) runOnce(ctx context.Context) {
-	start := time.Now()
-	w.log.Info("reconciliation sweep starting")
+func (w *SweepWorker) sweepAllOrgs(ctx context.Context) {
+	allOrgs, err := w.orgs.ListAllOrgs(ctx)
+	if err != nil {
+		w.log.Error("sweep: failed to list orgs", zap.Error(err))
+		return
+	}
+	for _, org := range allOrgs {
+		w.sweepOrg(ctx, org.ID)
+	}
+}
 
-	// Back-fill any credits missed in the last 2× interval window.
+func (w *SweepWorker) sweepOrg(ctx context.Context, orgID uuid.UUID) {
+	start := time.Now()
+	w.log.Info("reconciliation sweep starting", zap.String("org_id", orgID.String()))
+
 	since := time.Now().UTC().Add(-2 * w.interval)
-	if err := w.recon.BackfillMissedCredits(ctx, w.accounts, w.ledger, since); err != nil {
-		w.log.Error("backfill failed", zap.Error(err))
+	if err := w.recon.BackfillMissedCredits(ctx, orgID, w.accounts, w.ledger, since); err != nil {
+		w.log.Error("backfill failed",
+			zap.String("org_id", orgID.String()), zap.Error(err))
 		// Continue to the balance check even if backfill had errors.
 	}
 
-	run, err := w.recon.Run(ctx)
+	run, err := w.recon.Run(ctx, orgID)
 	if err != nil {
-		w.log.Error("reconciliation run failed", zap.Error(err))
+		w.log.Error("reconciliation run failed",
+			zap.String("org_id", orgID.String()), zap.Error(err))
 		return
 	}
 
 	w.log.Info("reconciliation sweep complete",
+		zap.String("org_id", orgID.String()),
 		zap.Duration("elapsed", time.Since(start)),
 		zap.String("status", string(run.Status)),
 		zap.Int64("nomba_balance_kobo", run.NombaWalletBalance),

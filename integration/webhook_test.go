@@ -162,7 +162,7 @@ func TestWebhook_UnknownAccount_GoesToSuspense(t *testing.T) {
 	}
 
 	// Suspense system account should have a positive balance
-	suspenseAcct, err := env.stores.ledger.GetSystemAccount(context.Background(), "suspense")
+	suspenseAcct, err := env.stores.ledger.GetSystemAccount(context.Background(), uuid.Nil, "suspense")
 	if err != nil {
 		t.Fatalf("get suspense account: %v", err)
 	}

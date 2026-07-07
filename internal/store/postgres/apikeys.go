@@ -69,6 +69,29 @@ func (s *APIKeyStore) ListKeys(ctx context.Context, orgID uuid.UUID) ([]*store.A
 	return keys, rows.Err()
 }
 
+// ListAllKeys returns all API keys across every org, ordered by creation time descending.
+func (s *APIKeyStore) ListAllKeys(ctx context.Context) ([]*store.APIKey, error) {
+	const q = `
+		SELECT id, org_id, name, key_hash, created_at, last_used_at, revoked_at
+		FROM api_keys
+		ORDER BY created_at DESC`
+	rows, err := s.Pool.Query(ctx, q)
+	if err != nil {
+		return nil, fmt.Errorf("apikeys.ListAll: %w", err)
+	}
+	defer rows.Close()
+
+	var keys []*store.APIKey
+	for rows.Next() {
+		k, err := scanKey(rows)
+		if err != nil {
+			return nil, err
+		}
+		keys = append(keys, k)
+	}
+	return keys, rows.Err()
+}
+
 // RevokeKey stamps revoked_at on the given key.
 func (s *APIKeyStore) RevokeKey(ctx context.Context, id uuid.UUID) error {
 	const q = `UPDATE api_keys SET revoked_at = $1 WHERE id = $2`
