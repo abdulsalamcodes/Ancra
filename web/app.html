@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ancra — Developer Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --canvas:   #f5f5f5;
+      --paper:    #ffffff;
+      --surface:  #fafafa;
+      --ink:      #0a0a0a;
+      --ink-soft: #171717;
+      --gray:     #737373;
+      --hairline: #e5e5e5;
+      --ember:    #e7000b;
+      --shadow:   0 0 0 1px rgba(23,23,23,0.05), 0 1px 3px rgba(0,0,0,0.10), 0 1px 2px -1px rgba(0,0,0,0.10);
+      --r-card:   24px;
+      --r-pill:   18px;
+      --font:     'Inter', ui-sans-serif, system-ui, sans-serif;
+    }
+
+    html, body { height: 100%; font-family: var(--font); background: var(--canvas); color: var(--ink); -webkit-font-smoothing: antialiased; }
+
+    a { color: inherit; text-decoration: none; }
+    button { font-family: var(--font); cursor: pointer; border: none; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 14px; border-radius: var(--r-pill);
+      font-size: 13px; font-weight: 500; transition: opacity 0.15s, background 0.15s;
+      white-space: nowrap;
+    }
+    .btn-primary { background: var(--ink); color: #fafafa; }
+    .btn-primary:hover { opacity: 0.85; }
+    .btn-secondary { background: var(--canvas); color: var(--ink); }
+    .btn-secondary:hover { background: var(--hairline); }
+    .btn-outline { background: transparent; color: var(--ink); border: 1px solid var(--hairline); }
+    .btn-outline:hover { background: var(--canvas); }
+    .btn-danger { background: transparent; color: var(--ember); border: 1px solid rgba(231,0,11,0.2); }
+    .btn-danger:hover { background: rgba(231,0,11,0.06); }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+    .btn svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 1.5; fill: none; }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: var(--r-pill);
+      font-size: 11px; font-weight: 500; white-space: nowrap;
+    }
+    .badge-active { background: #dcfce7; color: #15803d; }
+    .badge-revoked { background: var(--canvas); color: var(--gray); }
+    .badge-delivered { background: #dcfce7; color: #15803d; }
+    .badge-pending { background: #fef9c3; color: #854d0e; }
+    .badge-failed { background: #fee2e2; color: var(--ember); }
+
+    /* ── Card ── */
+    .card { background: var(--paper); border: 1px solid var(--hairline); border-radius: var(--r-card); box-shadow: var(--shadow); }
+    .card-header { padding: 20px 24px; border-bottom: 1px solid var(--hairline); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .card-body { padding: 24px; }
+    .card-footer { padding: 16px 24px; border-top: 1px solid var(--hairline); }
+
+    /* ── Input ── */
+    .input {
+      width: 100%; background: var(--canvas); border: none;
+      border-radius: var(--r-pill); padding: 9px 14px;
+      font-size: 14px; font-family: var(--font); color: var(--ink);
+      outline: none; transition: box-shadow 0.15s;
+    }
+    .input:focus { box-shadow: 0 0 0 1.5px var(--hairline); }
+    .input::placeholder { color: var(--gray); }
+    .input-mono { font-family: 'Menlo', 'Consolas', monospace; font-size: 13px; }
+    label { font-size: 13px; font-weight: 500; color: var(--ink-soft); display: block; margin-bottom: 6px; }
+    .field { margin-bottom: 16px; }
+    .field-hint { font-size: 12px; color: var(--gray); margin-top: 5px; }
+
+    /* ── Table ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 10px 16px; font-size: 11px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; color: var(--gray); border-bottom: 1px solid var(--hairline); }
+    td { padding: 12px 16px; border-bottom: 1px solid var(--hairline); color: var(--ink); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--surface); }
+    .td-mono { font-family: 'Menlo', 'Consolas', monospace; font-size: 12px; color: var(--gray); }
+
+    /* ── Alert ── */
+    .alert { padding: 12px 16px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; }
+    .alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .alert-success { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+    .alert-info { background: var(--canvas); color: var(--gray); border: 1px solid var(--hairline); }
+
+    /* ── Login Screen ── */
+    #login-view {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    .login-card { width: 100%; max-width: 400px; }
+    .login-logo {
+      display: flex; align-items: center; gap: 8px; justify-content: center;
+      font-size: 16px; font-weight: 600; letter-spacing: -0.3px; margin-bottom: 32px;
+    }
+    .logo-mark {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: var(--ink); display: grid; place-items: center;
+    }
+    .logo-mark svg { width: 14px; height: 14px; fill: #fafafa; }
+    .login-title { font-size: 20px; font-weight: 600; letter-spacing: -0.4px; margin-bottom: 6px; }
+    .login-sub { font-size: 14px; color: var(--gray); margin-bottom: 24px; line-height: 1.5; }
+
+    /* ── App Layout ── */
+    #app-view { display: none; min-height: 100vh; }
+    .app-layout { display: flex; min-height: 100vh; }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 220px; flex-shrink: 0;
+      background: var(--surface); border-right: 1px solid var(--hairline);
+      display: flex; flex-direction: column;
+      position: sticky; top: 0; height: 100vh;
+    }
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 8px;
+      padding: 20px 16px 16px; border-bottom: 1px solid var(--hairline);
+      font-size: 14px; font-weight: 600; letter-spacing: -0.3px;
+    }
+    .sidebar-logo .logo-mark { width: 22px; height: 22px; border-radius: 6px; }
+    .sidebar-logo .logo-mark svg { width: 11px; height: 11px; }
+    .sidebar-nav { flex: 1; padding: 12px 8px; display: flex; flex-direction: column; gap: 2px; }
+    .sidebar-section-label {
+      font-size: 11px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase;
+      color: var(--gray); padding: 8px 8px 4px; margin-top: 8px;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 10px; border-radius: 10px; font-size: 13px; font-weight: 500;
+      color: var(--gray); cursor: pointer; transition: background 0.12s, color 0.12s;
+      border: none; background: transparent; width: 100%; text-align: left;
+    }
+    .nav-item:hover { background: var(--hairline); color: var(--ink); }
+    .nav-item.active { background: var(--paper); color: var(--ink); box-shadow: var(--shadow); }
+    .nav-item svg { width: 15px; height: 15px; stroke: currentColor; stroke-width: 1.5; fill: none; flex-shrink: 0; }
+    .sidebar-footer { padding: 12px 8px; border-top: 1px solid var(--hairline); }
+    .sidebar-base-url { font-size: 11px; color: var(--gray); padding: 6px 10px; word-break: break-all; line-height: 1.4; }
+
+    /* ── Main ── */
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .main-header {
+      padding: 16px 32px; border-bottom: 1px solid var(--hairline);
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--surface); position: sticky; top: 0; z-index: 10;
+    }
+    .main-title { font-size: 14px; font-weight: 600; color: var(--ink); }
+    .main-content { flex: 1; padding: 32px; max-width: 960px; }
+
+    /* ── Panel ── */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* ── Stats row ── */
+    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+    .stat-card {
+      background: var(--paper); border: 1px solid var(--hairline);
+      border-radius: var(--r-card); padding: 20px; box-shadow: var(--shadow);
+    }
+    .stat-label { font-size: 11px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; color: var(--gray); margin-bottom: 8px; }
+    .stat-value { font-size: 30px; font-weight: 600; letter-spacing: -0.75px; color: var(--ink); }
+    .stat-sub { font-size: 12px; color: var(--gray); margin-top: 4px; }
+
+    /* ── Section title ── */
+    .section-title { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; margin-bottom: 4px; }
+    .section-desc { font-size: 14px; color: var(--gray); margin-bottom: 20px; line-height: 1.5; }
+
+    /* ── Key reveal box ── */
+    .key-box {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--ink-soft); border-radius: 10px; padding: 12px 16px; margin: 16px 0;
+    }
+    .key-box-val {
+      font-family: 'Menlo', 'Consolas', monospace; font-size: 13px;
+      color: #86efac; flex: 1; word-break: break-all; line-height: 1.4;
+    }
+
+    /* ── Webhook URL row ── */
+    .webhook-url-row { display: flex; gap: 8px; align-items: flex-start; }
+    .webhook-url-row .input { flex: 1; }
+
+    /* ── Modal ── */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.3);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100; padding: 24px;
+    }
+    .modal-backdrop.hidden { display: none; }
+    .modal {
+      background: var(--paper); border: 1px solid var(--hairline);
+      border-radius: var(--r-card); box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+      width: 100%; max-width: 440px;
+    }
+    .modal-header { padding: 20px 24px 16px; border-bottom: 1px solid var(--hairline); }
+    .modal-title { font-size: 16px; font-weight: 600; letter-spacing: -0.3px; }
+    .modal-body { padding: 20px 24px; }
+    .modal-footer { padding: 16px 24px; border-top: 1px solid var(--hairline); display: flex; justify-content: flex-end; gap: 8px; }
+
+    /* ── Code block ── */
+    .code-card {
+      background: var(--ink-soft); border-radius: 14px;
+      overflow: hidden; margin-bottom: 20px;
+    }
+    .code-card-header {
+      padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,0.08);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .code-card-label { font-size: 12px; color: rgba(255,255,255,0.4); font-weight: 500; }
+    .code-card-body { padding: 16px; }
+    pre {
+      font-family: 'Menlo', 'Consolas', monospace;
+      font-size: 12.5px; line-height: 1.7; color: rgba(255,255,255,0.75);
+      white-space: pre-wrap; word-break: break-all;
+    }
+    .hl-cm { color: rgba(255,255,255,0.30); }
+    .hl-kw { color: #93c5fd; }
+    .hl-st { color: #86efac; }
+    .hl-nm { color: #fbbf24; }
+    .hl-pu { color: rgba(255,255,255,0.50); }
+
+    /* ── Misc ── */
+    .divider { border: none; border-top: 1px solid var(--hairline); margin: 24px 0; }
+    .empty-state { text-align: center; padding: 48px 24px; color: var(--gray); font-size: 14px; }
+    .flex-between { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; display: inline-block; }
+    .copy-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.5);
+      background: rgba(255,255,255,0.08); border: none; border-radius: 6px;
+      padding: 4px 8px; cursor: pointer; transition: background 0.15s; flex-shrink: 0;
+    }
+    .copy-btn:hover { background: rgba(255,255,255,0.14); color: rgba(255,255,255,0.8); }
+    .copy-btn svg { width: 11px; height: 11px; stroke: currentColor; stroke-width: 1.5; fill: none; }
+  </style>
+</head>
+<body>
+
+  <!-- ═══ LOGIN VIEW ═══ -->
+  <div id="login-view">
+    <div class="login-card card">
+      <div class="card-body">
+        <div class="login-logo">
+          <span class="logo-mark"><svg viewBox="0 0 14 14"><rect x="2" y="2" width="10" height="10" rx="2.5"/></svg></span>
+          Ancra
+        </div>
+        <h1 class="login-title">Developer Portal</h1>
+        <p class="login-sub">Connect to your Ancra deployment to manage API keys and webhook settings.</p>
+
+        <div id="login-error" class="alert alert-error" style="display:none;"></div>
+
+        <div class="field">
+          <label for="base-url">Instance URL</label>
+          <input class="input" id="base-url" type="url" placeholder="https://api.yourapp.com" />
+          <p class="field-hint">The base URL of your deployed Ancra instance.</p>
+        </div>
+        <div class="field">
+          <label for="admin-secret">Admin Secret</label>
+          <input class="input" id="admin-secret" type="password" placeholder="Your ADMIN_SECRET value" />
+          <p class="field-hint">Set as the <code>ADMIN_SECRET</code> environment variable on your deployment.</p>
+        </div>
+
+        <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="handleLogin()">
+          Access Portal
+          <svg viewBox="0 0 13 13"><path d="M2.5 6.5h8M7.5 4 10 6.5 7.5 9"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ APP VIEW ═══ -->
+  <div id="app-view">
+    <div class="app-layout">
+
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="sidebar-logo">
+          <span class="logo-mark"><svg viewBox="0 0 14 14"><rect x="2" y="2" width="10" height="10" rx="2.5"/></svg></span>
+          Ancra
+        </div>
+        <nav class="sidebar-nav">
+          <div class="sidebar-section-label">Portal</div>
+          <button class="nav-item active" data-panel="overview" onclick="switchPanel('overview', this)">
+            <svg viewBox="0 0 15 15"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="8" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="8" width="6" height="6" rx="1.5"/><rect x="8" y="8" width="6" height="6" rx="1.5"/></svg>
+            Overview
+          </button>
+          <button class="nav-item" data-panel="keys" onclick="switchPanel('keys', this)">
+            <svg viewBox="0 0 15 15"><circle cx="5.5" cy="9.5" r="3.5"/><path d="m8.5 6.5 5-5M13.5 1.5l-2 2M11.5 3.5l-2 2"/></svg>
+            API Keys
+          </button>
+          <button class="nav-item" data-panel="webhooks" onclick="switchPanel('webhooks', this)">
+            <svg viewBox="0 0 15 15"><path d="M5 11a4 4 0 0 1 5.657-5.657M10 4a4 4 0 0 1 0 5.657"/><circle cx="5" cy="11" r="1.5"/><circle cx="10" cy="4" r="1.5"/></svg>
+            Webhooks
+          </button>
+          <button class="nav-item" data-panel="quickstart" onclick="switchPanel('quickstart', this)">
+            <svg viewBox="0 0 15 15"><path d="M1 1h13v13H1zM4 4h7M4 7.5h7M4 11h4"/></svg>
+            Quick Start
+          </button>
+        </nav>
+        <div class="sidebar-footer">
+          <div class="sidebar-base-url" id="sidebar-url"></div>
+          <button class="nav-item" style="color:var(--ember);" onclick="handleLogout()">
+            <svg viewBox="0 0 15 15"><path d="M9.5 3.5H12a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H9.5M6 10l-3.5-3.5L6 3M2.5 6.5h7"/></svg>
+            Disconnect
+          </button>
+        </div>
+      </aside>
+
+      <!-- Main -->
+      <main class="main">
+        <div class="main-header">
+          <span class="main-title" id="main-title">Overview</span>
+          <div style="display:flex;gap:8px;" id="main-actions"></div>
+        </div>
+        <div class="main-content">
+
+          <!-- ── Overview Panel ── -->
+          <div class="panel active" id="panel-overview">
+            <div class="stats-row" id="stats-row">
+              <div class="stat-card">
+                <div class="stat-label">Active Keys</div>
+                <div class="stat-value" id="stat-active-keys">—</div>
+                <div class="stat-sub">API keys in use</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Webhook Deliveries</div>
+                <div class="stat-value" id="stat-deliveries">—</div>
+                <div class="stat-sub">Total outbound events</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Webhook URL</div>
+                <div class="stat-value" style="font-size:14px;letter-spacing:0;" id="stat-webhook-url">Not set</div>
+                <div class="stat-sub">Your endpoint</div>
+              </div>
+            </div>
+
+            <div class="card" style="margin-bottom:24px;">
+              <div class="card-header">
+                <div>
+                  <div style="font-size:14px;font-weight:600;">Your API endpoint</div>
+                  <div style="font-size:13px;color:var(--gray);margin-top:2px;">Use this as the base URL for all API calls.</div>
+                </div>
+              </div>
+              <div class="card-body" style="padding:16px 20px;">
+                <div class="key-box" style="background:var(--ink);">
+                  <span class="key-box-val" id="overview-base-url" style="color:rgba(255,255,255,0.8);"></span>
+                  <button class="copy-btn" onclick="copyText(document.getElementById('overview-base-url').textContent, this)">
+                    <svg viewBox="0 0 11 11"><rect x="3" y="3" width="7" height="7" rx="1"/><path d="M1 8V1h7"/></svg>
+                    Copy
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header"><div style="font-size:14px;font-weight:600;">Next steps</div></div>
+              <div class="card-body" style="padding:0;">
+                <div style="display:flex;flex-direction:column;">
+                  <div style="padding:14px 20px;border-bottom:1px solid var(--hairline);display:flex;align-items:center;gap:12px;">
+                    <span style="width:24px;height:24px;border-radius:50%;background:var(--ink);color:#fafafa;display:grid;place-items:center;font-size:11px;font-weight:600;flex-shrink:0;">1</span>
+                    <div>
+                      <div style="font-size:13px;font-weight:500;">Create an API key</div>
+                      <div style="font-size:12px;color:var(--gray);">Generate a key to authenticate your API requests.</div>
+                    </div>
+                    <button class="btn btn-outline btn-sm" style="margin-left:auto;" onclick="switchPanel('keys', document.querySelector('[data-panel=keys]'))">Go →</button>
+                  </div>
+                  <div style="padding:14px 20px;border-bottom:1px solid var(--hairline);display:flex;align-items:center;gap:12px;">
+                    <span style="width:24px;height:24px;border-radius:50%;background:var(--ink);color:#fafafa;display:grid;place-items:center;font-size:11px;font-weight:600;flex-shrink:0;">2</span>
+                    <div>
+                      <div style="font-size:13px;font-weight:500;">Set your webhook endpoint</div>
+                      <div style="font-size:12px;color:var(--gray);">Tell Nomba where to send payment events.</div>
+                    </div>
+                    <button class="btn btn-outline btn-sm" style="margin-left:auto;" onclick="switchPanel('webhooks', document.querySelector('[data-panel=webhooks]'))">Go →</button>
+                  </div>
+                  <div style="padding:14px 20px;display:flex;align-items:center;gap:12px;">
+                    <span style="width:24px;height:24px;border-radius:50%;background:var(--ink);color:#fafafa;display:grid;place-items:center;font-size:11px;font-weight:600;flex-shrink:0;">3</span>
+                    <div>
+                      <div style="font-size:13px;font-weight:500;">Read the quick start guide</div>
+                      <div style="font-size:12px;color:var(--gray);">Provision your first virtual account in minutes.</div>
+                    </div>
+                    <button class="btn btn-outline btn-sm" style="margin-left:auto;" onclick="switchPanel('quickstart', document.querySelector('[data-panel=quickstart]'))">Go →</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── API Keys Panel ── -->
+          <div class="panel" id="panel-keys">
+            <div class="flex-between" style="margin-bottom:20px;">
+              <div>
+                <h2 class="section-title">API Keys</h2>
+                <p class="section-desc">Keys authenticate your requests. The raw key is shown once — store it immediately.</p>
+              </div>
+              <button class="btn btn-primary" onclick="openCreateKeyModal()">
+                <svg viewBox="0 0 13 13"><path d="M6.5 1v11M1 6.5h11"/></svg>
+                New API key
+              </button>
+            </div>
+
+            <div id="keys-alert" style="display:none;"></div>
+
+            <div class="card">
+              <div class="table-wrap">
+                <table id="keys-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Created</th>
+                      <th>Last used</th>
+                      <th>Status</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="keys-tbody">
+                    <tr><td colspan="5" class="empty-state">Loading keys…</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Webhooks Panel ── -->
+          <div class="panel" id="panel-webhooks">
+            <h2 class="section-title">Webhooks</h2>
+            <p class="section-desc">Configure your Nomba webhook endpoint and monitor delivery history.</p>
+
+            <div class="card" style="margin-bottom:20px;">
+              <div class="card-header">
+                <div>
+                  <div style="font-size:14px;font-weight:600;">Nomba Webhook URL</div>
+                  <div style="font-size:13px;color:var(--gray);margin-top:2px;">Register this URL in your Nomba dashboard under Developer → Webhook Setup.</div>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="key-box" style="background:var(--ink);margin-top:0;">
+                  <span class="key-box-val" id="nomba-webhook-url" style="color:rgba(255,255,255,0.8);"></span>
+                  <button class="copy-btn" onclick="copyText(document.getElementById('nomba-webhook-url').textContent, this)">
+                    <svg viewBox="0 0 11 11"><rect x="3" y="3" width="7" height="7" rx="1"/><path d="M1 8V1h7"/></svg>
+                    Copy
+                  </button>
+                </div>
+                <p style="font-size:12px;color:var(--gray);margin-top:10px;">Subscribe to the <code>payment_success</code> event. Set a Signature Key and store it as <code>WEBHOOK_SECRET</code> on your deployment.</p>
+              </div>
+            </div>
+
+            <div class="card" style="margin-bottom:20px;">
+              <div class="card-header">
+                <div>
+                  <div style="font-size:14px;font-weight:600;">Your Outbound Webhook</div>
+                  <div style="font-size:13px;color:var(--gray);margin-top:2px;">Ancra forwards payment events to this URL.</div>
+                </div>
+              </div>
+              <div class="card-body">
+                <div id="webhook-save-alert" style="display:none;margin-bottom:12px;"></div>
+                <div class="field" style="margin-bottom:12px;">
+                  <label for="webhook-url-input">Endpoint URL</label>
+                  <div class="webhook-url-row">
+                    <input class="input" id="webhook-url-input" type="url" placeholder="https://yourapp.com/webhooks/payments" />
+                    <button class="btn btn-primary" onclick="saveWebhookUrl()">Save</button>
+                  </div>
+                  <p class="field-hint">Ancra will POST signed payment events to this URL. Store your <code>WEBHOOK_SECRET</code> to verify signatures.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div style="font-size:14px;font-weight:600;">Recent Deliveries</div>
+                <button class="btn btn-outline btn-sm" onclick="loadDeliveries()">Refresh</button>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Event</th>
+                      <th>Status</th>
+                      <th>Attempts</th>
+                      <th>Time</th>
+                    </tr>
+                  </thead>
+                  <tbody id="deliveries-tbody">
+                    <tr><td colspan="4" class="empty-state">Loading deliveries…</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Quick Start Panel ── -->
+          <div class="panel" id="panel-quickstart">
+            <h2 class="section-title">Quick Start</h2>
+            <p class="section-desc">Get from zero to receiving payments in four steps.</p>
+
+            <div style="display:flex;flex-direction:column;gap:20px;">
+              <div>
+                <div style="font-size:13px;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:8px;">
+                  <span style="width:20px;height:20px;border-radius:50%;background:var(--ink);color:#fafafa;display:grid;place-items:center;font-size:10px;font-weight:600;flex-shrink:0;">1</span>
+                  Provision a virtual account
+                </div>
+                <div class="code-card">
+                  <div class="code-card-header">
+                    <span class="code-card-label">bash</span>
+                    <button class="copy-btn" id="copy-step1" onclick="copyCode('step1-code', this)">
+                      <svg viewBox="0 0 11 11"><rect x="3" y="3" width="7" height="7" rx="1"/><path d="M1 8V1h7"/></svg> Copy
+                    </button>
+                  </div>
+                  <div class="code-card-body">
+                    <pre id="step1-code"></pre>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div style="font-size:13px;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:8px;">
+                  <span style="width:20px;height:20px;border-radius:50%;background:var(--ink);color:#fafafa;display:grid;place-items:center;font-size:10px;font-weight:600;flex-shrink:0;">2</span>
+                  Check a balance
+                </div>
+                <div class="code-card">
+                  <div class="code-card-header">
+                    <span class="code-card-label">bash</span>
+                    <button class="copy-btn" id="copy-step2" onclick="copyCode('step2-code', this)">
+                      <svg viewBox="0 0 11 11"><rect x="3" y="3" width="7" height="7" rx="1"/><path d="M1 8V1h7"/></svg> Copy
+                    </button>
+                  </div>
+                  <div class="code-card-body">
+                    <pre id="step2-code"></pre>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div style="font-size:13px;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:8px;">
+                  <span style="width:20px;height:20px;border-radius:50%;background:var(--ink);color:#fafafa;display:grid;place-items:center;font-size:10px;font-weight:600;flex-shrink:0;">3</span>
+                  Initiate a transfer
+                </div>
+                <div class="code-card">
+                  <div class="code-card-header">
+                    <span class="code-card-label">bash</span>
+                    <button class="copy-btn" id="copy-step3" onclick="copyCode('step3-code', this)">
+                      <svg viewBox="0 0 11 11"><rect x="3" y="3" width="7" height="7" rx="1"/><path d="M1 8V1h7"/></svg> Copy
+                    </button>
+                  </div>
+                  <div class="code-card-body">
+                    <pre id="step3-code"></pre>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div style="font-size:13px;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:8px;">
+                  <span style="width:20px;height:20px;border-radius:50%;background:var(--ink);color:#fafafa;display:grid;place-items:center;font-size:10px;font-weight:600;flex-shrink:0;">4</span>
+                  Pull an account statement
+                </div>
+                <div class="code-card">
+                  <div class="code-card-header">
+                    <span class="code-card-label">bash</span>
+                    <button class="copy-btn" id="copy-step4" onclick="copyCode('step4-code', this)">
+                      <svg viewBox="0 0 11 11"><rect x="3" y="3" width="7" height="7" rx="1"/><path d="M1 8V1h7"/></svg> Copy
+                    </button>
+                  </div>
+                  <div class="code-card-body">
+                    <pre id="step4-code"></pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="alert alert-info" style="margin-top:24px;">
+              Full API reference and webhook verification guides are in the <a href="https://docs.ancra.dev" target="_blank" style="color:var(--ink);font-weight:500;text-decoration:underline;">documentation</a>.
+            </div>
+          </div>
+
+        </div><!-- /main-content -->
+      </main>
+    </div>
+  </div>
+
+  <!-- ═══ Create Key Modal ═══ -->
+  <div class="modal-backdrop hidden" id="create-key-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title" id="modal-title">Create API Key</div>
+      </div>
+      <div class="modal-body" id="modal-body">
+        <div id="modal-create-form">
+          <div id="modal-error" class="alert alert-error" style="display:none;"></div>
+          <div class="field">
+            <label for="key-name">Key name</label>
+            <input class="input" id="key-name" type="text" placeholder="e.g. Production, Staging, Mobile App" />
+            <p class="field-hint">A label to identify this key.</p>
+          </div>
+        </div>
+        <div id="modal-new-key" style="display:none;">
+          <div class="alert alert-success">Key created. Copy it now — it will not be shown again.</div>
+          <div class="key-box">
+            <span class="key-box-val" id="new-key-value"></span>
+            <button class="copy-btn" onclick="copyText(document.getElementById('new-key-value').textContent, this)">
+              <svg viewBox="0 0 11 11"><rect x="3" y="3" width="7" height="7" rx="1"/><path d="M1 8V1h7"/></svg>
+              Copy
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" id="modal-footer">
+        <button class="btn btn-secondary" onclick="closeCreateKeyModal()">Cancel</button>
+        <button class="btn btn-primary" id="modal-create-btn" onclick="submitCreateKey()">Create key</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Revoke Confirm Modal ═══ -->
+  <div class="modal-backdrop hidden" id="revoke-modal">
+    <div class="modal">
+      <div class="modal-header"><div class="modal-title">Revoke API Key</div></div>
+      <div class="modal-body">
+        <p style="font-size:14px;color:var(--gray);line-height:1.6;">
+          Revoking <strong id="revoke-key-name" style="color:var(--ink);"></strong> will immediately invalidate all requests using it. This cannot be undone.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeRevokeModal()">Cancel</button>
+        <button class="btn btn-danger" onclick="confirmRevoke()">Revoke key</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── State ──
+    let apiBase = '';
+    let adminSecret = '';
+    let pendingRevokeId = '';
+    let pendingRevokeName = '';
+
+    // ── Session persistence ──
+    function loadSession() {
+      apiBase = sessionStorage.getItem('ancra_base') || '';
+      adminSecret = sessionStorage.getItem('ancra_secret') || '';
+    }
+
+    function saveSession(base, secret) {
+      sessionStorage.setItem('ancra_base', base);
+      sessionStorage.setItem('ancra_secret', secret);
+    }
+
+    function clearSession() {
+      sessionStorage.removeItem('ancra_base');
+      sessionStorage.removeItem('ancra_secret');
+    }
+
+    // ── API helpers ──
+    async function apiFetch(path, options = {}) {
+      const res = await fetch(apiBase + path, {
+        ...options,
+        headers: { 'Admin-Secret': adminSecret, 'Content-Type': 'application/json', ...(options.headers || {}) },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error?.message || `HTTP ${res.status}`);
+      return data;
+    }
+
+    // ── Login ──
+    async function handleLogin() {
+      const base = document.getElementById('base-url').value.trim().replace(/\/$/, '');
+      const secret = document.getElementById('admin-secret').value.trim();
+      const errEl = document.getElementById('login-error');
+
+      errEl.style.display = 'none';
+      if (!base) { showAlert(errEl, 'Instance URL is required.'); return; }
+      if (!secret) { showAlert(errEl, 'Admin Secret is required.'); return; }
+
+      apiBase = base;
+      adminSecret = secret;
+
+      try {
+        await apiFetch('/admin/api-keys');
+      } catch (e) {
+        showAlert(errEl, 'Could not connect. Check your URL and secret.');
+        return;
+      }
+
+      saveSession(base, secret);
+      showApp();
+    }
+
+    function handleLogout() {
+      clearSession();
+      location.reload();
+    }
+
+    // ── App bootstrap ──
+    function showApp() {
+      document.getElementById('login-view').style.display = 'none';
+      document.getElementById('app-view').style.display = 'block';
+
+      const url = apiBase || '—';
+      document.getElementById('sidebar-url').textContent = url;
+      document.getElementById('overview-base-url').textContent = url;
+      document.getElementById('nomba-webhook-url').textContent = url + '/webhooks/nomba';
+
+      const saved = localStorage.getItem('ancra_webhook_url') || '';
+      if (saved) document.getElementById('webhook-url-input').value = saved;
+      document.getElementById('stat-webhook-url').textContent = saved ? new URL(saved).hostname : 'Not set';
+
+      loadOverviewStats();
+      populateQuickStart();
+    }
+
+    // ── Panel switching ──
+    const panelTitles = { overview: 'Overview', keys: 'API Keys', webhooks: 'Webhooks', quickstart: 'Quick Start' };
+
+    function switchPanel(name, btn) {
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+      document.getElementById('panel-' + name).classList.add('active');
+      btn.classList.add('active');
+      document.getElementById('main-title').textContent = panelTitles[name] || name;
+
+      if (name === 'keys') loadKeys();
+      if (name === 'webhooks') loadDeliveries();
+    }
+
+    // ── Overview ──
+    async function loadOverviewStats() {
+      try {
+        const keysData = await apiFetch('/admin/api-keys');
+        const active = (keysData.keys || []).filter(k => !k.revoked_at).length;
+        document.getElementById('stat-active-keys').textContent = active;
+      } catch (_) { document.getElementById('stat-active-keys').textContent = '—'; }
+
+      try {
+        const wData = await apiFetch('/admin/webhooks');
+        document.getElementById('stat-deliveries').textContent = (wData.webhooks || []).length;
+      } catch (_) { document.getElementById('stat-deliveries').textContent = '—'; }
+    }
+
+    // ── API Keys ──
+    async function loadKeys() {
+      const tbody = document.getElementById('keys-tbody');
+      tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Loading…</td></tr>';
+      try {
+        const data = await apiFetch('/admin/api-keys');
+        renderKeysTable(data.keys || []);
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="5" class="empty-state" style="color:var(--ember);">Failed to load keys: ${e.message}</td></tr>`;
+      }
+    }
+
+    function renderKeysTable(keys) {
+      const tbody = document.getElementById('keys-tbody');
+      if (!keys.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No API keys yet. Create one to get started.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = keys.map(k => {
+        const revoked = !!k.revoked_at;
+        const badge = revoked
+          ? '<span class="badge badge-revoked">Revoked</span>'
+          : '<span class="badge badge-active">Active</span>';
+        const revokeBtn = revoked ? '' :
+          `<button class="btn btn-danger btn-sm" onclick="openRevokeModal('${k.id}','${escHtml(k.name)}')">Revoke</button>`;
+        return `<tr>
+          <td style="font-weight:500;">${escHtml(k.name)}</td>
+          <td class="td-mono">${formatDate(k.created_at)}</td>
+          <td class="td-mono">${k.last_used_at ? formatDate(k.last_used_at) : '—'}</td>
+          <td>${badge}</td>
+          <td style="text-align:right;">${revokeBtn}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    function openCreateKeyModal() {
+      document.getElementById('key-name').value = '';
+      document.getElementById('modal-error').style.display = 'none';
+      document.getElementById('modal-create-form').style.display = 'block';
+      document.getElementById('modal-new-key').style.display = 'none';
+      document.getElementById('modal-title').textContent = 'Create API Key';
+      document.getElementById('modal-create-btn').style.display = '';
+      document.getElementById('modal-footer').querySelector('.btn-secondary').textContent = 'Cancel';
+      document.getElementById('create-key-modal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('key-name').focus(), 50);
+    }
+
+    function closeCreateKeyModal() {
+      document.getElementById('create-key-modal').classList.add('hidden');
+      loadKeys();
+    }
+
+    async function submitCreateKey() {
+      const name = document.getElementById('key-name').value.trim();
+      const errEl = document.getElementById('modal-error');
+      errEl.style.display = 'none';
+
+      if (!name) { showAlert(errEl, 'Key name is required.'); return; }
+
+      const btn = document.getElementById('modal-create-btn');
+      btn.textContent = 'Creating…'; btn.disabled = true;
+
+      try {
+        const data = await apiFetch('/admin/api-keys', {
+          method: 'POST', body: JSON.stringify({ name }),
+        });
+        document.getElementById('new-key-value').textContent = data.key;
+        document.getElementById('modal-create-form').style.display = 'none';
+        document.getElementById('modal-new-key').style.display = 'block';
+        document.getElementById('modal-title').textContent = 'API Key Created';
+        document.getElementById('modal-create-btn').style.display = 'none';
+        document.getElementById('modal-footer').querySelector('.btn-secondary').textContent = 'Done';
+      } catch (e) {
+        showAlert(errEl, 'Failed to create key: ' + e.message);
+      } finally {
+        btn.textContent = 'Create key'; btn.disabled = false;
+      }
+    }
+
+    // ── Revoke ──
+    function openRevokeModal(id, name) {
+      pendingRevokeId = id;
+      pendingRevokeName = name;
+      document.getElementById('revoke-key-name').textContent = name;
+      document.getElementById('revoke-modal').classList.remove('hidden');
+    }
+
+    function closeRevokeModal() {
+      document.getElementById('revoke-modal').classList.add('hidden');
+      pendingRevokeId = '';
+    }
+
+    async function confirmRevoke() {
+      if (!pendingRevokeId) return;
+      try {
+        await apiFetch('/admin/api-keys/' + pendingRevokeId, { method: 'DELETE' });
+        closeRevokeModal();
+        loadKeys();
+      } catch (e) {
+        closeRevokeModal();
+        const alertEl = document.getElementById('keys-alert');
+        alertEl.className = 'alert alert-error';
+        alertEl.textContent = 'Failed to revoke key: ' + e.message;
+        alertEl.style.display = 'block';
+      }
+    }
+
+    // ── Webhooks ──
+    function saveWebhookUrl() {
+      const url = document.getElementById('webhook-url-input').value.trim();
+      const alertEl = document.getElementById('webhook-save-alert');
+
+      if (url && !isValidUrl(url)) {
+        alertEl.className = 'alert alert-error';
+        alertEl.textContent = 'Please enter a valid URL.';
+        alertEl.style.display = 'block';
+        return;
+      }
+
+      localStorage.setItem('ancra_webhook_url', url);
+      document.getElementById('stat-webhook-url').textContent = url ? new URL(url).hostname : 'Not set';
+      alertEl.className = 'alert alert-success';
+      alertEl.textContent = url ? 'Webhook URL saved.' : 'Webhook URL cleared.';
+      alertEl.style.display = 'block';
+      setTimeout(() => { alertEl.style.display = 'none'; }, 3000);
+    }
+
+    async function loadDeliveries() {
+      const tbody = document.getElementById('deliveries-tbody');
+      tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Loading…</td></tr>';
+      try {
+        const data = await apiFetch('/admin/webhooks');
+        const deliveries = data.webhooks || [];
+        if (!deliveries.length) {
+          tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No deliveries yet.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = deliveries.map(d => {
+          const badge = d.status === 'delivered'
+            ? '<span class="badge badge-delivered">Delivered</span>'
+            : d.status === 'pending'
+            ? '<span class="badge badge-pending">Pending</span>'
+            : '<span class="badge badge-failed">Failed</span>';
+          return `<tr>
+            <td style="font-weight:500;">${escHtml(d.event_type)}</td>
+            <td>${badge}</td>
+            <td class="td-mono">${d.attempts}</td>
+            <td class="td-mono">${formatDate(d.created_at)}</td>
+          </tr>`;
+        }).join('');
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="4" class="empty-state" style="color:var(--ember);">Failed to load: ${e.message}</td></tr>`;
+      }
+    }
+
+    // ── Quick Start ──
+    function populateQuickStart() {
+      const key = '<YOUR_API_KEY>';
+      const base = apiBase || 'https://api.yourapp.com';
+
+      document.getElementById('step1-code').textContent =
+`curl -X POST ${base}/accounts \\
+  -H "Authorization: Bearer ${key}" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "customer_id": "<CUSTOMER_UUID>",
+    "display_name": "Amara Okonkwo",
+    "customer_email": "amara@example.com"
+  }'`;
+
+      document.getElementById('step2-code').textContent =
+`curl ${base}/accounts/<ACCOUNT_UUID>/balance \\
+  -H "Authorization: Bearer ${key}"
+
+# Response — balance is in kobo (divide by 100 for NGN)
+# { "Balance": 500000, "Currency": "NGN" }  →  ₦5,000`;
+
+      document.getElementById('step3-code').textContent =
+`curl -X POST ${base}/accounts/<ACCOUNT_UUID>/transfer \\
+  -H "Authorization: Bearer ${key}" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "amount": 500000,
+    "narration": "Invoice #1042",
+    "reference": "TXN-${Date.now()}",
+    "sender_name": "Acme Corp",
+    "destination_bank": "044",
+    "destination_account": "0123456789",
+    "destination_name": "Jane Doe"
+  }'`;
+
+      document.getElementById('step4-code').textContent =
+`curl "${base}/accounts/<ACCOUNT_UUID>/statement?limit=20&offset=0" \\
+  -H "Authorization: Bearer ${key}"
+
+# Returns entries with running_balance per entry — accurate across pages`;
+    }
+
+    // ── Utilities ──
+    function showAlert(el, msg) {
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+
+    function formatDate(iso) {
+      if (!iso) return '—';
+      return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    function escHtml(str) {
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function isValidUrl(s) {
+      try { new URL(s); return true; } catch (_) { return false; }
+    }
+
+    async function copyText(text, btn) {
+      await navigator.clipboard.writeText(text).catch(() => {});
+      const orig = btn.innerHTML;
+      btn.innerHTML = btn.innerHTML.replace(/Copy/, 'Copied!');
+      setTimeout(() => { btn.innerHTML = orig; }, 1500);
+    }
+
+    async function copyCode(id, btn) {
+      const text = document.getElementById(id).textContent;
+      await copyText(text, btn);
+    }
+
+    // ── Init ──
+    loadSession();
+    if (apiBase && adminSecret) {
+      showApp();
+    }
+
+    // Enter key on login form
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && document.getElementById('login-view').style.display !== 'none') {
+        handleLogin();
+      }
+      if (e.key === 'Escape') {
+        document.getElementById('create-key-modal').classList.add('hidden');
+        document.getElementById('revoke-modal').classList.add('hidden');
+      }
+    });
+
+    // Click outside modal to close
+    document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+      backdrop.addEventListener('click', e => {
+        if (e.target === backdrop) backdrop.classList.add('hidden');
+      });
+    });
+  </script>
+</body>
+</html>

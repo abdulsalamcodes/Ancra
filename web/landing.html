@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ancra — Virtual Account Infrastructure</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --canvas:    #f5f5f5;
+      --paper:     #ffffff;
+      --surface:   #fafafa;
+      --ink:       #0a0a0a;
+      --ink-soft:  #171717;
+      --gray:      #737373;
+      --hairline:  #e5e5e5;
+      --ember:     #e7000b;
+      --shadow:    0 0 0 1px rgba(23,23,23,0.05), 0 1px 3px rgba(0,0,0,0.10), 0 1px 2px -1px rgba(0,0,0,0.10);
+      --r-card:    24px;
+      --r-pill:    18px;
+      --font:      'Inter', ui-sans-serif, system-ui, sans-serif;
+    }
+
+    html { font-family: var(--font); background: var(--canvas); color: var(--ink); -webkit-font-smoothing: antialiased; }
+    body { min-height: 100vh; }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* ── Layout ── */
+    .container { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
+
+    /* ── Nav ── */
+    nav {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(245,245,245,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--hairline);
+    }
+    .nav-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      height: 56px;
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 15px; font-weight: 600; letter-spacing: -0.3px;
+    }
+    .nav-logo-dot {
+      width: 20px; height: 20px; border-radius: 6px;
+      background: var(--ink); display: grid; place-items: center;
+    }
+    .nav-logo-dot svg { width: 10px; height: 10px; fill: #fafafa; }
+    .nav-links { display: flex; align-items: center; gap: 4px; }
+    .nav-link {
+      padding: 6px 12px; font-size: 14px; font-weight: 500; color: var(--gray);
+      border-radius: var(--r-pill); transition: color 0.15s, background 0.15s;
+    }
+    .nav-link:hover { color: var(--ink); background: var(--paper); }
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--ink); color: #fafafa;
+      padding: 8px 16px; border-radius: var(--r-pill);
+      font-size: 14px; font-weight: 500; border: none; cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn-primary:hover { opacity: 0.85; }
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--paper); color: var(--ink);
+      padding: 8px 16px; border-radius: var(--r-pill);
+      font-size: 14px; font-weight: 500; border: 1px solid var(--hairline); cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-secondary:hover { background: var(--canvas); }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 80px 0 64px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center;
+    }
+    @media (max-width: 860px) {
+      .hero { grid-template-columns: 1fr; gap: 40px; }
+      .hero-preview { display: none; }
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--paper); border: 1px solid var(--hairline);
+      border-radius: var(--r-pill); padding: 4px 10px;
+      font-size: 12px; font-weight: 500; color: var(--gray);
+      margin-bottom: 20px;
+    }
+    .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; }
+    .hero-headline {
+      font-size: clamp(36px, 5vw, 52px);
+      font-weight: 600;
+      line-height: 1.1;
+      letter-spacing: -0.05em;
+      color: var(--ink);
+      margin-bottom: 20px;
+    }
+    .hero-sub {
+      font-size: 17px; line-height: 1.6; color: var(--gray);
+      max-width: 460px; margin-bottom: 32px;
+    }
+    .hero-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* ── Code Preview Card ── */
+    .hero-preview {
+      background: var(--ink-soft); border-radius: var(--r-card);
+      overflow: hidden; box-shadow: var(--shadow);
+    }
+    .code-header {
+      display: flex; align-items: center; gap: 6px;
+      padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .code-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .code-dot:nth-child(1) { background: #e7000b; }
+    .code-dot:nth-child(2) { background: #f59e0b; }
+    .code-dot:nth-child(3) { background: #22c55e; }
+    .code-label { font-size: 12px; color: rgba(255,255,255,0.35); margin-left: 8px; font-weight: 500; }
+    .code-body { padding: 20px; }
+    .code-block {
+      font-family: 'Menlo', 'Consolas', monospace;
+      font-size: 12.5px; line-height: 1.7;
+      color: rgba(255,255,255,0.75);
+    }
+    .code-block .cm { color: rgba(255,255,255,0.30); }
+    .code-block .kw { color: #93c5fd; }
+    .code-block .st { color: #86efac; }
+    .code-block .nm { color: #fbbf24; }
+    .code-block .pu { color: rgba(255,255,255,0.50); }
+    .code-divider {
+      border: none; border-top: 1px solid rgba(255,255,255,0.08);
+      margin: 16px 0;
+    }
+    .code-response {
+      background: rgba(255,255,255,0.04); border-radius: 10px;
+      padding: 14px; margin-top: 12px;
+    }
+
+    /* ── Section headers ── */
+    .section { padding: 64px 0; }
+    .section-label {
+      font-size: 12px; font-weight: 500; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--gray); margin-bottom: 12px;
+    }
+    .section-headline {
+      font-size: 30px; font-weight: 600; letter-spacing: -0.75px;
+      line-height: 1.2; color: var(--ink); margin-bottom: 12px;
+    }
+    .section-sub { font-size: 16px; line-height: 1.6; color: var(--gray); max-width: 520px; }
+
+    /* ── Features ── */
+    .features-header { margin-bottom: 40px; }
+    .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    @media (max-width: 768px) { .features-grid { grid-template-columns: 1fr; } }
+    .feature-card {
+      background: var(--paper); border: 1px solid var(--hairline);
+      border-radius: var(--r-card); padding: 24px; box-shadow: var(--shadow);
+    }
+    .feature-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: var(--canvas); border: 1px solid var(--hairline);
+      display: grid; place-items: center; margin-bottom: 16px;
+    }
+    .feature-icon svg { width: 18px; height: 18px; stroke: var(--ink); stroke-width: 1.5; fill: none; }
+    .feature-title { font-size: 15px; font-weight: 600; color: var(--ink); margin-bottom: 8px; letter-spacing: -0.2px; }
+    .feature-desc { font-size: 14px; line-height: 1.6; color: var(--gray); }
+
+    /* ── How it works ── */
+    .how-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: start; }
+    @media (max-width: 860px) { .how-grid { grid-template-columns: 1fr; } }
+    .steps { display: flex; flex-direction: column; gap: 0; }
+    .step { display: flex; gap: 16px; padding: 20px 0; border-bottom: 1px solid var(--hairline); }
+    .step:last-child { border-bottom: none; }
+    .step-num {
+      width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+      background: var(--ink); color: #fafafa;
+      display: grid; place-items: center;
+      font-size: 12px; font-weight: 600;
+    }
+    .step-content { padding-top: 4px; }
+    .step-title { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+    .step-desc { font-size: 14px; line-height: 1.5; color: var(--gray); }
+    .code-showcase {
+      background: var(--ink-soft); border-radius: var(--r-card);
+      overflow: hidden; box-shadow: var(--shadow); position: sticky; top: 80px;
+    }
+    .code-tab {
+      display: flex; border-bottom: 1px solid rgba(255,255,255,0.08);
+      padding: 0 16px;
+    }
+    .code-tab-item {
+      padding: 10px 12px; font-size: 12px; font-weight: 500;
+      color: rgba(255,255,255,0.4); cursor: pointer; border-bottom: 2px solid transparent;
+      transition: color 0.15s;
+    }
+    .code-tab-item.active { color: rgba(255,255,255,0.9); border-bottom-color: rgba(255,255,255,0.3); }
+
+    /* ── Stats ── */
+    .stats-section {
+      border-top: 1px solid var(--hairline);
+      border-bottom: 1px solid var(--hairline);
+      padding: 48px 0;
+    }
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+    @media (max-width: 600px) { .stats-grid { grid-template-columns: 1fr; } }
+    .stat-block { text-align: center; }
+    .stat-value {
+      font-size: 36px; font-weight: 600; letter-spacing: -0.9px;
+      color: var(--ink); line-height: 1.1; margin-bottom: 6px;
+    }
+    .stat-label { font-size: 14px; color: var(--gray); }
+
+    /* ── CTA Banner ── */
+    .cta-section { padding: 80px 0; text-align: center; }
+    .cta-card {
+      background: var(--paper); border: 1px solid var(--hairline);
+      border-radius: var(--r-card); padding: 56px 40px;
+      box-shadow: var(--shadow); max-width: 600px; margin: 0 auto;
+    }
+    .cta-headline { font-size: 30px; font-weight: 600; letter-spacing: -0.75px; margin-bottom: 12px; }
+    .cta-sub { font-size: 16px; color: var(--gray); margin-bottom: 28px; line-height: 1.6; }
+    .cta-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--hairline);
+      padding: 32px 0;
+    }
+    .footer-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 16px;
+    }
+    .footer-copy { font-size: 13px; color: var(--gray); }
+    .footer-links { display: flex; gap: 20px; }
+    .footer-link { font-size: 13px; color: var(--gray); transition: color 0.15s; }
+    .footer-link:hover { color: var(--ink); }
+
+    /* ── Divider ── */
+    .section-divider { border: none; border-top: 1px solid var(--hairline); }
+  </style>
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav>
+    <div class="container">
+      <div class="nav-inner">
+        <a href="/" class="nav-logo">
+          <span class="nav-logo-dot">
+            <svg viewBox="0 0 10 10"><rect x="2" y="2" width="6" height="6" rx="1.5"/></svg>
+          </span>
+          Ancra
+        </a>
+        <div class="nav-links">
+          <a href="https://docs.ancra.dev" class="nav-link" target="_blank">Docs</a>
+          <a href="/dashboard" class="nav-link">Dashboard</a>
+          <a href="/app" class="btn-primary">
+            Get started
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2.5 6h7M6.5 3.5 9 6l-2.5 2.5"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <div class="container">
+    <div class="hero">
+      <div class="hero-text">
+        <div class="badge"><span class="badge-dot"></span> Now available for developers</div>
+        <h1 class="hero-headline">Banking infrastructure<br>for modern apps.</h1>
+        <p class="hero-sub">
+          Provision dedicated NGN virtual accounts, receive real-time HMAC-signed payment webhooks, and reconcile every naira — all through one clean REST API.
+        </p>
+        <div class="hero-actions">
+          <a href="/app" class="btn-primary">
+            Start building
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2.5 6h7M6.5 3.5 9 6l-2.5 2.5"/></svg>
+          </a>
+          <a href="https://docs.ancra.dev" class="btn-secondary" target="_blank">Read the docs</a>
+        </div>
+      </div>
+
+      <div class="hero-preview">
+        <div class="code-header">
+          <span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span>
+          <span class="code-label">Provision an account</span>
+        </div>
+        <div class="code-body">
+          <div class="code-block">
+<span class="kw">curl</span> <span class="pu">-X</span> POST https://api.yourapp.com<span class="st">/accounts</span> \<br>
+&nbsp;&nbsp;<span class="pu">-H</span> <span class="st">"Authorization: Bearer ancra_..."</span> \<br>
+&nbsp;&nbsp;<span class="pu">-d</span> <span class="st">'{"customer_id": "c1b2...",</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="st">"display_name": "Amara Okonkwo",</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="st">"customer_email": "amara@co.ng"}'</span>
+          </div>
+          <hr class="code-divider" />
+          <div class="code-block code-response">
+<span class="pu">{</span><br>
+&nbsp;&nbsp;<span class="nm">"bank_account_number"</span><span class="pu">:</span> <span class="st">"9876543210"</span><span class="pu">,</span><br>
+&nbsp;&nbsp;<span class="nm">"bank_account_name"</span><span class="pu">:</span> <span class="st">"Amara Okonkwo"</span><span class="pu">,</span><br>
+&nbsp;&nbsp;<span class="nm">"bank_name"</span><span class="pu">:</span> <span class="st">"Nomba"</span><span class="pu">,</span><br>
+&nbsp;&nbsp;<span class="nm">"status"</span><span class="pu">:</span> <span class="st">"active"</span><br>
+<span class="pu">}</span>
+          </div>
+          <hr class="code-divider" />
+          <div class="code-block">
+<span class="cm">// Webhook fires when payment arrives</span><br>
+<span class="pu">{</span> <span class="nm">"event_type"</span><span class="pu">:</span> <span class="st">"payment_success"</span><span class="pu">,</span><br>
+&nbsp;&nbsp;<span class="nm">"amount"</span><span class="pu">:</span> <span class="nm">50000</span><span class="pu">,</span> <span class="nm">"currency"</span><span class="pu">:</span> <span class="st">"NGN"</span> <span class="pu">}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-divider" />
+
+  <!-- Stats -->
+  <div class="stats-section">
+    <div class="container">
+      <div class="stats-grid">
+        <div class="stat-block">
+          <div class="stat-value">&lt;200ms</div>
+          <div class="stat-label">Webhook delivery latency</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-value">5×</div>
+          <div class="stat-label">Automatic webhook retry</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-value">100%</div>
+          <div class="stat-label">Double-entry ledger accuracy</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Features -->
+  <div class="container">
+    <div class="section">
+      <div class="features-header">
+        <p class="section-label">What you get</p>
+        <h2 class="section-headline">Everything to power payment collection.</h2>
+        <p class="section-sub">Ancra wraps Nomba's banking rails into a clean API designed for developer teams.</p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 18 18"><rect x="1" y="4" width="16" height="12" rx="2"/><path d="M1 8h16"/><path d="M5 12h2"/></svg>
+          </div>
+          <h3 class="feature-title">Dedicated virtual accounts</h3>
+          <p class="feature-desc">Each customer gets their own unique NGN bank account number. Inbound payments route automatically to the correct ledger — no shared accounts, no manual matching.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 18 18"><path d="M15 3 9 9 3 3"/><path d="M3 3v6h6"/><path d="M15 9v6H9"/></svg>
+          </div>
+          <h3 class="feature-title">Real-time webhooks</h3>
+          <p class="feature-desc">HMAC-SHA256 signed events delivered the moment a payment lands. Automatic exponential-backoff retry up to 5 attempts. Zero double-processing with built-in idempotency.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 18 18"><path d="m9 2 2 5h5l-4 3 1.5 5L9 12l-4.5 3L6 10 2 7h5z"/></svg>
+          </div>
+          <h3 class="feature-title">Double-entry reconciliation</h3>
+          <p class="feature-desc">Every naira is double-posted across customer and system ledgers. Automated sweeps cross-reference your ledger against Nomba's records and surface discrepancies immediately.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 18 18"><circle cx="9" cy="9" r="7"/><path d="M9 6v4l3 1.5"/></svg>
+          </div>
+          <h3 class="feature-title">Paginated statements</h3>
+          <p class="feature-desc">Pull account statements with accurate running balances per entry — even across paginated pages. Ready to generate PDF statements for your customers.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 18 18"><path d="M9 2v4M9 12v4M2 9h4M12 9h4"/><circle cx="9" cy="9" r="3"/></svg>
+          </div>
+          <h3 class="feature-title">Outbound transfers</h3>
+          <p class="feature-desc">Send funds from any virtual account to any Nigerian bank. Account name lookup built in. Ledger debits and automatic reversals on failure keep balances consistent.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 18 18"><path d="M3 9a6 6 0 1 0 6-6"/><path d="M3 5v4h4"/></svg>
+          </div>
+          <h3 class="feature-title">KYC tier management</h3>
+          <p class="feature-desc">Customers carry Tier 1, 2, or 3 KYC status. Pass BVN and NIN at account provisioning time — Nomba enforces the right limits per tier automatically.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-divider" />
+
+  <!-- How it works -->
+  <div class="container">
+    <div class="section">
+      <div class="how-grid">
+        <div>
+          <p class="section-label">How it works</p>
+          <h2 class="section-headline">From API call to credited ledger.</h2>
+          <p class="section-sub" style="margin-bottom: 32px;">Four steps. One clean flow. Your customers never wait for manual matching.</p>
+
+          <div class="steps">
+            <div class="step">
+              <span class="step-num">1</span>
+              <div class="step-content">
+                <div class="step-title">Provision a virtual account</div>
+                <div class="step-desc">POST /accounts with your customer's details. Get back a unique NGN bank account number backed by Nomba.</div>
+              </div>
+            </div>
+            <div class="step">
+              <span class="step-num">2</span>
+              <div class="step-content">
+                <div class="step-title">Share the account number</div>
+                <div class="step-desc">Display the account number to your customer. Any NIP transfer to that number triggers the payment flow.</div>
+              </div>
+            </div>
+            <div class="step">
+              <span class="step-num">3</span>
+              <div class="step-content">
+                <div class="step-title">Receive a signed webhook</div>
+                <div class="step-desc">Ancra verifies the HMAC signature, matches the account, and credits the customer's ledger — automatically.</div>
+              </div>
+            </div>
+            <div class="step">
+              <span class="step-num">4</span>
+              <div class="step-content">
+                <div class="step-title">Query balance anytime</div>
+                <div class="step-desc">GET /accounts/{id}/balance returns the current kobo balance. Pull statements for downloadable reports.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="code-showcase">
+          <div class="code-tab">
+            <span class="code-tab-item active">Webhook payload</span>
+          </div>
+          <div class="code-body">
+            <div class="code-block">
+<span class="cm">// POST /webhooks/nomba</span><br>
+<span class="pu">{</span><br>
+&nbsp;&nbsp;<span class="nm">"event_type"</span><span class="pu">:</span> <span class="st">"payment_success"</span><span class="pu">,</span><br>
+&nbsp;&nbsp;<span class="nm">"requestId"</span><span class="pu">:</span> <span class="st">"49e11b44-..."</span><span class="pu">,</span><br>
+&nbsp;&nbsp;<span class="nm">"data"</span><span class="pu">:</span> <span class="pu">{</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="nm">"transaction"</span><span class="pu">:</span> <span class="pu">{</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="nm">"aliasAccountNumber"</span><span class="pu">:</span> <span class="st">"9876543210"</span><span class="pu">,</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="nm">"transactionAmount"</span><span class="pu">:</span> <span class="nm">5000</span><span class="pu">,</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="nm">"narration"</span><span class="pu">:</span> <span class="st">"School fees"</span><span class="pu">,</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="nm">"transactionId"</span><span class="pu">:</span> <span class="st">"API-VACT..."</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="pu">},</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="nm">"customer"</span><span class="pu">:</span> <span class="pu">{</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="nm">"senderName"</span><span class="pu">:</span> <span class="st">"John Doe"</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="pu">}</span><br>
+&nbsp;&nbsp;<span class="pu">}</span><br>
+<span class="pu">}</span><br>
+<br>
+<span class="cm">// ↓ Ancra credits the ledger</span><br>
+<span class="pu">{</span> <span class="nm">"direction"</span><span class="pu">:</span> <span class="st">"credit"</span><span class="pu">,</span><br>
+&nbsp;&nbsp;<span class="nm">"amount"</span><span class="pu">:</span> <span class="nm">500000</span><span class="pu">,</span> <span class="cm">// kobo</span><br>
+&nbsp;&nbsp;<span class="nm">"entry_type"</span><span class="pu">:</span> <span class="st">"inbound_credit"</span> <span class="pu">}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="container">
+    <div class="cta-section">
+      <div class="cta-card">
+        <h2 class="cta-headline">Ready to start building?</h2>
+        <p class="cta-sub">Get your API key in under a minute. No sales call required.</p>
+        <div class="cta-actions">
+          <a href="/app" class="btn-primary">
+            Create your API key
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2.5 6h7M6.5 3.5 9 6l-2.5 2.5"/></svg>
+          </a>
+          <a href="https://docs.ancra.dev" class="btn-secondary" target="_blank">View docs</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <div class="footer-inner">
+        <div class="nav-logo" style="font-size:14px;">
+          <span class="nav-logo-dot" style="width:16px;height:16px;">
+            <svg viewBox="0 0 10 10"><rect x="2" y="2" width="6" height="6" rx="1.5"/></svg>
+          </span>
+          Ancra
+        </div>
+        <div class="footer-links">
+          <a href="https://docs.ancra.dev" class="footer-link" target="_blank">Documentation</a>
+          <a href="/dashboard" class="footer-link">Dashboard</a>
+          <a href="/app" class="footer-link">Developer Portal</a>
+        </div>
+        <span class="footer-copy">© 2026 Ancra. All rights reserved.</span>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

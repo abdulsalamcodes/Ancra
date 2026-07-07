@@ -54,8 +54,10 @@ func NewRouter(d RouterDeps) http.Handler {
 	r.Get("/health", healthHandler)
 	r.Get("/status", healthHandler) // alias — some ad blockers flag /health
 
-	// Dashboard — served at root only
-	r.Get("/", web.Handler().ServeHTTP)
+	// Web pages
+	r.Get("/", web.LandingHandler())
+	r.Get("/app", web.AppHandler())
+	r.Get("/dashboard", web.DashboardHandler())
 
 	// Nomba webhook — public but HMAC-verified inside the handler.
 	whHandler := handlers.NewWebhookHandler(
