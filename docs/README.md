@@ -13,19 +13,19 @@ Ancra is a Dedicated Virtual Account (DVA) infrastructure API. It lets you provi
 ## Base URL
 
 ```
-https://your-deployment.onrender.com
+https://ancra.onrender.com
 ```
 
 ## Quick navigation
 
-| Section | Description |
-|---|---|
-| [Authentication](getting-started/authentication.md) | API key setup and request signing |
-| [Quickstart](getting-started/quickstart.md) | Create a customer, provision an account, receive a payment |
-| [Customers](customers/overview.md) | Manage customer records and KYC tiers |
-| [Virtual Accounts](virtual-accounts/overview.md) | Provision and manage dedicated virtual accounts |
-| [Webhooks](webhooks/overview.md) | Receive real-time payment notifications |
-| [Transfers](transfers/overview.md) | Send funds to any Nigerian bank account |
-| [API Reference](api-reference/accounts.md) | Full endpoint reference |
-| [Settings](api-reference/settings.md) | Nomba and webhook configuration |
-| [Auth](api-reference/auth.md) | User profile and API key management |
+| Section                                             | Description                                                |
+| --------------------------------------------------- | ---------------------------------------------------------- |
+| [Authentication](getting-started/authentication.md) | API key setup and request signing                          |
+| [Quickstart](getting-started/quickstart.md)         | Create a customer, provision an account, receive a payment |
+| [Customers](customers/overview.md)                  | Manage customer records and KYC tiers                      |
+| [Virtual Accounts](virtual-accounts/overview.md)    | Provision and manage dedicated virtual accounts            |
+| [Webhooks](webhooks/overview.md)                    | Receive real-time payment notifications                    |
+| [Transfers](transfers/overview.md)                  | Send funds to any Nigerian bank account                    |
+| [API Reference](api-reference/accounts.md)          | Full endpoint reference                                    |
+| [Settings](api-reference/settings.md)               | Nomba and webhook configuration                            |
+| [Auth](api-reference/auth.md)                       | User profile and API key management                        |
