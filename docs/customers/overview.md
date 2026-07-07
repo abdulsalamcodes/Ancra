@@ -1,0 +1,63 @@
+# Customers
+
+A **Customer** is the owner of one or more virtual accounts. Every account must belong to a customer.
+
+## The Customer Object
+
+```json
+{
+  "id": "c8a1b2d3-e4f5-6789-abcd-ef0123456789",
+  "kyc_tier": 1,
+  "created_at": "2026-01-01T00:00:00Z"
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | UUID | Unique customer identifier |
+| `kyc_tier` | integer | KYC level (1–3). See [KYC Tiers](kyc-tiers.md) |
+| `created_at` | ISO 8601 | Creation timestamp |
+
+## Create a Customer
+
+```http
+POST /customers
+```
+
+```json
+{
+  "kyc_tier": 1
+}
+```
+
+`kyc_tier` defaults to `1` if omitted.
+
+**Response `201`**
+
+```json
+{
+  "id": "c8a1b2d3-...",
+  "kyc_tier": 1,
+  "created_at": "2026-01-01T00:00:00Z"
+}
+```
+
+## List Customers
+
+```http
+GET /customers?limit=20&offset=0
+```
+
+```json
+{
+  "customers": [...],
+  "limit": 20,
+  "offset": 0
+}
+```
+
+## Get a Customer
+
+```http
+GET /customers/{id}
+```
