@@ -368,6 +368,23 @@ func (s *fakeAccountStore) GetAccountByNumber(_ context.Context, number string) 
 	return nil, errors.New("account not found")
 }
 
+func (s *fakeAccountStore) ListAccounts(_ context.Context, limit, offset int) ([]*store.VirtualAccount, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var all []*store.VirtualAccount
+	for _, a := range s.data {
+		all = append(all, a)
+	}
+	if offset >= len(all) {
+		return []*store.VirtualAccount{}, nil
+	}
+	end := offset + limit
+	if end > len(all) {
+		end = len(all)
+	}
+	return all[offset:end], nil
+}
+
 func (s *fakeAccountStore) ListAccountsByCustomer(_ context.Context, customerID uuid.UUID) ([]*store.VirtualAccount, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

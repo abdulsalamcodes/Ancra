@@ -168,6 +168,7 @@ type AccountStore interface {
 	CreateAccount(ctx context.Context, a *VirtualAccount) error
 	GetAccount(ctx context.Context, id uuid.UUID) (*VirtualAccount, error)
 	GetAccountByNumber(ctx context.Context, accountNumber string) (*VirtualAccount, error)
+	ListAccounts(ctx context.Context, limit, offset int) ([]*VirtualAccount, error)
 	ListAccountsByCustomer(ctx context.Context, customerID uuid.UUID) ([]*VirtualAccount, error)
 	UpdateAccountStatus(ctx context.Context, id uuid.UUID, status AccountStatus) error
 }

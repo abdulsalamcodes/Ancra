@@ -76,6 +76,28 @@ func (h *AccountHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 // ---------------------------------------------------------------------------
+// GET /accounts
+// ---------------------------------------------------------------------------
+
+// List returns a paginated list of all virtual accounts.
+func (h *AccountHandler) List(w http.ResponseWriter, r *http.Request) {
+	limit := queryInt(r, "limit", 20)
+	offset := queryInt(r, "offset", 0)
+
+	accounts, err := h.svc.ListAccounts(r.Context(), limit, offset)
+	if err != nil {
+		h.log.Error("list accounts failed", zap.Error(err))
+		writeError(w, http.StatusInternalServerError, "failed to list accounts")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"accounts": accounts,
+		"limit":    limit,
+		"offset":   offset,
+	})
+}
+
+// ---------------------------------------------------------------------------
 // GET /accounts/{id}
 // ---------------------------------------------------------------------------
 

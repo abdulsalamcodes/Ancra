@@ -97,6 +97,7 @@ func NewRouter(d RouterDeps) http.Handler {
 
 		// Account endpoints
 		r.Post("/accounts", acctHandler.Create)
+		r.Get("/accounts", acctHandler.List)
 		r.Get("/accounts/{id}", acctHandler.GetByID)
 		r.Get("/accounts/{id}/balance", acctHandler.GetBalance)
 		r.Get("/accounts/{id}/transactions", acctHandler.ListTransactions)

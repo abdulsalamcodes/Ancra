@@ -53,6 +53,29 @@ func (s *AccountStore) GetAccountByNumber(ctx context.Context, accountNumber str
 	return scanAccount(row)
 }
 
+// ListAccounts returns a paginated list of all virtual accounts, newest first.
+func (s *AccountStore) ListAccounts(ctx context.Context, limit, offset int) ([]*store.VirtualAccount, error) {
+	const q = `
+		SELECT id, customer_id, account_ref, bank_account_number, bank_account_name, status, created_at
+		FROM virtual_accounts ORDER BY created_at DESC LIMIT $1 OFFSET $2`
+
+	rows, err := s.Pool.Query(ctx, q, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("accounts.List: %w", err)
+	}
+	defer rows.Close()
+
+	var accounts []*store.VirtualAccount
+	for rows.Next() {
+		a, err := scanAccount(rows)
+		if err != nil {
+			return nil, err
+		}
+		accounts = append(accounts, a)
+	}
+	return accounts, rows.Err()
+}
+
 // ListAccountsByCustomer returns all accounts belonging to a customer.
 func (s *AccountStore) ListAccountsByCustomer(ctx context.Context, customerID uuid.UUID) ([]*store.VirtualAccount, error) {
 	const q = `

@@ -919,6 +919,17 @@
             ></div>
           </div>
 
+          <!-- All Accounts -->
+          <div class="card">
+            <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+              <span>All Accounts</span>
+              <button class="btn btn-secondary btn-sm" onclick="loadAccounts()">Refresh</button>
+            </div>
+            <div id="accounts-list-content">
+              <p class="td-muted" style="padding:16px 0;">Click Refresh to load accounts.</p>
+            </div>
+          </div>
+
           <!-- Account Lookup -->
           <div class="grid-2">
             <div class="card">
@@ -1201,6 +1212,7 @@
             loadCustomers();
             break;
           case "accounts":
+            loadAccounts();
             break;
           case "reconciliation":
             loadReconciliation();
@@ -1699,6 +1711,40 @@
         }
       }
 
+      async function loadAccounts() {
+        const el = document.getElementById("accounts-list-content");
+        el.innerHTML = '<p class="td-muted" style="padding:8px 0;">Loading…</p>';
+        try {
+          const data = await apiFetch("/accounts?limit=50");
+          const accounts = data.accounts || [];
+          if (accounts.length === 0) {
+            el.innerHTML = '<p class="td-muted" style="padding:8px 0;">No accounts provisioned yet.</p>';
+            return;
+          }
+          el.innerHTML = `
+            <table class="table" style="margin-top:8px;">
+              <thead><tr>
+                <th>Account ID</th>
+                <th>Account Number</th>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Created</th>
+              </tr></thead>
+              <tbody>
+                ${accounts.map(a => `<tr>
+                  <td class="td-mono" style="font-size:11px;" title="${escapeHtml(a.id)}">${shortUUID(a.id)}</td>
+                  <td class="mono">${escapeHtml(a.bank_account_number || "—")}</td>
+                  <td>${escapeHtml(a.bank_account_name || "—")}</td>
+                  <td>${statusBadge(a.status)}</td>
+                  <td class="td-muted" style="font-size:11px;">${new Date(a.created_at).toLocaleString()}</td>
+                </tr>`).join("")}
+              </tbody>
+            </table>`;
+        } catch (e) {
+          el.innerHTML = `<p class="alert alert-error" style="margin-top:8px;">${escapeHtml(e.message)}</p>`;
+        }
+      }
+
       async function lookupAccount() {
         const id = document.getElementById("acc-lookup-id").value.trim();
         if (!id) {
@@ -2065,8 +2111,3 @@
     </script>
   </body>
 </html>
-curl -s -X POST https://ancra.onrender.com/accounts \ -H "Authorization: Bearer
-" \ -H "Content-Type: application/json" \ -d '{ "customer_id": "<customer-id
-  >", "display_name": "Test User", "customer_email": "test@example.com" }' | jq
-  .</customer-id
->

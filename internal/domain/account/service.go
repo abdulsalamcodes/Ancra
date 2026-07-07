@@ -115,6 +115,21 @@ func (s *Service) Create(ctx context.Context, req CreateAccountRequest) (*Create
 	return &CreateAccountResponse{Account: va, Identity: iv}, nil
 }
 
+// ListAccounts returns a paginated list of all virtual accounts.
+func (s *Service) ListAccounts(ctx context.Context, limit, offset int) ([]*store.VirtualAccount, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	accounts, err := s.accounts.ListAccounts(ctx, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("account.ListAccounts: %w", err)
+	}
+	if accounts == nil {
+		accounts = []*store.VirtualAccount{}
+	}
+	return accounts, nil
+}
+
 // Get retrieves a virtual account by ID.
 func (s *Service) Get(ctx context.Context, id uuid.UUID) (*store.VirtualAccount, error) {
 	va, err := s.accounts.GetAccount(ctx, id)
