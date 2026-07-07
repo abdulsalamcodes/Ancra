@@ -33,6 +33,9 @@ var migration007 string
 //go:embed migrations/000008_org_webhook_configs.up.sql
 var migration008 string
 
+//go:embed migrations/000009_fix_system_accounts_index.up.sql
+var migration009 string
+
 // migrations lists all SQL migration scripts in order.
 // Every statement must use IF NOT EXISTS / DO-EXCEPTION guards so this is
 // safe to call on every startup without a migration tracking table.
@@ -45,6 +48,7 @@ var migrations = []string{
 	migration006,
 	migration007,
 	migration008,
+	migration009,
 }
 
 // RunMigrations applies all schema migrations in order.

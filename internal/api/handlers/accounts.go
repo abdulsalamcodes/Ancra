@@ -263,7 +263,8 @@ func NewCustomerHandler(customers store.CustomerStore, log *zap.Logger) *Custome
 }
 
 type createCustomerRequest struct {
-	KYCTier int `json:"kyc_tier"`
+	DisplayName string `json:"display_name"`
+	KYCTier     int    `json:"kyc_tier"`
 }
 
 const (
@@ -291,16 +292,32 @@ func (h *CustomerHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	now := time.Now().UTC()
 	c := &store.Customer{
-		ID:        uuid.New(),
-		OrgID:     orgID,
-		KYCTier:   req.KYCTier,
-		CreatedAt: time.Now().UTC(),
+		ID:          uuid.New(),
+		OrgID:       orgID,
+		KYCTier:     req.KYCTier,
+		CreatedAt:   now,
+		DisplayName: req.DisplayName,
 	}
 	if err := h.customers.CreateCustomer(r.Context(), c); err != nil {
 		h.log.Error("create customer failed", zap.Error(err))
 		writeError(w, http.StatusInternalServerError, "failed to create customer")
 		return
+	}
+
+	if req.DisplayName != "" {
+		iv := &store.IdentityVersion{
+			ID:            uuid.New(),
+			CustomerID:    c.ID,
+			DisplayName:   req.DisplayName,
+			EffectiveFrom: now,
+		}
+		if err := h.customers.CreateIdentityVersion(r.Context(), iv); err != nil {
+			h.log.Error("create identity version failed", zap.Error(err))
+			writeError(w, http.StatusInternalServerError, "failed to persist customer identity")
+			return
+		}
 	}
 
 	writeJSON(w, http.StatusCreated, c)

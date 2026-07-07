@@ -26,11 +26,16 @@ func (s *CustomerStore) CreateCustomer(ctx context.Context, c *store.Customer) e
 	return nil
 }
 
-// GetCustomer retrieves a customer by primary key, scoped to the given org.
+// GetCustomer retrieves a customer by primary key, scoped to the given org,
+// with their current display name joined from identity_versions.
 func (s *CustomerStore) GetCustomer(ctx context.Context, orgID uuid.UUID, id uuid.UUID) (*store.Customer, error) {
-	const q = `SELECT id, org_id, kyc_tier, created_at FROM customers WHERE id = $1 AND org_id = $2`
+	const q = `
+		SELECT c.id, c.org_id, c.kyc_tier, c.created_at, COALESCE(iv.display_name, '') AS display_name
+		FROM customers c
+		LEFT JOIN identity_versions iv ON iv.customer_id = c.id AND iv.effective_to IS NULL
+		WHERE c.id = $1 AND c.org_id = $2`
 	var c store.Customer
-	if err := s.Pool.QueryRow(ctx, q, id, orgID).Scan(&c.ID, &c.OrgID, &c.KYCTier, &c.CreatedAt); err != nil {
+	if err := s.Pool.QueryRow(ctx, q, id, orgID).Scan(&c.ID, &c.OrgID, &c.KYCTier, &c.CreatedAt, &c.DisplayName); err != nil {
 		return nil, fmt.Errorf("customers.Get: %w", err)
 	}
 	return &c, nil
