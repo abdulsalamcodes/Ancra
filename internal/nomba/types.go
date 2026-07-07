@@ -14,15 +14,16 @@ type TokenRequest struct {
 }
 
 // TokenResponse is returned by the OAuth2 token endpoint.
-// Nomba wraps the token inside a "data" envelope and uses camelCase keys.
+// Nomba envelope: {"code":"00","description":"Successful","data":{...}}
+// Data keys are snake_case for the token endpoint specifically.
 type TokenResponse struct {
-	RequestSuccessful bool   `json:"requestSuccessful"`
-	ResponseCode      string `json:"responseCode"`
-	ResponseMessage   string `json:"responseMessage"`
-	Data              struct {
-		AccessToken string `json:"accessToken"`
-		TokenType   string `json:"tokenType"`
-		ExpiresIn   int    `json:"expiresIn"` // seconds
+	Code        string `json:"code"`
+	Description string `json:"description"`
+	Data        struct {
+		AccessToken  string `json:"access_token"`
+		BusinessID   string `json:"businessId"`
+		RefreshToken string `json:"refresh_token"`
+		ExpiresAt    string `json:"expiresAt"` // ISO8601 timestamp, e.g. "2026-07-07T05:42:45.029Z"
 	} `json:"data"`
 }
 
@@ -43,19 +44,18 @@ type CreateVirtualAccountRequest struct {
 
 // CreateVirtualAccountResponse is returned after successful DVA creation.
 type CreateVirtualAccountResponse struct {
-	RequestSuccessful bool   `json:"requestSuccessful"`
-	ResponseCode      string `json:"responseCode"`
-	ResponseMessage   string `json:"responseMessage"`
-	Data              struct {
-		AccountID         string `json:"accountId"`
-		AccountRef        string `json:"accountRef"`
-		AccountName       string `json:"accountName"`
-		AccountNumber     string `json:"accountNumber"`
-		BankCode          string `json:"bankCode"`
-		BankName          string `json:"bankName"`
-		CustomerEmail     string `json:"customerEmail"`
-		CustomerName      string `json:"customerName"`
-		Status            string `json:"status"`
+	Code        string `json:"code"`
+	Description string `json:"description"`
+	Data        struct {
+		AccountID     string `json:"accountId"`
+		AccountRef    string `json:"accountRef"`
+		AccountName   string `json:"accountName"`
+		AccountNumber string `json:"accountNumber"`
+		BankCode      string `json:"bankCode"`
+		BankName      string `json:"bankName"`
+		CustomerEmail string `json:"customerEmail"`
+		CustomerName  string `json:"customerName"`
+		Status        string `json:"status"`
 	} `json:"data"`
 }
 
@@ -65,10 +65,9 @@ type CreateVirtualAccountResponse struct {
 
 // WalletBalanceResponse is returned by the wallet-balance endpoint.
 type WalletBalanceResponse struct {
-	RequestSuccessful bool   `json:"requestSuccessful"`
-	ResponseCode      string `json:"responseCode"`
-	ResponseMessage   string `json:"responseMessage"`
-	Data              struct {
+	Code        string `json:"code"`
+	Description string `json:"description"`
+	Data        struct {
 		AccountID      string  `json:"accountId"`
 		AvailableFloat float64 `json:"availableFloat"` // in naira; convert × 100 for kobo
 		LedgerBalance  float64 `json:"ledgerBalance"`
@@ -110,10 +109,9 @@ type NombaTransaction struct {
 
 // ListTransactionsResponse wraps the paginated transaction list.
 type ListTransactionsResponse struct {
-	RequestSuccessful bool   `json:"requestSuccessful"`
-	ResponseCode      string `json:"responseCode"`
-	ResponseMessage   string `json:"responseMessage"`
-	Data              struct {
+	Code        string `json:"code"`
+	Description string `json:"description"`
+	Data        struct {
 		Transactions []NombaTransaction `json:"transactions"`
 		Page         int                `json:"page"`
 		Limit        int                `json:"limit"`
@@ -138,10 +136,9 @@ type TransferRequest struct {
 
 // TransferResponse is returned after initiating a transfer.
 type TransferResponse struct {
-	RequestSuccessful bool   `json:"requestSuccessful"`
-	ResponseCode      string `json:"responseCode"`
-	ResponseMessage   string `json:"responseMessage"`
-	Data              struct {
+	Code        string `json:"code"`
+	Description string `json:"description"`
+	Data        struct {
 		TransactionID string `json:"transactionId"`
 		Reference     string `json:"reference"`
 		Status        string `json:"status"`
@@ -200,11 +197,12 @@ type WebhookMerchant struct {
 // ---------------------------------------------------------------------------
 
 // APIError represents a structured error response from the Nomba API.
+// Nomba error envelope: {"code":"404","description":"Resource not found","status":false}
 type APIError struct {
-	ResponseCode    string `json:"responseCode"`
-	ResponseMessage string `json:"responseMessage"`
+	Code        string `json:"code"`
+	Description string `json:"description"`
 }
 
 func (e *APIError) Error() string {
-	return "nomba: " + e.ResponseCode + " — " + e.ResponseMessage
+	return "nomba: " + e.Code + " — " + e.Description
 }

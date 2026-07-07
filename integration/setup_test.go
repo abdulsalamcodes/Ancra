@@ -215,13 +215,17 @@ func webhookBody(t *testing.T, txnID, accountNumber string, amountNaira float64)
 func newFakeNombaServer() *httptest.Server {
 	mux := http.NewServeMux()
 
-	// OAuth2 token
+	// OAuth2 token — matches real Nomba envelope format
 	mux.HandleFunc("/auth/token/issue", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{ //nolint:errcheck
-			"access_token": "fake-nomba-token",
-			"token_type":   "Bearer",
-			"expires_in":   3600,
+			"code":        "00",
+			"description": "Successful",
+			"data": map[string]interface{}{
+				"access_token": "fake-nomba-token",
+				"expiresAt":    "2099-01-01T00:00:00.000Z",
+				"businessId":   testAccountID,
+			},
 		})
 	})
 
@@ -235,9 +239,8 @@ func newFakeNombaServer() *httptest.Server {
 			var req nomba.CreateVirtualAccountRequest
 			json.NewDecoder(r.Body).Decode(&req) //nolint:errcheck
 			json.NewEncoder(w).Encode(map[string]interface{}{ //nolint:errcheck
-				"requestSuccessful": true,
-				"responseCode":      "00",
-				"responseMessage":   "Success",
+				"code":        "00",
+				"description": "Successful",
 				"data": map[string]interface{}{
 					"accountId":     "nomba-va-id",
 					"accountRef":    req.AccountRef,
@@ -254,9 +257,8 @@ func newFakeNombaServer() *httptest.Server {
 		// Wallet balance: GET /accounts/{subID}/balance
 		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/balance"):
 			json.NewEncoder(w).Encode(map[string]interface{}{ //nolint:errcheck
-				"requestSuccessful": true,
-				"responseCode":      "00",
-				"responseMessage":   "Success",
+				"code":        "00",
+				"description": "Successful",
 				"data": map[string]interface{}{
 					"accountId":      testSubAccountID,
 					"availableFloat": 0.0,
@@ -268,8 +270,8 @@ func newFakeNombaServer() *httptest.Server {
 		// Transactions: GET /accounts/{id}/transactions
 		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/transactions"):
 			json.NewEncoder(w).Encode(map[string]interface{}{ //nolint:errcheck
-				"requestSuccessful": true,
-				"responseCode":      "00",
+				"code":        "00",
+				"description": "Successful",
 				"data": map[string]interface{}{
 					"transactions": []interface{}{},
 					"page":         1,
@@ -281,9 +283,8 @@ func newFakeNombaServer() *httptest.Server {
 		// Transfers: POST /accounts/{subID}/transfers
 		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/transfers"):
 			json.NewEncoder(w).Encode(map[string]interface{}{ //nolint:errcheck
-				"requestSuccessful": true,
-				"responseCode":      "00",
-				"responseMessage":   "Success",
+				"code":        "00",
+				"description": "Successful",
 				"data": map[string]interface{}{
 					"transactionId": uuid.New().String(),
 					"reference":     "ref-001",
@@ -771,7 +772,8 @@ func createCustomer(t *testing.T, env *testEnv, kycTier int) map[string]interfac
 	return out
 }
 
-// createAccount POSTs to /accounts for the given customer ID and returns the response body.
+// createAccount POSTs to /accounts for the given customer ID and returns the
+// inner "Account" map (the VirtualAccount fields).
 func createAccount(t *testing.T, env *testEnv, customerID string) map[string]interface{} {
 	t.Helper()
 	resp := env.do(t, http.MethodPost, "/accounts", map[string]interface{}{
@@ -782,7 +784,12 @@ func createAccount(t *testing.T, env *testEnv, customerID string) map[string]int
 	mustStatus(t, resp, http.StatusCreated)
 	var out map[string]interface{}
 	decodeJSON(t, resp, &out)
-	return out
+	// CreateAccountResponse serialises with Go field names: "Account", "Identity"
+	acct, ok := out["Account"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("createAccount: response missing 'Account' field, got: %v", out)
+	}
+	return acct
 }
 
 // postWebhook sends a signed webhook to /webhooks/nomba.

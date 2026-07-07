@@ -73,11 +73,17 @@ func (c *Client) GetToken(ctx context.Context) (string, error) {
 	}
 
 	if resp.Data.AccessToken == "" {
-		return "", fmt.Errorf("nomba: token response missing accessToken (requestSuccessful=%v, code=%s, msg=%s)",
-			resp.RequestSuccessful, resp.ResponseCode, resp.ResponseMessage)
+		return "", fmt.Errorf("nomba: token response missing access_token (code=%s, description=%s)",
+			resp.Code, resp.Description)
 	}
 	c.token = resp.Data.AccessToken
-	c.tokenExpiry = time.Now().Add(time.Duration(resp.Data.ExpiresIn) * time.Second)
+
+	// Parse the ISO8601 expiry timestamp Nomba returns (e.g. "2026-07-07T05:42:45.029Z").
+	expiry, parseErr := time.Parse(time.RFC3339, resp.Data.ExpiresAt)
+	if parseErr != nil || expiry.IsZero() {
+		expiry = time.Now().Add(3 * time.Hour) // safe fallback if timestamp is missing
+	}
+	c.tokenExpiry = expiry
 	c.log.Info("nomba: token refreshed", zap.Time("expires_at", c.tokenExpiry))
 
 	return c.token, nil
@@ -100,11 +106,8 @@ func (c *Client) CreateVirtualAccount(ctx context.Context, req CreateVirtualAcco
 	if err := c.doJSON(ctx, http.MethodPost, path, token, c.subAccountID, req, &resp); err != nil {
 		return nil, fmt.Errorf("nomba: create virtual account: %w", err)
 	}
-	if !resp.RequestSuccessful {
-		return nil, &APIError{
-			ResponseCode:    resp.ResponseCode,
-			ResponseMessage: resp.ResponseMessage,
-		}
+	if resp.Code != "00" {
+		return nil, &APIError{Code: resp.Code, Description: resp.Description}
 	}
 	return &resp, nil
 }
@@ -122,10 +125,9 @@ type AccountInfo struct {
 }
 
 type accountInfoResponse struct {
-	RequestSuccessful bool        `json:"requestSuccessful"`
-	ResponseCode      string      `json:"responseCode"`
-	ResponseMessage   string      `json:"responseMessage"`
-	Data              AccountInfo `json:"data"`
+	Code        string      `json:"code"`
+	Description string      `json:"description"`
+	Data        AccountInfo `json:"data"`
 }
 
 // GetAccount fetches basic account details from Nomba. headerAccountID is the
@@ -140,11 +142,8 @@ func (c *Client) GetAccount(ctx context.Context, accountID, headerAccountID stri
 	if err := c.doJSON(ctx, http.MethodGet, path, token, headerAccountID, nil, &resp); err != nil {
 		return nil, fmt.Errorf("nomba: get account: %w", err)
 	}
-	if !resp.RequestSuccessful {
-		return nil, &APIError{
-			ResponseCode:    resp.ResponseCode,
-			ResponseMessage: resp.ResponseMessage,
-		}
+	if resp.Code != "00" {
+		return nil, &APIError{Code: resp.Code, Description: resp.Description}
 	}
 	return &resp.Data, nil
 }
@@ -201,11 +200,8 @@ func (c *Client) GetWalletBalance(ctx context.Context) (*WalletBalanceResponse, 
 	if err := c.doJSON(ctx, http.MethodGet, path, token, c.subAccountID, nil, &resp); err != nil {
 		return nil, fmt.Errorf("nomba: get wallet balance: %w", err)
 	}
-	if !resp.RequestSuccessful {
-		return nil, &APIError{
-			ResponseCode:    resp.ResponseCode,
-			ResponseMessage: resp.ResponseMessage,
-		}
+	if resp.Code != "00" {
+		return nil, &APIError{Code: resp.Code, Description: resp.Description}
 	}
 	return &resp, nil
 }
@@ -246,11 +242,8 @@ func (c *Client) ListTransactions(ctx context.Context, req ListTransactionsReque
 	if err := c.doJSON(ctx, http.MethodGet, path, token, c.subAccountID, nil, &resp); err != nil {
 		return nil, fmt.Errorf("nomba: list transactions: %w", err)
 	}
-	if !resp.RequestSuccessful {
-		return nil, &APIError{
-			ResponseCode:    resp.ResponseCode,
-			ResponseMessage: resp.ResponseMessage,
-		}
+	if resp.Code != "00" {
+		return nil, &APIError{Code: resp.Code, Description: resp.Description}
 	}
 	return &resp, nil
 }
@@ -271,11 +264,8 @@ func (c *Client) Transfer(ctx context.Context, req TransferRequest) (*TransferRe
 	if err := c.doJSON(ctx, http.MethodPost, path, token, c.subAccountID, req, &resp); err != nil {
 		return nil, fmt.Errorf("nomba: transfer: %w", err)
 	}
-	if !resp.RequestSuccessful {
-		return nil, &APIError{
-			ResponseCode:    resp.ResponseCode,
-			ResponseMessage: resp.ResponseMessage,
-		}
+	if resp.Code != "00" {
+		return nil, &APIError{Code: resp.Code, Description: resp.Description}
 	}
 	return &resp, nil
 }
@@ -336,9 +326,9 @@ func (c *Client) doJSON(ctx context.Context, method, path, token, headerAccountI
 	if res.StatusCode >= 400 {
 		var apiErr APIError
 		_ = json.Unmarshal(rawBody, &apiErr)
-		if apiErr.ResponseCode == "" {
-			apiErr.ResponseCode = strconv.Itoa(res.StatusCode)
-			apiErr.ResponseMessage = string(rawBody)
+		if apiErr.Code == "" {
+			apiErr.Code = strconv.Itoa(res.StatusCode)
+			apiErr.Description = string(rawBody)
 		}
 		return &apiErr
 	}
