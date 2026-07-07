@@ -66,17 +66,36 @@ CREATE TABLE IF NOT EXISTS system_accounts (
     name TEXT NOT NULL UNIQUE
 );
 
--- Ensure a unique constraint exists before using ON CONFLICT.
-CREATE UNIQUE INDEX IF NOT EXISTS idx_system_accounts_name
-    ON system_accounts (name);
+-- Create the global unique-on-name index only when no duplicate names exist.
+-- Migrations 007 and 009 replace this with per-org partial indexes, after
+-- which duplicate names (one per org) are expected. The DO block prevents
+-- a startup crash when the index was dropped by migration 009 but data
+-- already contains per-org rows with the same name.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_class WHERE relname = 'idx_system_accounts_name'
+  ) AND NOT EXISTS (
+    SELECT name FROM system_accounts GROUP BY name HAVING COUNT(*) > 1
+  ) THEN
+    CREATE UNIQUE INDEX idx_system_accounts_name ON system_accounts (name);
+  END IF;
+END $$;
 
--- Seed the four mandatory system accounts.
-INSERT INTO system_accounts (id, name) VALUES
-    (gen_random_uuid(), 'pool'),
-    (gen_random_uuid(), 'suspense'),
-    (gen_random_uuid(), 'fees'),
-    (gen_random_uuid(), 'returns_clearing')
-ON CONFLICT (name) DO NOTHING;
+-- Seed the four mandatory global system accounts.
+-- Uses NOT EXISTS so the insert is idempotent regardless of which unique
+-- constraints are active — the ON CONFLICT target changes across migrations.
+INSERT INTO system_accounts (id, name)
+SELECT gen_random_uuid(), v.name
+FROM (VALUES
+    ('pool'::text),
+    ('suspense'::text),
+    ('fees'::text),
+    ('returns_clearing'::text)
+) AS v(name)
+WHERE NOT EXISTS (
+    SELECT 1 FROM system_accounts WHERE name = v.name
+);
 
 -- ---------------------------------------------------------------------------
 -- ledger_entries  (append-only double-entry ledger)
