@@ -68,6 +68,7 @@ func NewRouter(d RouterDeps) http.Handler {
 	// ---------------------------------------------------------------------------
 	apiKeyHandler := handlers.NewAPIKeyHandler(d.APIKeys, d.Log)
 	reconHandler := handlers.NewReconciliationHandler(d.ReconSvc, d.Webhooks, d.Log)
+	debugHandler := handlers.NewDebugHandler(d.NombaClient, d.Log)
 
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.AdminAuth(d.AdminSecret))
@@ -76,6 +77,7 @@ func NewRouter(d RouterDeps) http.Handler {
 		r.Get("/admin/api-keys", apiKeyHandler.List)
 		r.Delete("/admin/api-keys/{id}", apiKeyHandler.Revoke)
 		r.Get("/admin/webhooks", reconHandler.ListWebhooks)
+		r.Get("/admin/debug/nomba", debugHandler.NombaDebug)
 	})
 
 	// ---------------------------------------------------------------------------

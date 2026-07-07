@@ -106,6 +106,52 @@ func (c *Client) CreateVirtualAccount(ctx context.Context, req CreateVirtualAcco
 }
 
 // ---------------------------------------------------------------------------
+// Account lookup (diagnostic)
+// ---------------------------------------------------------------------------
+
+// AccountInfo is a minimal Nomba account response used for diagnostics.
+type AccountInfo struct {
+	AccountID   string `json:"accountId"`
+	AccountName string `json:"accountName"`
+	AccountType string `json:"accountType"`
+	Status      string `json:"status"`
+}
+
+type accountInfoResponse struct {
+	RequestSuccessful bool        `json:"requestSuccessful"`
+	ResponseCode      string      `json:"responseCode"`
+	ResponseMessage   string      `json:"responseMessage"`
+	Data              AccountInfo `json:"data"`
+}
+
+// GetAccount fetches basic account details from Nomba. headerAccountID is the
+// accountId header to send (use parent or sub depending on what you are testing).
+func (c *Client) GetAccount(ctx context.Context, accountID, headerAccountID string) (*AccountInfo, error) {
+	token, err := c.GetToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var resp accountInfoResponse
+	path := "/accounts/" + accountID
+	if err := c.doJSON(ctx, http.MethodGet, path, token, headerAccountID, nil, &resp); err != nil {
+		return nil, fmt.Errorf("nomba: get account: %w", err)
+	}
+	if !resp.RequestSuccessful {
+		return nil, &APIError{
+			ResponseCode:    resp.ResponseCode,
+			ResponseMessage: resp.ResponseMessage,
+		}
+	}
+	return &resp.Data, nil
+}
+
+// ParentAccountID returns the parent account ID configured in the client.
+func (c *Client) ParentAccountID() string { return c.accountID }
+
+// SubAccountID returns the sub-account ID configured in the client.
+func (c *Client) SubAccountID() string { return c.subAccountID }
+
+// ---------------------------------------------------------------------------
 // Wallet balance
 // ---------------------------------------------------------------------------
 
