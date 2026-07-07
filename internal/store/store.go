@@ -350,6 +350,14 @@ type OrgWebhookConfig struct {
 	UpdatedAt               time.Time `json:"updated_at"`
 }
 
+// Transactor runs a function inside a single database transaction.
+// Both store operations that participate in the same call to RunInTx will
+// share the transaction carried in the context, achieving atomicity without
+// coupling individual store methods to each other.
+type Transactor interface {
+	RunInTx(ctx context.Context, fn func(ctx context.Context) error) error
+}
+
 // WebhookConfigStore manages per-org outbound webhook configuration.
 type WebhookConfigStore interface {
 	// UpsertWebhookConfig creates or replaces the webhook config for the given org.

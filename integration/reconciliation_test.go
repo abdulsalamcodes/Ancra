@@ -1,18 +1,27 @@
 package integration_test
 
 import (
+	"context"
 	"net/http"
 	"testing"
+	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/abdulsalamcodes/ancra/internal/store"
 )
 
+// Reconciliation is a platform-operator capability exposed under /admin/orgs/{orgID}/...
+// Tests use the admin secret header and a fixed test org ID.
+
 // ---------------------------------------------------------------------------
-// GET /reconciliation
+// GET /admin/orgs/{orgID}/reconciliation
 // ---------------------------------------------------------------------------
 
 func TestListReconciliationRuns_Empty(t *testing.T) {
 	env := newTestEnv(t)
 
-	resp := env.do(t, http.MethodGet, "/reconciliation", nil, authed())
+	resp := env.do(t, http.MethodGet, "/admin/orgs/"+testOrgID+"/reconciliation", nil, admin())
 	mustStatus(t, resp, http.StatusOK)
 
 	var out map[string]interface{}
@@ -24,14 +33,16 @@ func TestListReconciliationRuns_Empty(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// POST /reconciliation/trigger
+// POST /admin/orgs/{orgID}/reconciliation/trigger
 // ---------------------------------------------------------------------------
 
 func TestTriggerReconciliation_DeltaZeroWhenBalanced(t *testing.T) {
 	env := newTestEnv(t)
 
-	// Fake Nomba server returns availableFloat=0.0, and our pool ledger is also 0.
-	resp := env.do(t, http.MethodPost, "/reconciliation/trigger", nil, authed())
+	// Register the test org so the reconciliation service can look it up.
+	testOrg := seedTestOrg(t, env)
+
+	resp := env.do(t, http.MethodPost, "/admin/orgs/"+testOrg+"/reconciliation/trigger", nil, admin())
 	mustStatus(t, resp, http.StatusOK)
 
 	var run map[string]interface{}
@@ -47,12 +58,11 @@ func TestTriggerReconciliation_DeltaZeroWhenBalanced(t *testing.T) {
 
 func TestTriggerReconciliation_AppendedToList(t *testing.T) {
 	env := newTestEnv(t)
+	testOrg := seedTestOrg(t, env)
 
-	// Trigger a run
-	env.do(t, http.MethodPost, "/reconciliation/trigger", nil, authed())
+	env.do(t, http.MethodPost, "/admin/orgs/"+testOrg+"/reconciliation/trigger", nil, admin())
 
-	// Now list should have 1 run
-	resp := env.do(t, http.MethodGet, "/reconciliation", nil, authed())
+	resp := env.do(t, http.MethodGet, "/admin/orgs/"+testOrg+"/reconciliation", nil, admin())
 	mustStatus(t, resp, http.StatusOK)
 
 	var out map[string]interface{}
@@ -65,13 +75,14 @@ func TestTriggerReconciliation_AppendedToList(t *testing.T) {
 
 func TestTriggerReconciliation_MultipleRuns(t *testing.T) {
 	env := newTestEnv(t)
+	testOrg := seedTestOrg(t, env)
 
-	for i := 0; i < 3; i++ {
-		resp := env.do(t, http.MethodPost, "/reconciliation/trigger", nil, authed())
+	for range 3 {
+		resp := env.do(t, http.MethodPost, "/admin/orgs/"+testOrg+"/reconciliation/trigger", nil, admin())
 		mustStatus(t, resp, http.StatusOK)
 	}
 
-	resp := env.do(t, http.MethodGet, "/reconciliation?limit=10", nil, authed())
+	resp := env.do(t, http.MethodGet, "/admin/orgs/"+testOrg+"/reconciliation?limit=10", nil, admin())
 	mustStatus(t, resp, http.StatusOK)
 
 	var out map[string]interface{}
@@ -80,4 +91,21 @@ func TestTriggerReconciliation_MultipleRuns(t *testing.T) {
 	if len(runs) != 3 {
 		t.Fatalf("expected 3 runs, got %d", len(runs))
 	}
+}
+
+// seedTestOrg registers the fixed test org in the fake store and returns its
+// ID string. The reconciliation service resolves orgs by ID; the fake Nomba
+// server always returns balance 0, so a sweep on a zero-balance pool is ok.
+func seedTestOrg(t *testing.T, env *testEnv) string {
+	t.Helper()
+	orgID := uuid.MustParse(testOrgID)
+	if err := env.stores.orgs.CreateOrg(context.Background(), &store.Organization{
+		ID:        orgID,
+		Name:      "test org",
+		Slug:      "test-org",
+		CreatedAt: time.Now().UTC(),
+	}); err != nil {
+		t.Fatalf("seedTestOrg: %v", err)
+	}
+	return orgID.String()
 }

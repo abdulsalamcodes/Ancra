@@ -26,7 +26,7 @@ type RouterDeps struct {
 	LedgerSvc      *ledger.Service
 	ReconSvc       *reconciliation.Service
 	AuthSvc        *domainauth.Service
-	NombaClient    *nomba.Client  // optional; nil when all orgs use BYOK
+	NombaClient    *nomba.Client   // optional; nil when all orgs use BYOK
 	NombaFactory   *nomba.ClientFactory
 	Verifier       *nomba.Verifier // optional; nil when all orgs use BYOK
 	Accounts       store.AccountStore
@@ -37,6 +37,7 @@ type RouterDeps struct {
 	APIKeys        store.APIKeyStore
 	NombaConfigs   store.NombaConfigStore
 	WebhookConfigs store.WebhookConfigStore
+	Transactor     store.Transactor
 	Encryptor      *crypto.Encryptor
 	StaticKey      string // legacy env var key, optional
 	StaticKeyOrgID string // org pinned to the static key (single-tenant mode)
@@ -82,7 +83,7 @@ func NewRouter(d RouterDeps) http.Handler {
 
 	// Nomba webhook — public but HMAC-verified inside the handler.
 	whHandler := handlers.NewWebhookHandler(
-		d.Verifier, d.LedgerSvc, d.Accounts, d.Events, d.Webhooks, d.Log,
+		d.Verifier, d.LedgerSvc, d.Accounts, d.Events, d.Webhooks, d.Transactor, d.Log,
 	)
 	r.Post("/webhooks/nomba", whHandler.HandleNomba)
 

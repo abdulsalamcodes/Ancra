@@ -97,13 +97,16 @@ type WebhookStore struct{ *DB }
 func NewWebhookStore(db *DB) *WebhookStore { return &WebhookStore{db} }
 
 // CreateDelivery inserts a new outbound webhook delivery record.
+// If a transaction is carried in ctx (via RunInTx), the insert joins that
+// outer transaction so it is atomic with any ledger entries posted in the
+// same call chain.
 func (s *WebhookStore) CreateDelivery(ctx context.Context, d *store.WebhookDelivery) error {
 	const q = `
 		INSERT INTO webhook_deliveries
 			(id, org_id, event_type, payload, status, attempts, next_retry_at, created_at)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`
 
-	_, err := s.Pool.Exec(ctx, q,
+	_, err := s.exec(ctx).Exec(ctx, q,
 		d.ID, d.OrgID, d.EventType, d.Payload,
 		string(d.Status), d.Attempts, d.NextRetryAt, d.CreatedAt,
 	)

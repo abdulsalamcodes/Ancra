@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -23,12 +24,13 @@ var nilOrgID = uuid.Nil
 
 // WebhookHandler processes inbound Nomba webhook events.
 type WebhookHandler struct {
-	verifier *nomba.Verifier
-	ledger   *ledger.Service
-	accounts store.AccountStore
-	events   store.EventStore
-	webhooks store.WebhookStore
-	log      *zap.Logger
+	verifier   *nomba.Verifier
+	ledger     *ledger.Service
+	accounts   store.AccountStore
+	events     store.EventStore
+	webhooks   store.WebhookStore
+	transactor store.Transactor
+	log        *zap.Logger
 }
 
 // NewWebhookHandler constructs a WebhookHandler.
@@ -38,15 +40,17 @@ func NewWebhookHandler(
 	accounts store.AccountStore,
 	events store.EventStore,
 	webhooks store.WebhookStore,
+	transactor store.Transactor,
 	log *zap.Logger,
 ) *WebhookHandler {
 	return &WebhookHandler{
-		verifier: verifier,
-		ledger:   ledgerSvc,
-		accounts: accounts,
-		events:   events,
-		webhooks: webhooks,
-		log:      log,
+		verifier:   verifier,
+		ledger:     ledgerSvc,
+		accounts:   accounts,
+		events:     events,
+		webhooks:   webhooks,
+		transactor: transactor,
+		log:        log,
 	}
 }
 
@@ -148,24 +152,9 @@ func (h *WebhookHandler) handleCredit(w http.ResponseWriter, r *http.Request, pa
 		return
 	}
 
-	_, err = h.ledger.PostCredit(ctx, ledger.CreditRequest{
-		OrgID:       va.OrgID,
-		AccountID:   va.ID,
-		Amount:      amountKobo,
-		Currency:    "NGN",
-		ExternalRef: txn.TransactionID,
-		Narration:   txn.Narration,
-	})
-	if err != nil {
-		h.log.Error("webhook: post credit failed",
-			zap.String("txn_id", txn.TransactionID), zap.Error(err))
-		writeError(w, http.StatusInternalServerError, "failed to post credit")
-		return
-	}
-
-	// Enqueue an outbound webhook delivery for the developer.
-	// OrgID is taken from the resolved virtual account so the delivery is
-	// routed to the correct developer's webhook endpoint in Phase 5.
+	// Post the credit and enqueue the outbound delivery atomically.
+	// Both writes share a single DB transaction so a crash between them
+	// cannot leave the ledger updated without the delivery record.
 	now := time.Now().UTC()
 	delivery := &store.WebhookDelivery{
 		ID:        uuid.New(),
@@ -176,9 +165,25 @@ func (h *WebhookHandler) handleCredit(w http.ResponseWriter, r *http.Request, pa
 		Attempts:  0,
 		CreatedAt: now,
 	}
-	if err := h.webhooks.CreateDelivery(ctx, delivery); err != nil {
-		h.log.Error("webhook: create delivery record failed", zap.Error(err))
-		// Non-fatal — credit was already posted.
+
+	err = h.transactor.RunInTx(ctx, func(txCtx context.Context) error {
+		if _, err := h.ledger.PostCredit(txCtx, ledger.CreditRequest{
+			OrgID:       va.OrgID,
+			AccountID:   va.ID,
+			Amount:      amountKobo,
+			Currency:    "NGN",
+			ExternalRef: txn.TransactionID,
+			Narration:   txn.Narration,
+		}); err != nil {
+			return err
+		}
+		return h.webhooks.CreateDelivery(txCtx, delivery)
+	})
+	if err != nil {
+		h.log.Error("webhook: credit+delivery transaction failed",
+			zap.String("txn_id", txn.TransactionID), zap.Error(err))
+		writeError(w, http.StatusInternalServerError, "failed to post credit")
+		return
 	}
 
 	h.log.Info("webhook: credit processed",

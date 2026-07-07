@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/abdulsalamcodes/ancra/internal/store"
 )
@@ -16,32 +17,43 @@ type LedgerStore struct{ *DB }
 // NewLedgerStore creates a LedgerStore backed by the given pool.
 func NewLedgerStore(db *DB) *LedgerStore { return &LedgerStore{db} }
 
-// InsertEntries writes all entries in a single batch within an implicit
-// transaction. Ledger entries are append-only; no UPDATE/DELETE is ever issued.
+// InsertEntries writes all entries atomically. If a transaction is carried in
+// ctx (via RunInTx), entries join that outer transaction. Otherwise a new
+// transaction is opened for this call alone.
 func (s *LedgerStore) InsertEntries(ctx context.Context, entries []*store.LedgerEntry) error {
+	if tx := txFromCtx(ctx); tx != nil {
+		return insertLedgerEntries(ctx, tx, entries)
+	}
+
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("ledger.InsertEntries: begin tx: %w", err)
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
-	const q = `
-		INSERT INTO ledger_entries
-			(id, account_id, direction, amount, currency, txn_group_id, external_ref, entry_type, created_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`
+	if err := insertLedgerEntries(ctx, tx, entries); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("ledger.InsertEntries: commit: %w", err)
+	}
+	return nil
+}
 
+const insertLedgerEntrySQL = `
+	INSERT INTO ledger_entries
+		(id, account_id, direction, amount, currency, txn_group_id, external_ref, entry_type, created_at)
+	VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`
+
+func insertLedgerEntries(ctx context.Context, tx pgx.Tx, entries []*store.LedgerEntry) error {
 	for _, e := range entries {
-		if _, err := tx.Exec(ctx, q,
+		if _, err := tx.Exec(ctx, insertLedgerEntrySQL,
 			e.ID, e.AccountID, string(e.Direction),
 			e.Amount, e.Currency, e.TxnGroupID,
 			e.ExternalRef, e.EntryType, e.CreatedAt,
 		); err != nil {
 			return fmt.Errorf("ledger.InsertEntries: insert %s: %w", e.ID, err)
 		}
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("ledger.InsertEntries: commit: %w", err)
 	}
 	return nil
 }

@@ -101,6 +101,7 @@ func newTestEnv(t *testing.T) *testEnv {
 		Webhooks:       fs.webhooks,
 		APIKeys:        fs.apiKeys,
 		NombaConfigs:   nombaConfigs,
+		Transactor:     noOpTransactor{},
 		StaticKey:      testStaticKey,
 		StaticKeyOrgID: testOrgID,
 		AdminSecret:    testAdminSecret,
@@ -997,6 +998,17 @@ func (s *fakeOrgStore) ListAllOrgs(_ context.Context) ([]*store.Organization, er
 		out = append(out, org)
 	}
 	return out, nil
+}
+
+// --- noOpTransactor ---
+
+// noOpTransactor satisfies store.Transactor for tests that use fake in-memory
+// stores. It runs fn directly without a real DB transaction, which is correct
+// because the fake stores don't require transactional isolation.
+type noOpTransactor struct{}
+
+func (noOpTransactor) RunInTx(ctx context.Context, fn func(context.Context) error) error {
+	return fn(ctx)
 }
 
 // ---------------------------------------------------------------------------
