@@ -1706,6 +1706,7 @@
       </div>`;
           document.getElementById("acc-create-result").style.display = "block";
           showToast("Account provisioned ✓");
+          loadAccounts();
         } catch (e) {
           setError("acc-create-error", e.message);
         }
@@ -1732,7 +1733,7 @@
               </tr></thead>
               <tbody>
                 ${accounts.map(a => `<tr>
-                  <td class="td-mono" style="font-size:11px;" title="${escapeHtml(a.id)}">${shortUUID(a.id)}</td>
+                  <td class="td-mono" style="font-size:11px;cursor:pointer;" title="Click to copy: ${escapeHtml(a.id)}" onclick="navigator.clipboard.writeText('${escapeHtml(a.id)}').then(()=>showToast('Account ID copied ✓'))">${shortUUID(a.id)} 📋</td>
                   <td class="mono">${escapeHtml(a.bank_account_number || "—")}</td>
                   <td>${escapeHtml(a.bank_account_name || "—")}</td>
                   <td>${statusBadge(a.status)}</td>
