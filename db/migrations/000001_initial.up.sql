@@ -66,6 +66,10 @@ CREATE TABLE IF NOT EXISTS system_accounts (
     name TEXT NOT NULL UNIQUE
 );
 
+-- Ensure a unique constraint exists before using ON CONFLICT.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_system_accounts_name
+    ON system_accounts (name);
+
 -- Seed the four mandatory system accounts.
 INSERT INTO system_accounts (id, name) VALUES
     (gen_random_uuid(), 'pool'),
