@@ -88,9 +88,19 @@ func (h *DebugHandler) NombaDebug(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Raw token probe — shows exact body Nomba returns so we can verify struct shape.
+	rawStatus, rawBody, rawErr := h.nomba.FetchTokenRaw(r.Context())
+	rawTokenErrMsg := ""
+	if rawErr != nil {
+		rawTokenErrMsg = rawErr.Error()
+	}
+
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"token_ok":                    tokenOK,
 		"token_error":                 tokenErrMsg,
+		"token_raw_status":            rawStatus,
+		"token_raw_body":              rawBody,
+		"token_raw_error":             rawTokenErrMsg,
 		"parent_account":              parentResult,
 		"sub_account_parent_header":   subWithParentHdr,
 		"sub_account_sub_header":      subWithSubHdr,

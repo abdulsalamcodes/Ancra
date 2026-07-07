@@ -155,6 +155,36 @@ func (c *Client) ParentAccountID() string { return c.accountID }
 // SubAccountID returns the sub-account ID configured in the client.
 func (c *Client) SubAccountID() string { return c.subAccountID }
 
+// FetchTokenRaw performs the token request and returns the raw HTTP status
+// and response body without any parsing — useful for diagnosing struct mismatches.
+func (c *Client) FetchTokenRaw(ctx context.Context) (int, string, error) {
+	body := TokenRequest{
+		GrantType:    "client_credentials",
+		ClientID:     c.clientID,
+		ClientSecret: c.clientSecret,
+	}
+	b, err := json.Marshal(body)
+	if err != nil {
+		return 0, "", err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/auth/token/issue", bytes.NewReader(b))
+	if err != nil {
+		return 0, "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	if c.accountID != "" {
+		req.Header.Set("accountId", c.accountID)
+	}
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return 0, "", err
+	}
+	defer res.Body.Close()
+	raw, err := io.ReadAll(res.Body)
+	return res.StatusCode, string(raw), err
+}
+
 // ---------------------------------------------------------------------------
 // Wallet balance
 // ---------------------------------------------------------------------------
