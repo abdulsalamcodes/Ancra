@@ -154,6 +154,43 @@ func (c *Client) ParentAccountID() string { return c.accountID }
 // SubAccountID returns the sub-account ID configured in the client.
 func (c *Client) SubAccountID() string { return c.subAccountID }
 
+// RawRequest performs an arbitrary authenticated request and returns the raw
+// HTTP status and response body. Used only for diagnostic endpoints.
+func (c *Client) RawRequest(ctx context.Context, method, path, headerAccountID string, reqBody interface{}) (int, string, error) {
+	token, err := c.GetToken(ctx)
+	if err != nil {
+		return 0, "", fmt.Errorf("get token: %w", err)
+	}
+
+	var bodyReader io.Reader
+	if reqBody != nil {
+		b, err := json.Marshal(reqBody)
+		if err != nil {
+			return 0, "", err
+		}
+		bodyReader = bytes.NewReader(b)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, bodyReader)
+	if err != nil {
+		return 0, "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	if headerAccountID != "" {
+		req.Header.Set("accountId", headerAccountID)
+	}
+
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return 0, "", err
+	}
+	defer res.Body.Close()
+	raw, err := io.ReadAll(res.Body)
+	return res.StatusCode, string(raw), err
+}
+
 // FetchTokenRaw performs the token request and returns the raw HTTP status
 // and response body without any parsing — useful for diagnosing struct mismatches.
 func (c *Client) FetchTokenRaw(ctx context.Context) (int, string, error) {

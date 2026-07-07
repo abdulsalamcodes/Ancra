@@ -95,6 +95,45 @@ func (h *DebugHandler) NombaDebug(w http.ResponseWriter, r *http.Request) {
 		rawTokenErrMsg = rawErr.Error()
 	}
 
+	// ---------------------------------------------------------------------------
+	// Virtual account path probe — try every reasonable path/header combination
+	// with a real token to find which one Nomba accepts.
+	// ---------------------------------------------------------------------------
+	type vaProbe struct {
+		Path         string `json:"path"`
+		HeaderAcctID string `json:"header_account_id"`
+		Status       int    `json:"status"`
+		Body         string `json:"body"`
+	}
+
+	testVABody := map[string]string{
+		"accountName":   "Debug Test Account",
+		"accountRef":    "debug-probe-001",
+		"customerEmail": "debug@probe.local",
+		"customerName":  "Debug Probe",
+	}
+
+	vaProbes := []vaProbe{}
+	if tokenOK {
+		combos := []vaProbe{
+			{Path: "/accounts/" + parentID + "/virtual-accounts", HeaderAcctID: parentID},
+			{Path: "/accounts/" + parentID + "/virtual-accounts", HeaderAcctID: subID},
+			{Path: "/accounts/" + subID + "/virtual-accounts", HeaderAcctID: parentID},
+			{Path: "/accounts/" + subID + "/virtual-accounts", HeaderAcctID: subID},
+			{Path: "/virtual-accounts", HeaderAcctID: parentID},
+			{Path: "/virtual-accounts", HeaderAcctID: subID},
+		}
+		for _, c := range combos {
+			st, body, _ := h.nomba.RawRequest(r.Context(), "POST", c.Path, c.HeaderAcctID, testVABody)
+			vaProbes = append(vaProbes, vaProbe{
+				Path:         c.Path,
+				HeaderAcctID: c.HeaderAcctID,
+				Status:       st,
+				Body:         body,
+			})
+		}
+	}
+
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"token_ok":                    tokenOK,
 		"token_error":                 tokenErrMsg,
@@ -104,5 +143,6 @@ func (h *DebugHandler) NombaDebug(w http.ResponseWriter, r *http.Request) {
 		"parent_account":              parentResult,
 		"sub_account_parent_header":   subWithParentHdr,
 		"sub_account_sub_header":      subWithSubHdr,
+		"virtual_account_path_probes": vaProbes,
 	})
 }
