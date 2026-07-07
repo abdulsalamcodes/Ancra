@@ -14,10 +14,16 @@ type TokenRequest struct {
 }
 
 // TokenResponse is returned by the OAuth2 token endpoint.
+// Nomba wraps the token inside a "data" envelope and uses camelCase keys.
 type TokenResponse struct {
-	AccessToken string `json:"access_token"`
-	TokenType   string `json:"token_type"`
-	ExpiresIn   int    `json:"expires_in"` // seconds
+	RequestSuccessful bool   `json:"requestSuccessful"`
+	ResponseCode      string `json:"responseCode"`
+	ResponseMessage   string `json:"responseMessage"`
+	Data              struct {
+		AccessToken string `json:"accessToken"`
+		TokenType   string `json:"tokenType"`
+		ExpiresIn   int    `json:"expiresIn"` // seconds
+	} `json:"data"`
 }
 
 // ---------------------------------------------------------------------------

@@ -72,8 +72,12 @@ func (c *Client) GetToken(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("nomba: token refresh: %w", err)
 	}
 
-	c.token = resp.AccessToken
-	c.tokenExpiry = time.Now().Add(time.Duration(resp.ExpiresIn) * time.Second)
+	if resp.Data.AccessToken == "" {
+		return "", fmt.Errorf("nomba: token response missing accessToken (requestSuccessful=%v, code=%s, msg=%s)",
+			resp.RequestSuccessful, resp.ResponseCode, resp.ResponseMessage)
+	}
+	c.token = resp.Data.AccessToken
+	c.tokenExpiry = time.Now().Add(time.Duration(resp.Data.ExpiresIn) * time.Second)
 	c.log.Info("nomba: token refreshed", zap.Time("expires_at", c.tokenExpiry))
 
 	return c.token, nil
