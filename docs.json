@@ -15,59 +15,63 @@
   "topbar": {
     "style": "default"
   },
-  "navigation": [
-    {
-      "group": "Getting Started",
-      "pages": [
-        "docs/README",
-        "docs/getting-started/quickstart",
-        "docs/getting-started/authentication",
-        "docs/getting-started/errors"
-      ]
-    },
-    {
-      "group": "Customers",
-      "pages": [
-        "docs/customers/overview",
-        "docs/customers/kyc-tiers"
-      ]
-    },
-    {
-      "group": "Virtual Accounts",
-      "pages": [
-        "docs/virtual-accounts/overview",
-        "docs/virtual-accounts/create",
-        "docs/virtual-accounts/balance-and-transactions",
-        "docs/virtual-accounts/close"
-      ]
-    },
-    {
-      "group": "Webhooks",
-      "pages": [
-        "docs/webhooks/overview",
-        "docs/webhooks/events",
-        "docs/webhooks/verification"
-      ]
-    },
-    {
-      "group": "Transfers",
-      "pages": [
-        "docs/transfers/overview",
-        "docs/transfers/bank-lookup",
-        "docs/transfers/initiate"
-      ]
-    },
-    {
-      "group": "API Reference",
-      "pages": [
-        "docs/api-reference/customers",
-        "docs/api-reference/accounts",
-        "docs/api-reference/transfers",
-        "docs/api-reference/webhooks",
-        "docs/api-reference/reconciliation"
-      ]
-    }
-  ],
+  "navigation": {
+    "groups": [
+      {
+        "group": "Getting Started",
+        "pages": [
+          "docs/README",
+          "docs/getting-started/quickstart",
+          "docs/getting-started/authentication",
+          "docs/getting-started/errors"
+        ]
+      },
+      {
+        "group": "Customers",
+        "pages": [
+          "docs/customers/overview",
+          "docs/customers/kyc-tiers"
+        ]
+      },
+      {
+        "group": "Virtual Accounts",
+        "pages": [
+          "docs/virtual-accounts/overview",
+          "docs/virtual-accounts/create",
+          "docs/virtual-accounts/balance-and-transactions",
+          "docs/virtual-accounts/close"
+        ]
+      },
+      {
+        "group": "Webhooks",
+        "pages": [
+          "docs/webhooks/overview",
+          "docs/webhooks/events",
+          "docs/webhooks/verification"
+        ]
+      },
+      {
+        "group": "Transfers",
+        "pages": [
+          "docs/transfers/overview",
+          "docs/transfers/bank-lookup",
+          "docs/transfers/initiate"
+        ]
+      },
+      {
+        "group": "API Reference",
+        "pages": [
+          "docs/api-reference/customers",
+          "docs/api-reference/accounts",
+          "docs/api-reference/transfers",
+          "docs/api-reference/webhooks",
+          "docs/api-reference/reconciliation",
+          "docs/api-reference/settings",
+          "docs/api-reference/auth"
+        ]
+      }
+    ]
+  },
   "footerSocials": {
     "github": "https://github.com/abdulsalamcodes/ancra"
   }
