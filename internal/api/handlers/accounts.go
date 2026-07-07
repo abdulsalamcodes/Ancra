@@ -34,6 +34,7 @@ type createAccountRequest struct {
 	CustomerID    string `json:"customer_id"`
 	DisplayName   string `json:"display_name"`
 	CustomerEmail string `json:"customer_email"`
+	PhoneNumber   string `json:"phone_number,omitempty"`
 	BVN           string `json:"bvn,omitempty"`
 	NIN           string `json:"nin,omitempty"`
 }
@@ -61,12 +62,13 @@ func (h *AccountHandler) Create(w http.ResponseWriter, r *http.Request) {
 		CustomerID:    customerID,
 		DisplayName:   req.DisplayName,
 		CustomerEmail: req.CustomerEmail,
+		PhoneNumber:   req.PhoneNumber,
 		BVN:           req.BVN,
 		NIN:           req.NIN,
 	})
 	if err != nil {
 		h.log.Error("create account failed", zap.Error(err))
-		writeError(w, http.StatusInternalServerError, "failed to provision account")
+		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 

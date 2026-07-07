@@ -74,6 +74,7 @@ func (s *Service) Create(ctx context.Context, req CreateAccountRequest) (*Create
 		AccountRef:    accountRef,
 		CustomerEmail: req.CustomerEmail,
 		CustomerName:  req.DisplayName,
+		PhoneNumber:   req.PhoneNumber,
 		BVN:           req.BVN,
 		NIN:           req.NIN,
 	})

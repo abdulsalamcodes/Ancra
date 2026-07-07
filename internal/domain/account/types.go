@@ -13,6 +13,7 @@ type CreateAccountRequest struct {
 	CustomerID    uuid.UUID
 	DisplayName   string
 	CustomerEmail string
+	PhoneNumber   string
 	// Optional KYC fields forwarded to Nomba
 	BVN string
 	NIN string

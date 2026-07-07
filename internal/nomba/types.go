@@ -27,9 +27,10 @@ type TokenResponse struct {
 // CreateVirtualAccountRequest is the payload sent to Nomba to provision a DVA.
 type CreateVirtualAccountRequest struct {
 	AccountName   string `json:"accountName"`
-	AccountRef    string `json:"accountRef"`   // your internal reference
+	AccountRef    string `json:"accountRef"`             // your internal reference
 	CustomerEmail string `json:"customerEmail"`
 	CustomerName  string `json:"customerName"`
+	PhoneNumber   string `json:"phoneNumber,omitempty"`
 	BVN           string `json:"bvn,omitempty"`
 	NIN           string `json:"nin,omitempty"`
 }

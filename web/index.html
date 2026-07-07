@@ -634,6 +634,10 @@
             <label>Customer Email</label>
             <input type="text" id="acc-email" placeholder="customer@example.com" />
           </div>
+          <div class="form-group">
+            <label>Phone Number <span style="color:#94a3b8;font-weight:400;">(optional)</span></label>
+            <input type="text" id="acc-phone" placeholder="+2348012345678" />
+          </div>
           <button class="btn btn-primary" onclick="createAccount()">+ Provision</button>
         </div>
         <div id="acc-create-result" style="display:none;margin-top:12px;"></div>
@@ -1206,23 +1210,23 @@ async function createAccount() {
   const customerId = document.getElementById('acc-customer-id').value.trim();
   const displayName = document.getElementById('acc-display-name').value.trim();
   const email = document.getElementById('acc-email').value.trim();
+  const phone = document.getElementById('acc-phone').value.trim();
 
   hideEl('acc-create-error');
   document.getElementById('acc-create-result').style.display = 'none';
 
   if (!customerId || !displayName || !email) {
-    setError('acc-create-error', 'All fields are required.');
+    setError('acc-create-error', 'Customer ID, Display Name and Email are required.');
     return;
   }
+
+  const body = { customer_id: customerId, display_name: displayName, customer_email: email };
+  if (phone) body.phone_number = phone;
 
   try {
     const data = await apiFetch('/accounts', {
       method: 'POST',
-      body: JSON.stringify({
-        customer_id: customerId,
-        display_name: displayName,
-        customer_email: email,
-      }),
+      body: JSON.stringify(body),
     });
 
     document.getElementById('acc-create-result').innerHTML = `
