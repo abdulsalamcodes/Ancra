@@ -1,3 +1,7 @@
+---
+title: Webhooks API
+---
+
 # Webhooks API
 
 ## Nomba Webhook Receiver
@@ -8,7 +12,7 @@ POST /webhooks/nomba
 
 This endpoint is **public** but HMAC-SHA256 verified. Requests with an invalid or missing signature are rejected with `401`.
 
-This endpoint is called by Nomba — you do not call it yourself. See [Webhook Overview](../webhooks/overview.md) for setup instructions.
+This endpoint is called by Nomba — you do not call it yourself. See [Webhook Overview](../webhooks/overview) for setup instructions.
 
 **Successful processing** `200 OK`
 

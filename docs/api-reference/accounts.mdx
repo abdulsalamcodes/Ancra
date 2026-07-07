@@ -1,3 +1,7 @@
+---
+title: Accounts API
+---
+
 # Accounts API
 
 ## Provision Account
@@ -50,7 +54,7 @@ Authorization: Bearer <key>
 |---|---|
 | `400` | `{"error":{"message":"missing required fields: customer_id"}}` |
 
-See [Errors](../getting-started/errors.md) for the standard error envelope.
+See [Errors](../getting-started/errors) for the standard error envelope.
 
 ---
 
@@ -229,7 +233,7 @@ Authorization: Bearer <key>
 { "status": "closed" }
 ```
 
-Closure is irreversible. Inbound payments after closure go to a suspense ledger. See [Close an Account](../virtual-accounts/close.md) for details.
+Closure is irreversible. Inbound payments after closure go to a suspense ledger. See [Close an Account](../virtual-accounts/close) for details.
 
 **Errors**
 

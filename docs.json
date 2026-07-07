@@ -12,6 +12,18 @@
     "light": "#737373",
     "dark": "#0a0a0a"
   },
+  "api": {
+    "openapi": "openapi.yaml",
+    "playground": {
+      "display": "interactive"
+    },
+    "examples": {
+      "languages": ["curl", "python", "javascript", "go"],
+      "defaults": "required",
+      "prefill": true,
+      "autogenerate": true
+    }
+  },
   "topbar": {
     "style": "default"
   },
@@ -60,6 +72,7 @@
       },
       {
         "group": "API Reference",
+        "openapi": "openapi.yaml",
         "pages": [
           "docs/api-reference/customers",
           "docs/api-reference/accounts",

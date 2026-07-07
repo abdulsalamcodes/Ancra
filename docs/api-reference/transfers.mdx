@@ -1,3 +1,7 @@
+---
+title: Transfers API
+---
+
 # Transfers API
 
 ## Bank Account Lookup
@@ -26,7 +30,7 @@ Authorization: Bearer <key>
 ```
 
 | Status | Example |
-|---|---|---|
+|---|---|
 | `400` | `{"error":{"message":"missing required fields: account_number"}}` |
 | `502` | `{"error":{"message":"could not resolve account via Nomba"}}` |
 
@@ -86,7 +90,7 @@ Authorization: Bearer <key>
 ```
 
 | Status | Example |
-|---|---|---|
+|---|---|
 | `400` | `{"error":{"message":"missing required fields: amount"}}` |
 | `422` | `{"error":{"message":"insufficient funds"}}` |
 | `502` | `{"error":{"message":"transfer rejected by payment provider"}}` |

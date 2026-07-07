@@ -1,10 +1,14 @@
+---
+title: Quickstart
+---
+
 # Quickstart
 
 Get from zero to a funded virtual account in four steps.
 
 ## Prerequisites
 
-- An Ancra API key (see [Authentication](authentication.md))
+- An Ancra API key (see [Authentication](authentication))
 - Your base URL
 
 ```bash
@@ -71,7 +75,7 @@ The `bank_account_number` is the virtual account number your customer shares wit
 
 When someone transfers money to `9876543210`, Nomba fires a `payment_success` webhook to your registered URL. Ancra verifies the signature, credits the customer's ledger, and responds `200` to Nomba.
 
-See [Webhooks](../webhooks/overview.md) for setup and signature verification.
+See [Webhooks](../webhooks/overview) for setup and signature verification.
 
 ---
 

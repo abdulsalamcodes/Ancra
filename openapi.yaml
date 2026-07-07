@@ -1,0 +1,1593 @@
+openapi: "3.0.3"
+info:
+  title: Ancra API
+  description: |
+    Ancra is a Dedicated Virtual Account (DVA) infrastructure API. It lets you
+    provision Nigerian bank account numbers for your customers, receive payments
+    via webhook, and initiate outbound bank transfers.
+  version: "0.1.0"
+servers:
+  - url: https://your-deployment.onrender.com
+    description: Production
+  - url: http://localhost:8080
+    description: Local development
+paths:
+  # ---------------------------------------------------------------------------
+  # Auth
+  # ---------------------------------------------------------------------------
+  /auth/signup:
+    post:
+      tags: [Auth]
+      summary: Create organisation and owner account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [org_name, email, password]
+              properties:
+                org_name:
+                  type: string
+                  description: Organisation name
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+                  description: At least 8 characters
+      responses:
+        "201":
+          description: Account created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: "#/components/schemas/User"
+                  org:
+                    $ref: "#/components/schemas/Organization"
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Log in with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: "#/components/schemas/User"
+                  org:
+                    $ref: "#/components/schemas/Organization"
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Exchange a refresh token for a new access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        "200":
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revoke a refresh token
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        "204":
+          description: Logged out
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current user and organisation
+      security:
+        - JWTAuth: []
+      responses:
+        "200":
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: "#/components/schemas/User"
+                  org:
+                    $ref: "#/components/schemas/Organization"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ---------------------------------------------------------------------------
+  # API Keys
+  # ---------------------------------------------------------------------------
+  /api-keys:
+    post:
+      tags: [API Keys]
+      summary: Create an API key
+      security:
+        - JWTAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  description: Human-readable label
+      responses:
+        "201":
+          description: Key created (shown once)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIKeyCreated"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+    get:
+      tags: [API Keys]
+      summary: List API keys
+      security:
+        - JWTAuth: []
+      responses:
+        "200":
+          description: List of API keys
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  keys:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/APIKey"
+
+  /api-keys/{id}:
+    delete:
+      tags: [API Keys]
+      summary: Revoke an API key
+      security:
+        - JWTAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Key revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: revoked
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ---------------------------------------------------------------------------
+  # Customers
+  # ---------------------------------------------------------------------------
+  /customers:
+    post:
+      tags: [Customers]
+      summary: Create a customer
+      security:
+        - APIKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                kyc_tier:
+                  type: integer
+                  enum: [1, 2, 3]
+                  default: 1
+      responses:
+        "201":
+          description: Customer created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+    get:
+      tags: [Customers]
+      summary: List customers
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Paginated customer list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  customers:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Customer"
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+
+  /customers/{id}:
+    get:
+      tags: [Customers]
+      summary: Get a customer by ID
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Customer details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /customers/{id}/kyc-tier:
+    put:
+      tags: [Customers]
+      summary: Upgrade a customer's KYC tier
+      security:
+        - APIKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kyc_tier]
+              properties:
+                kyc_tier:
+                  type: integer
+                  enum: [2, 3]
+                  description: Must be strictly higher than current tier
+      responses:
+        "200":
+          description: Tier upgraded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KYCTierChange"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "422":
+          description: Not an upgrade
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /customers/{id}/kyc-tier/history:
+    get:
+      tags: [Customers]
+      summary: Get KYC tier upgrade history
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Upgrade history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  history:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/KYCTierChange"
+
+  # ---------------------------------------------------------------------------
+  # Virtual Accounts
+  # ---------------------------------------------------------------------------
+  /accounts:
+    post:
+      tags: [Virtual Accounts]
+      summary: Provision a virtual account
+      security:
+        - APIKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [customer_id, display_name, customer_email]
+              properties:
+                customer_id:
+                  type: string
+                  format: uuid
+                display_name:
+                  type: string
+                  description: Name registered on the bank account
+                customer_email:
+                  type: string
+                  format: email
+                phone_number:
+                  type: string
+                bvn:
+                  type: string
+                  description: Required for Tier 2+
+                nin:
+                  type: string
+                  description: Required for Tier 3
+      responses:
+        "201":
+          description: Account provisioned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VirtualAccount"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+    get:
+      tags: [Virtual Accounts]
+      summary: List virtual accounts
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Paginated account list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accounts:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/VirtualAccount"
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+
+  /accounts/{id}:
+    get:
+      tags: [Virtual Accounts]
+      summary: Get a virtual account
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Account details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VirtualAccount"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Virtual Accounts]
+      summary: Update account display name
+      security:
+        - APIKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [display_name]
+              properties:
+                display_name:
+                  type: string
+      responses:
+        "200":
+          description: Account updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: updated
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /accounts/{id}/balance:
+    get:
+      tags: [Virtual Accounts]
+      summary: Get account balance
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Balance in kobo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  AccountID:
+                    type: string
+                    format: uuid
+                  Balance:
+                    type: integer
+                    description: Balance in kobo (÷100 for naira)
+                  Currency:
+                    type: string
+                    example: NGN
+                  AsOf:
+                    type: string
+                    format: date-time
+
+  /accounts/{id}/transactions:
+    get:
+      tags: [Virtual Accounts]
+      summary: List ledger transactions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Paginated transactions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  Entries:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/LedgerEntry"
+                  Limit:
+                    type: integer
+                  Offset:
+                    type: integer
+
+  /accounts/{id}/statement:
+    get:
+      tags: [Virtual Accounts]
+      summary: Get account statement with running balances
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Paginated statement with running balances
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  account_id:
+                    type: string
+                    format: uuid
+                  opening_balance_kobo:
+                    type: integer
+                  closing_balance_kobo:
+                    type: integer
+                  currency:
+                    type: string
+                  entries:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/StatementEntry"
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+
+  /accounts/{id}/close:
+    post:
+      tags: [Virtual Accounts]
+      summary: Close a virtual account
+      security:
+        - APIKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Account closed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: closed
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ---------------------------------------------------------------------------
+  # Transfers
+  # ---------------------------------------------------------------------------
+  /transfers/lookup:
+    post:
+      tags: [Transfers]
+      summary: Resolve account name from number and bank code
+      security:
+        - APIKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [account_number, bank_code]
+              properties:
+                account_number:
+                  type: string
+                  description: 10-digit NUBAN account number
+                bank_code:
+                  type: string
+                  description: 3-digit CBN bank code
+      responses:
+        "200":
+          description: Resolved account name
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  account_number:
+                    type: string
+                  account_name:
+                    type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "502":
+          $ref: "#/components/responses/BadGateway"
+
+  /accounts/{id}/transfer:
+    post:
+      tags: [Transfers]
+      summary: Initiate an outbound bank transfer
+      security:
+        - APIKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Source virtual account UUID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - amount
+                - reference
+                - sender_name
+                - destination_bank
+                - destination_account
+                - destination_name
+              properties:
+                amount:
+                  type: integer
+                  description: Amount in kobo (×100 for naira)
+                  example: 500000
+                narration:
+                  type: string
+                  description: Payment note
+                reference:
+                  type: string
+                  description: Unique idempotency key
+                sender_name:
+                  type: string
+                  description: Name shown as sender
+                destination_bank:
+                  type: string
+                  description: 3-digit bank code
+                  example: "044"
+                destination_account:
+                  type: string
+                  description: 10-digit NUBAN account number
+                destination_name:
+                  type: string
+                  description: Account name from bank lookup
+      responses:
+        "200":
+          description: Transfer submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: submitted
+                  nomba_transaction:
+                    $ref: "#/components/schemas/NombaTransfer"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "422":
+          description: Insufficient funds
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          $ref: "#/components/responses/BadGateway"
+
+  # ---------------------------------------------------------------------------
+  # Webhooks
+  # ---------------------------------------------------------------------------
+  /webhooks:
+    get:
+      tags: [Webhooks]
+      summary: List outbound webhook deliveries
+      security:
+        - JWTAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Paginated delivery list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deliveries:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/WebhookDelivery"
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+
+  /webhooks/nomba:
+    post:
+      tags: [Webhooks]
+      summary: Inbound Nomba webhook receiver
+      description: |
+        Called by Nomba when a payment event occurs. HMAC-SHA256 verified.
+        You do not call this endpoint yourself.
+      responses:
+        "200":
+          description: Event processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+        "401":
+          description: Invalid signature
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ---------------------------------------------------------------------------
+  # Settings
+  # ---------------------------------------------------------------------------
+  /settings/nomba:
+    get:
+      tags: [Settings]
+      summary: Get Nomba integration configuration
+      security:
+        - JWTAuth: []
+      responses:
+        "200":
+          description: Current Nomba config (secrets redacted)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  org_id:
+                    type: string
+                    format: uuid
+                  client_id:
+                    type: string
+                  account_id:
+                    type: string
+                  sub_account_id:
+                    type: string
+                  sandbox:
+                    type: boolean
+                  updated_at:
+                    type: string
+                    format: date-time
+    put:
+      tags: [Settings]
+      summary: Update Nomba integration configuration
+      security:
+        - JWTAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - client_id
+                - client_secret
+                - account_id
+                - sub_account_id
+                - webhook_secret
+              properties:
+                client_id:
+                  type: string
+                client_secret:
+                  type: string
+                account_id:
+                  type: string
+                sub_account_id:
+                  type: string
+                webhook_secret:
+                  type: string
+                sandbox:
+                  type: boolean
+                  default: false
+      responses:
+        "200":
+          description: Config saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: saved
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /settings/nomba/test:
+    post:
+      tags: [Settings]
+      summary: Test Nomba connection with stored credentials
+      security:
+        - JWTAuth: []
+      responses:
+        "200":
+          description: Connection successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+        "502":
+          $ref: "#/components/responses/BadGateway"
+
+  /settings/webhook:
+    get:
+      tags: [Settings]
+      summary: Get outbound webhook configuration
+      security:
+        - JWTAuth: []
+      responses:
+        "200":
+          description: Current webhook config (secret redacted)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  org_id:
+                    type: string
+                    format: uuid
+                  endpoint_url:
+                    type: string
+                    format: uri
+                  updated_at:
+                    type: string
+                    format: date-time
+    put:
+      tags: [Settings]
+      summary: Update outbound webhook endpoint
+      security:
+        - JWTAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [endpoint_url]
+              properties:
+                endpoint_url:
+                  type: string
+                  format: uri
+                  description: HTTPS endpoint receiving webhook events
+      responses:
+        "200":
+          description: Webhook config saved (secret shown once)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  endpoint_url:
+                    type: string
+                  signing_secret:
+                    type: string
+                    description: Save this — it will not be shown again
+                  note:
+                    type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  # ---------------------------------------------------------------------------
+  # Reconciliation
+  # ---------------------------------------------------------------------------
+  /reconciliation:
+    get:
+      tags: [Reconciliation]
+      summary: List reconciliation runs
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Paginated reconciliation runs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  runs:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ReconciliationRun"
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+
+  /reconciliation/trigger:
+    post:
+      tags: [Reconciliation]
+      summary: Trigger a reconciliation sweep
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Sweep executed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReconciliationRun"
+
+  # ---------------------------------------------------------------------------
+  # Admin
+  # ---------------------------------------------------------------------------
+  /admin/orgs:
+    get:
+      tags: [Admin]
+      summary: List all organisations
+      security:
+        - AdminAuth: []
+      responses:
+        "200":
+          description: Organisation list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orgs:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Organization"
+
+  /admin/stats:
+    get:
+      tags: [Admin]
+      summary: Get platform-wide stats
+      security:
+        - AdminAuth: []
+      responses:
+        "200":
+          description: Aggregate statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_orgs:
+                    type: integer
+                  total_keys:
+                    type: integer
+                  active_keys:
+                    type: integer
+
+  /admin/orgs/{orgID}/reconciliation:
+    get:
+      tags: [Admin]
+      summary: List reconciliation runs for an org
+      security:
+        - AdminAuth: []
+      parameters:
+        - name: orgID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Reconciliation runs for the org
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  runs:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ReconciliationRun"
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+
+  /admin/orgs/{orgID}/reconciliation/trigger:
+    post:
+      tags: [Admin]
+      summary: Trigger reconciliation for an org
+      security:
+        - AdminAuth: []
+      parameters:
+        - name: orgID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Reconciliation run result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReconciliationRun"
+
+  /admin/api-keys:
+    post:
+      tags: [Admin]
+      summary: Create an API key for any org
+      security:
+        - AdminAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [org_id, name]
+              properties:
+                org_id:
+                  type: string
+                  format: uuid
+                name:
+                  type: string
+      responses:
+        "201":
+          description: Key created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIKeyCreated"
+    get:
+      tags: [Admin]
+      summary: List all API keys across orgs
+      security:
+        - AdminAuth: []
+      responses:
+        "200":
+          description: All API keys
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  keys:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/APIKey"
+
+  /admin/webhooks:
+    get:
+      tags: [Admin]
+      summary: List all webhook deliveries
+      security:
+        - AdminAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: All deliveries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deliveries:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/WebhookDelivery"
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+
+  # ---------------------------------------------------------------------------
+  # Health
+  # ---------------------------------------------------------------------------
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  service:
+                    type: string
+                    example: ancra
+                  version:
+                    type: string
+                    example: "0.1.0"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: API key or JWT
+      description: |
+        Use your API key or a dashboard JWT.
+        `Authorization: Bearer <key>`
+    APIKeyAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: API key
+      description: |
+        API key only (write operations).
+        `Authorization: Bearer <key>`
+    JWTAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Dashboard JWT session token.
+        `Authorization: Bearer <jwt>`
+    AdminAuth:
+      type: apiKey
+      in: header
+      name: Admin-Secret
+      description: |
+        Admin secret header for platform operator endpoints.
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            message:
+              type: string
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        org_id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        role:
+          type: string
+          example: owner
+        created_at:
+          type: string
+          format: date-time
+
+    Organization:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    APIKey:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        last_used_at:
+          type: string
+          format: date-time
+          nullable: true
+        revoked_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    APIKeyCreated:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        key:
+          type: string
+          description: Full API key — shown only once
+        created_at:
+          type: string
+          format: date-time
+
+    Customer:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        kyc_tier:
+          type: integer
+          enum: [1, 2, 3]
+        created_at:
+          type: string
+          format: date-time
+
+    KYCTierChange:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        customer_id:
+          type: string
+          format: uuid
+        from_tier:
+          type: integer
+        to_tier:
+          type: integer
+        upgraded_at:
+          type: string
+          format: date-time
+
+    VirtualAccount:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        customer_id:
+          type: string
+          format: uuid
+        bank_account_number:
+          type: string
+        bank_account_name:
+          type: string
+        bank_name:
+          type: string
+          example: Nomba
+        bank_code:
+          type: string
+          example: "000026"
+        status:
+          type: string
+          enum: [active, closed]
+        created_at:
+          type: string
+          format: date-time
+
+    LedgerEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        account_id:
+          type: string
+          format: uuid
+        direction:
+          type: string
+          enum: [credit, debit]
+        amount:
+          type: integer
+          description: Amount in kobo
+        currency:
+          type: string
+          example: NGN
+        entry_type:
+          type: string
+          example: inbound_credit
+        external_ref:
+          type: string
+          description: Nomba transaction ID
+        narration:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    StatementEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        direction:
+          type: string
+          enum: [credit, debit]
+        amount_kobo:
+          type: integer
+        currency:
+          type: string
+        entry_type:
+          type: string
+        external_ref:
+          type: string
+        running_balance_kobo:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    NombaTransfer:
+      type: object
+      properties:
+        id:
+          type: string
+        amount:
+          type: number
+          format: float
+          description: Amount in naira
+        fee:
+          type: number
+          format: float
+        type:
+          type: string
+        status:
+          type: string
+          example: SUCCESSFUL
+        timeCreated:
+          type: string
+          format: date-time
+        meta:
+          type: object
+          properties:
+            merchantTxRef:
+              type: string
+            rrn:
+              type: string
+
+    WebhookDelivery:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        org_id:
+          type: string
+          format: uuid
+        event_type:
+          type: string
+          example: payment_success
+        status:
+          type: string
+          enum: [pending, delivered, failed]
+        attempts:
+          type: integer
+        next_retry_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    ReconciliationRun:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        org_id:
+          type: string
+          format: uuid
+        run_at:
+          type: string
+          format: date-time
+        nomba_wallet_balance:
+          type: integer
+          description: Balance in kobo
+        computed_pool_balance:
+          type: integer
+          description: Ledger pool balance in kobo
+        delta:
+          type: integer
+          description: nomba_wallet_balance - computed_pool_balance
+        status:
+          type: string
+          enum: [ok, mismatch]
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    BadGateway:
+      description: Upstream provider error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
