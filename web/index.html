@@ -1042,80 +1042,6 @@
             </div>
           </div>
 
-          <!-- Account Lookup -->
-          <div class="grid-2">
-            <div class="card">
-              <div class="card-title">Account Lookup</div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label>Account ID</label>
-                  <input type="text" id="acc-lookup-id" placeholder="UUID" />
-                </div>
-                <button class="btn btn-secondary" onclick="lookupAccount()">
-                  Search
-                </button>
-              </div>
-              <div id="acc-lookup-result" style="margin-top: 12px"></div>
-              <div
-                id="acc-lookup-error"
-                class="alert alert-error"
-                style="display: none; margin-top: 12px"
-              ></div>
-            </div>
-
-            <div class="card">
-              <div class="card-title">Account Balance</div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label>Account ID</label>
-                  <input type="text" id="acc-bal-id" placeholder="UUID" />
-                </div>
-                <button class="btn btn-secondary" onclick="getBalance()">
-                  Check
-                </button>
-              </div>
-              <div id="acc-balance-result" style="margin-top: 12px"></div>
-              <div
-                id="acc-balance-error"
-                class="alert alert-error"
-                style="display: none; margin-top: 12px"
-              ></div>
-            </div>
-          </div>
-
-          <!-- Statement -->
-          <div class="card">
-            <div class="card-title">Account Statement</div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Account ID</label>
-                <input type="text" id="stmt-account-id" placeholder="UUID" />
-              </div>
-              <div class="form-group" style="max-width: 100px">
-                <label>Limit</label>
-                <input
-                  type="number"
-                  id="stmt-limit"
-                  value="20"
-                  min="1"
-                  max="100"
-                />
-              </div>
-              <div class="form-group" style="max-width: 100px">
-                <label>Offset</label>
-                <input type="number" id="stmt-offset" value="0" min="0" />
-              </div>
-              <button class="btn btn-secondary" onclick="loadStatement()">
-                Load Statement
-              </button>
-            </div>
-            <div
-              id="stmt-error"
-              class="alert alert-error"
-              style="display: none; margin-top: 12px"
-            ></div>
-            <div id="stmt-result" style="margin-top: 12px"></div>
-          </div>
         </div>
 
         <!-- ══════════════════════════ RECONCILIATION ═══════════════════════════ -->
@@ -1806,7 +1732,7 @@
               <span class="detail-value mono">${escapeHtml(data.bank_account_number || "—")}</span>
             </div>
             <div class="detail-item">
-              <span class="detail-label">Bank</span>
+              <span class="detail-label">Account Name</span>
               <span class="detail-value">${escapeHtml(data.bank_account_name || "—")}</span>
             </div>
             <div class="detail-item">
@@ -1935,7 +1861,7 @@
                 `${shortUUID(account.id)}
                  <button class="copy-btn" onclick="copyText('${escapeHtml(account.id)}', 'Account ID copied ✓')">⎘</button>`)}
               ${detailItem("Account Number", account.bank_account_number || "—", true)}
-              ${detailItem("Bank", account.bank_account_name || "—")}
+              ${detailItem("Account Name", account.bank_account_name || "—")}
               ${detailItem("Status", statusBadge(account.status))}
               ${detailItem("Account Ref", account.account_ref || "—", true)}
               ${detailItem("Created", formatDate(account.created_at))}
@@ -2019,180 +1945,6 @@
             <div class="drawer-section-title">${escapeHtml(title)}</div>
             <p style="color:var(--text-muted);font-size:13px;">${escapeHtml(message)}</p>
           </div>`;
-      }
-
-      async function lookupAccount() {
-        const id = document.getElementById("acc-lookup-id").value.trim();
-        if (!id) {
-          showToast("Enter an account ID", "error");
-          return;
-        }
-
-        hideEl("acc-lookup-error");
-        const result = document.getElementById("acc-lookup-result");
-        result.innerHTML =
-          '<div class="loading"><div class="spinner"></div> Fetching…</div>';
-
-        try {
-          const data = await apiFetch(`/accounts/${id}`);
-          result.innerHTML = renderAccountDetail(data);
-        } catch (e) {
-          result.innerHTML = "";
-          setError("acc-lookup-error", e.message);
-        }
-      }
-
-      function renderAccountDetail(a) {
-        return `
-    <div class="detail-grid">
-      <div class="detail-item">
-        <span class="detail-label">Account ID</span>
-        <span class="detail-value mono" style="font-size:12px;">${escapeHtml(a.id || "—")}</span>
-      </div>
-      <div class="detail-item">
-        <span class="detail-label">Customer ID</span>
-        <span class="detail-value mono" style="font-size:12px;">${escapeHtml(a.customer_id || "—")}</span>
-      </div>
-      <div class="detail-item">
-        <span class="detail-label">Account Number</span>
-        <span class="detail-value mono">${escapeHtml(a.bank_account_number || a.account_number || "—")}</span>
-      </div>
-      <div class="detail-item">
-        <span class="detail-label">Bank Name</span>
-        <span class="detail-value">${escapeHtml(a.bank_account_name || a.bank_name || "—")}</span>
-      </div>
-      <div class="detail-item">
-        <span class="detail-label">Status</span>
-        <span class="detail-value">${statusBadge(a.status)}</span>
-      </div>
-      <div class="detail-item">
-        <span class="detail-label">Created</span>
-        <span class="detail-value">${formatDate(a.created_at)}</span>
-      </div>
-    </div>`;
-      }
-
-      async function getBalance() {
-        const id = document.getElementById("acc-bal-id").value.trim();
-        if (!id) {
-          showToast("Enter an account ID", "error");
-          return;
-        }
-
-        hideEl("acc-balance-error");
-        const result = document.getElementById("acc-balance-result");
-        result.innerHTML =
-          '<div class="loading"><div class="spinner"></div> Checking…</div>';
-
-        try {
-          const data = await apiFetch(`/accounts/${id}/balance`);
-          const balKobo = data.balance ?? data.amount ?? data.balance_kobo ?? 0;
-          result.innerHTML = `
-      <div class="stat-card">
-        <div class="stat-label">Current Balance</div>
-        <div class="stat-value">${formatNGN(balKobo)}</div>
-        <div class="stat-sub">${balKobo.toLocaleString()} kobo</div>
-      </div>`;
-        } catch (e) {
-          result.innerHTML = "";
-          setError("acc-balance-error", e.message);
-        }
-      }
-
-      async function loadStatement() {
-        const id = document.getElementById("stmt-account-id").value.trim();
-        const limit =
-          parseInt(document.getElementById("stmt-limit").value, 10) || 20;
-        const offset =
-          parseInt(document.getElementById("stmt-offset").value, 10) || 0;
-
-        if (!id) {
-          showToast("Enter an account ID", "error");
-          return;
-        }
-
-        hideEl("stmt-error");
-        const result = document.getElementById("stmt-result");
-        setLoading(result, "Loading statement…");
-
-        try {
-          const data = await apiFetch(
-            `/accounts/${id}/statement?limit=${limit}&offset=${offset}`,
-          );
-          const entries =
-            data.entries ||
-            data.items ||
-            data.data ||
-            (Array.isArray(data) ? data : []);
-          const openingBalance =
-            data.opening_balance ?? data.opening_balance_kobo ?? null;
-          const closingBalance =
-            data.closing_balance ?? data.closing_balance_kobo ?? null;
-
-          if (!entries.length) {
-            result.innerHTML = emptyState(
-              "📋",
-              "No statement entries found for this account.",
-            );
-            return;
-          }
-
-          const summaryHtml =
-            openingBalance != null || closingBalance != null
-              ? `
-      <div class="grid-2" style="margin-bottom:12px;">
-        <div class="stat-card">
-          <div class="stat-label">Opening Balance</div>
-          <div class="stat-value">${formatNGN(openingBalance)}</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Closing Balance</div>
-          <div class="stat-value">${formatNGN(closingBalance)}</div>
-        </div>
-      </div>`
-              : "";
-
-          const rows = entries
-            .map((e) => {
-              const isCredit = e.direction === "credit";
-              const amtClass = isCredit
-                ? "color:var(--green);font-weight:600;"
-                : "color:var(--red);font-weight:600;";
-              const amtPrefix = isCredit ? "+" : "−";
-              return `
-        <tr>
-          <td class="td-muted">${formatDate(e.created_at)}</td>
-          <td>${statusBadge(e.direction)}</td>
-          <td><span style="${amtClass}">${amtPrefix}${formatNGN(e.amount)}</span></td>
-          <td class="td-muted">${escapeHtml(e.entry_type || "—")}</td>
-          <td>${escapeHtml(e.narration || e.external_ref || "—")}</td>
-          <td class="td-mono">${e.running_balance != null ? formatNGN(e.running_balance) : "—"}</td>
-        </tr>`;
-            })
-            .join("");
-
-          result.innerHTML =
-            summaryHtml +
-            `
-      <div class="table-wrapper">
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Direction</th>
-              <th>Amount</th>
-              <th>Type</th>
-              <th>Reference / Narration</th>
-              <th>Balance</th>
-            </tr>
-          </thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>`;
-        } catch (e) {
-          result.innerHTML = "";
-          setError("stmt-error", e.message);
-        }
       }
 
       // ═══════════════════════════════════════════════════════════════════════════════

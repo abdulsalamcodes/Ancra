@@ -148,46 +148,53 @@ type TransferResponse struct {
 // ---------------------------------------------------------------------------
 
 // WebhookPayload is the full event body Nomba POSTs to our endpoint.
+// Ref: https://developer.nomba.com/docs/api-basics/webhook#webhooks
 type WebhookPayload struct {
-	Event       string              `json:"event"`
-	RequestID   string              `json:"requestId"`
-	Transaction WebhookTransaction  `json:"transaction"`
-	Customer    WebhookCustomer     `json:"customer"`
-	Merchant    WebhookMerchant     `json:"merchant"`
+	EventType string      `json:"event_type"`
+	RequestID string      `json:"requestId"`
+	Data      WebhookData `json:"data"`
+}
+
+// WebhookData wraps the nested merchant, terminal, transaction and customer
+// objects inside the Nomba webhook payload.
+type WebhookData struct {
+	Merchant    WebhookMerchant    `json:"merchant"`
+	Transaction WebhookTransaction `json:"transaction"`
+	Customer    WebhookCustomer    `json:"customer"`
+}
+
+// WebhookMerchant carries your Nomba account identifiers.
+type WebhookMerchant struct {
+	UserID        string  `json:"userId"`
+	WalletID      string  `json:"walletId"`
+	WalletBalance float64 `json:"walletBalance"`
 }
 
 // WebhookTransaction holds the financial details inside a webhook event.
+// For virtual-account credits, the destination is identified by AliasAccountNumber.
+// TransactionAmount is in NGN; multiply by 100 to get kobo.
 type WebhookTransaction struct {
-	TransactionID   string    `json:"transactionId"`
-	AccountID       string    `json:"accountId"`
-	Amount          float64   `json:"amount"`   // naira
-	Fee             float64   `json:"fee"`
-	Currency        string    `json:"currency"`
-	Type            string    `json:"type"`
-	Status          string    `json:"status"`
-	Narration       string    `json:"narration"`
-	Reference       string    `json:"reference"`
-	BankCode        string    `json:"bankCode"`
-	AccountNumber   string    `json:"accountNumber"`
-	CreatedAt       time.Time `json:"createdAt"`
-	SenderName      string    `json:"senderName,omitempty"`
-	SenderBank      string    `json:"senderBank,omitempty"`
-	SenderAccount   string    `json:"senderAccount,omitempty"`
+	TransactionID         string  `json:"transactionId"`
+	AliasAccountNumber    string  `json:"aliasAccountNumber"`    // the virtual account that received funds
+	AliasAccountName      string  `json:"aliasAccountName"`
+	AliasAccountReference string  `json:"aliasAccountReference"`
+	AliasAccountType      string  `json:"aliasAccountType"`
+	TransactionAmount     float64 `json:"transactionAmount"` // NGN; not kobo
+	Fee                   float64 `json:"fee"`
+	SessionID             string  `json:"sessionId"`
+	Type                  string  `json:"type"`          // e.g. "vact_transfer"
+	ResponseCode          string  `json:"responseCode"`
+	OriginatingFrom       string  `json:"originatingFrom"`
+	Narration             string  `json:"narration"`
+	Time                  string  `json:"time"` // RFC3339
 }
 
-// WebhookCustomer identifies the customer associated with the event.
+// WebhookCustomer identifies the sender on the incoming payment.
 type WebhookCustomer struct {
-	CustomerID    string `json:"customerId"`
-	CustomerEmail string `json:"customerEmail"`
-	CustomerName  string `json:"customerName"`
-	CustomerPhone string `json:"customerPhone,omitempty"`
-}
-
-// WebhookMerchant carries the merchant context (your Nomba account details).
-type WebhookMerchant struct {
-	AccountID   string `json:"accountId"`
-	AccountName string `json:"accountName"`
-	AccountRef  string `json:"accountRef"`
+	BankCode      string `json:"bankCode"`
+	SenderName    string `json:"senderName"`
+	BankName      string `json:"bankName"`
+	AccountNumber string `json:"accountNumber"` // sender's bank account, not the virtual account
 }
 
 // ---------------------------------------------------------------------------

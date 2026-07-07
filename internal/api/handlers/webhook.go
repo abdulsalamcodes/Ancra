@@ -48,7 +48,7 @@ func NewWebhookHandler(
 
 // HandleNomba is the POST /webhooks/nomba endpoint. It:
 //  1. Reads + buffers the raw body.
-//  2. Verifies the HMAC-SHA512 signature.
+//  2. Verifies the HMAC-SHA256 signature.
 //  3. Decodes the payload.
 //  4. Deduplicates using the processed_events table.
 //  5. Routes based on event type (currently: collection.credit.success).
@@ -75,11 +75,11 @@ func (h *WebhookHandler) HandleNomba(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	txnID := payload.Transaction.TransactionID
+	txnID := payload.Data.Transaction.TransactionID
 	requestID := payload.RequestID
 
 	h.log.Info("webhook received",
-		zap.String("event", payload.Event),
+		zap.String("event", payload.EventType),
 		zap.String("txn_id", txnID),
 		zap.String("request_id", requestID),
 	)
@@ -103,39 +103,50 @@ func (h *WebhookHandler) HandleNomba(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 4. Route by event type.
-	switch payload.Event {
-	case "collection.credit.success":
+	switch payload.EventType {
+	case "payment_success":
 		h.handleCredit(w, r, &payload, body)
 	default:
-		h.log.Info("webhook: unhandled event type", zap.String("event", payload.Event))
+		h.log.Info("webhook: unhandled event type", zap.String("event", payload.EventType))
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ignored"})
 	}
 }
 
 func (h *WebhookHandler) handleCredit(w http.ResponseWriter, r *http.Request, payload *nomba.WebhookPayload, rawBody []byte) {
 	ctx := r.Context()
-	txn := payload.Transaction
+	txn := payload.Data.Transaction
 
-	// Resolve the destination virtual account by bank account number.
-	va, err := h.accounts.GetAccountByNumber(ctx, txn.AccountNumber)
+	// Resolve the destination virtual account by its assigned virtual account number.
+	va, err := h.accounts.GetAccountByNumber(ctx, txn.AliasAccountNumber)
 	if err != nil {
 		h.log.Error("webhook: unknown destination account",
-			zap.String("account_number", txn.AccountNumber),
+			zap.String("alias_account_number", txn.AliasAccountNumber),
 			zap.String("txn_id", txn.TransactionID),
 		)
-		// Credit to suspense via the ledger service.
-		amountKobo := nairaToKobo(txn.Amount)
-		_, _ = h.ledger.PostSuspense(ctx, amountKobo, txn.Currency, txn.TransactionID)
+		amountKobo := nairaToKobo(txn.TransactionAmount)
+		_, _ = h.ledger.PostSuspense(ctx, amountKobo, "NGN", txn.TransactionID)
 		writeJSON(w, http.StatusOK, map[string]string{"status": "suspense"})
 		return
 	}
 
-	amountKobo := nairaToKobo(txn.Amount)
+	// Closed accounts must not receive credits — route to suspense so funds
+	// can be returned to the sender.
+	amountKobo := nairaToKobo(txn.TransactionAmount)
+	if va.Status == store.AccountStatusClosed {
+		h.log.Warn("webhook: credit to closed account — routing to suspense",
+			zap.String("alias_account_number", txn.AliasAccountNumber),
+			zap.String("account_id", va.ID.String()),
+			zap.String("txn_id", txn.TransactionID),
+		)
+		_, _ = h.ledger.PostSuspense(ctx, amountKobo, "NGN", txn.TransactionID)
+		writeJSON(w, http.StatusOK, map[string]string{"status": "suspense"})
+		return
+	}
 
 	_, err = h.ledger.PostCredit(ctx, ledger.CreditRequest{
 		AccountID:   va.ID,
 		Amount:      amountKobo,
-		Currency:    txn.Currency,
+		Currency:    "NGN",
 		ExternalRef: txn.TransactionID,
 		Narration:   txn.Narration,
 	})
@@ -150,7 +161,7 @@ func (h *WebhookHandler) handleCredit(w http.ResponseWriter, r *http.Request, pa
 	now := time.Now().UTC()
 	delivery := &store.WebhookDelivery{
 		ID:        uuid.New(),
-		EventType: payload.Event,
+		EventType: payload.EventType,
 		Payload:   rawBody,
 		Status:    store.WebhookStatusPending,
 		Attempts:  0,

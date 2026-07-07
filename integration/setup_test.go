@@ -7,10 +7,11 @@ import (
 	"bytes"
 	"context"
 	"crypto/hmac"
-	"crypto/sha512"
-	"encoding/hex"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -173,39 +174,90 @@ func mustStatus(t *testing.T, resp *http.Response, want int) {
 	}
 }
 
-// signBody computes the HMAC-SHA512 signature Nomba sends on webhooks.
-func signBody(body []byte, secret string) string {
-	mac := hmac.New(sha512.New, []byte(secret))
-	mac.Write(body)
-	return hex.EncodeToString(mac.Sum(nil))
+// signWebhook computes the Nomba HMAC-SHA256 webhook signature.
+// Nomba signs a colon-separated string of payload fields, not the raw body.
+// Ref: https://developer.nomba.com/docs/api-basics/webhook#webhooks
+func signWebhook(body []byte, timestamp, secret string) string {
+	var p struct {
+		EventType string `json:"event_type"`
+		RequestID string `json:"requestId"`
+		Data      struct {
+			Merchant struct {
+				UserID   string `json:"userId"`
+				WalletID string `json:"walletId"`
+			} `json:"merchant"`
+			Transaction struct {
+				TransactionID string `json:"transactionId"`
+				Type          string `json:"type"`
+				Time          string `json:"time"`
+				ResponseCode  string `json:"responseCode"`
+			} `json:"transaction"`
+		} `json:"data"`
+	}
+	json.Unmarshal(body, &p) //nolint:errcheck
+
+	responseCode := p.Data.Transaction.ResponseCode
+	if responseCode == "null" {
+		responseCode = ""
+	}
+
+	hashStr := fmt.Sprintf("%s:%s:%s:%s:%s:%s:%s:%s:%s",
+		p.EventType, p.RequestID,
+		p.Data.Merchant.UserID, p.Data.Merchant.WalletID,
+		p.Data.Transaction.TransactionID, p.Data.Transaction.Type,
+		p.Data.Transaction.Time, responseCode,
+		timestamp,
+	)
+
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write([]byte(hashStr))
+	return base64.StdEncoding.EncodeToString(mac.Sum(nil))
 }
 
-// webhookBody constructs and signs a collection.credit.success payload for
-// the given account number and amount (in naira).
-func webhookBody(t *testing.T, txnID, accountNumber string, amountNaira float64) ([]byte, string) {
+// webhookBody constructs and signs a payment_success payload for the given
+// virtual account number and amount (in naira). Returns the body, HMAC
+// signature, and nomba-timestamp header value — all three are required to call
+// postWebhook.
+func webhookBody(t *testing.T, txnID, accountNumber string, amountNaira float64) (body []byte, sig, timestamp string) {
 	t.Helper()
+	timestamp = time.Now().UTC().Format(time.RFC3339)
 	payload := map[string]interface{}{
-		"event":     "collection.credit.success",
-		"requestId": uuid.New().String(),
-		"transaction": map[string]interface{}{
-			"transactionId": txnID,
-			"accountNumber": accountNumber,
-			"amount":        amountNaira,
-			"fee":           0,
-			"currency":      "NGN",
-			"type":          "CREDIT",
-			"status":        "SUCCESSFUL",
-			"narration":     "test transfer",
-			"reference":     txnID,
+		"event_type": "payment_success",
+		"requestId":  uuid.New().String(),
+		"data": map[string]interface{}{
+			"merchant": map[string]interface{}{
+				"userId":        "test-user-id",
+				"walletId":      "test-wallet-id",
+				"walletBalance": amountNaira,
+			},
+			"terminal": map[string]interface{}{},
+			"transaction": map[string]interface{}{
+				"transactionId":      txnID,
+				"aliasAccountNumber": accountNumber,
+				"aliasAccountName":   "Test Account",
+				"transactionAmount":  amountNaira,
+				"fee":                0,
+				"sessionId":          "test-session-" + txnID,
+				"type":               "vact_transfer",
+				"responseCode":       "",
+				"originatingFrom":    "api",
+				"narration":          "test transfer",
+				"time":               timestamp,
+				"aliasAccountType":   "VIRTUAL",
+			},
+			"customer": map[string]interface{}{
+				"bankCode":      "044",
+				"senderName":    "John Doe",
+				"bankName":      "Access Bank",
+				"accountNumber": "0123456789",
+			},
 		},
-		"customer": map[string]interface{}{},
-		"merchant": map[string]interface{}{},
 	}
 	b, err := json.Marshal(payload)
 	if err != nil {
 		t.Fatalf("marshal webhook: %v", err)
 	}
-	return b, signBody(b, testWebhookSecret)
+	return b, signWebhook(b, timestamp, testWebhookSecret), timestamp
 }
 
 // ---------------------------------------------------------------------------
@@ -813,14 +865,16 @@ func createAccount(t *testing.T, env *testEnv, customerID string) map[string]int
 }
 
 // postWebhook sends a signed webhook to /webhooks/nomba.
-func postWebhook(t *testing.T, env *testEnv, body []byte, sig string) *http.Response {
+// sig and timestamp are the values returned by webhookBody.
+func postWebhook(t *testing.T, env *testEnv, body []byte, sig, timestamp string) *http.Response {
 	t.Helper()
 	req, err := http.NewRequest(http.MethodPost, env.server.URL+"/webhooks/nomba", bytes.NewReader(body))
 	if err != nil {
 		t.Fatalf("new request: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Nomba-Signature", sig)
+	req.Header.Set("nomba-signature", sig)
+	req.Header.Set("nomba-timestamp", timestamp)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("do webhook: %v", err)
