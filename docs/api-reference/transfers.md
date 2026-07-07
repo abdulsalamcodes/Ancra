@@ -25,10 +25,10 @@ Authorization: Bearer <key>
 }
 ```
 
-| Status | Meaning |
-|---|---|
-| `400` | Missing fields |
-| `502` | Could not resolve account via Nomba |
+| Status | Example |
+|---|---|---|
+| `400` | `{"error":{"message":"missing required fields: account_number"}}` |
+| `502` | `{"error":{"message":"could not resolve account via Nomba"}}` |
 
 ---
 
@@ -85,8 +85,8 @@ Authorization: Bearer <key>
 }
 ```
 
-| Status | Meaning |
-|---|---|
-| `400` | Missing or invalid fields |
-| `422` | Insufficient funds |
-| `502` | Nomba rejected the transfer — ledger debit automatically reversed |
+| Status | Example |
+|---|---|---|
+| `400` | `{"error":{"message":"missing required fields: amount"}}` |
+| `422` | `{"error":{"message":"insufficient funds"}}` |
+| `502` | `{"error":{"message":"transfer rejected by payment provider"}}` |

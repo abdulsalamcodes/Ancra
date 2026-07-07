@@ -22,6 +22,59 @@ Valid values: `1`, `2`, `3`. Defaults to `1`.
 
 ## Upgrading a Tier
 
-Customer tiers are immutable after creation in the current API version. To upgrade a customer's KYC tier, create a new customer record with the higher tier and migrate their accounts.
+Upgrade an existing customer's KYC tier in-place:
 
-> Future versions will support tier upgrades in-place via `PUT /customers/{id}`.
+```http
+PUT /customers/{id}/kyc-tier
+```
+
+```json
+{
+  "kyc_tier": 2
+}
+```
+
+Tiers can only be upgraded (moved to a higher number), never downgraded.
+
+**Response** `200 OK`
+
+```json
+{
+  "id": "c1b2c3d4-...",
+  "customer_id": "c8a1b2d3-...",
+  "from_tier": 1,
+  "to_tier": 2,
+  "upgraded_at": "2026-01-01T12:00:00Z"
+}
+```
+
+## Upgrade History
+
+View the full upgrade history for a customer:
+
+```http
+GET /customers/{id}/kyc-tier/history
+```
+
+**Response** `200 OK`
+
+```json
+{
+  "history": [
+    {
+      "id": "h1b2c3d4-...",
+      "customer_id": "c8a1b2d3-...",
+      "from_tier": 0,
+      "to_tier": 1,
+      "upgraded_at": "2026-01-01T10:00:00Z"
+    },
+    {
+      "id": "h2b3c4d5-...",
+      "customer_id": "c8a1b2d3-...",
+      "from_tier": 1,
+      "to_tier": 2,
+      "upgraded_at": "2026-01-01T12:00:00Z"
+    }
+  ]
+}
+```

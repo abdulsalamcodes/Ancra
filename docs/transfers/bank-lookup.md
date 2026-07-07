@@ -53,4 +53,4 @@ Common bank codes:
 | PalmPay | `999991` |
 | Moniepoint | `50515` |
 
-For the full list, call `GET /transfers/banks` (returns all banks supported by Nomba).
+For the full list of supported banks, check the [Nomba bank codes reference](https://nomba.com/docs/bank-codes).

@@ -483,15 +483,39 @@
                   <th>Customer ID</th>
                   <th>KYC Tier</th>
                   <th>Created</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody id="customers-tbody">
-                <tr><td colspan="4"><div class="empty"><div class="spinner"></div></div></td></tr>
+                <tr><td colspan="5"><div class="empty"><div class="spinner"></div></div></td></tr>
               </tbody>
             </table>
           </div>
           <div id="customers-load-more" style="padding:14px 20px; display:none;">
             <button class="btn btn-ghost btn-sm" onclick="loadMoreCustomers()">Load more</button>
+          </div>
+        </div>
+
+        <div id="kyc-history-card" style="display:none; margin-top:20px;">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title" id="kyc-history-title">KYC Tier History</span>
+              <button class="btn btn-ghost btn-sm" onclick="closeKYCHistory()">Close</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>From</th>
+                    <th>To</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody id="kyc-history-tbody">
+                  <tr><td colspan="3"><div class="empty"><div class="spinner"></div></div></td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
@@ -1070,13 +1094,16 @@
   // ---------------------------------------------------------------------------
   // Customers
   // ---------------------------------------------------------------------------
-  let customersOffset = 0;
-  const CUSTOMERS_PAGE = 20;
+  let customersOffset    = 0;
+  let expandedCustomerId = null;
+  const CUSTOMERS_PAGE   = 20;
 
   async function loadCustomers() {
-    customersOffset = 0;
+    customersOffset    = 0;
+    expandedCustomerId = null;
+    document.getElementById('kyc-history-card').style.display = 'none';
     document.getElementById('customers-tbody').innerHTML =
-      '<tr><td colspan="4"><div class="empty"><div class="spinner"></div></div></td></tr>';
+      '<tr><td colspan="5"><div class="empty"><div class="spinner"></div></div></td></tr>';
     document.getElementById('customers-load-more').style.display = 'none';
     await fetchCustomers(true);
   }
@@ -1091,7 +1118,7 @@
       const res = await apiFetch(`/customers?limit=${CUSTOMERS_PAGE}&offset=${customersOffset}`);
       const data = await res.json();
       if (!res.ok) {
-        setTableError('customers-tbody', 4, data.error);
+        setTableError('customers-tbody', 5, data.error);
         return;
       }
       const customers = data.customers ?? [];
@@ -1099,14 +1126,14 @@
       document.getElementById('customers-load-more').style.display =
         customers.length === CUSTOMERS_PAGE ? 'block' : 'none';
     } catch {
-      setTableError('customers-tbody', 4, 'Failed to load customers.');
+      setTableError('customers-tbody', 5, 'Failed to load customers.');
     }
   }
 
   function renderCustomers(customers, replace) {
     const tbody = document.getElementById('customers-tbody');
     if (replace && !customers.length) {
-      tbody.innerHTML = '<tr><td colspan="4"><div class="empty">No customers yet.</div></td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5"><div class="empty">No customers yet.</div></td></tr>';
       return;
     }
     const rows = customers.map(c => `
@@ -1115,6 +1142,12 @@
         <td class="mono">${escHtml((c.id ?? '').slice(0, 8))}…</td>
         <td>${kycTierBadge(c.kyc_tier)}</td>
         <td>${formatDate(c.created_at)}</td>
+        <td style="text-align:right;">
+          <button class="btn btn-ghost btn-sm"
+            onclick="toggleKYCHistory('${c.id}', '${escHtml(c.display_name || c.id)}', this)">
+            History
+          </button>
+        </td>
       </tr>
     `).join('');
     replace ? (tbody.innerHTML = rows) : tbody.insertAdjacentHTML('beforeend', rows);
@@ -1124,6 +1157,50 @@
     const label = `Tier ${tier ?? 0}`;
     const cls   = tier >= 2 ? 'badge-green' : tier === 1 ? 'badge-amber' : 'badge-gray';
     return `<span class="badge ${cls}">${label}</span>`;
+  }
+
+  async function toggleKYCHistory(customerId, customerName, btn) {
+    if (expandedCustomerId === customerId) {
+      closeKYCHistory();
+      return;
+    }
+    expandedCustomerId = customerId;
+    document.getElementById('kyc-history-title').textContent = `KYC Tier History — ${customerName}`;
+    document.getElementById('kyc-history-card').style.display = 'block';
+    document.getElementById('kyc-history-tbody').innerHTML =
+      '<tr><td colspan="3"><div class="empty"><div class="spinner"></div></div></td></tr>';
+
+    try {
+      const res  = await apiFetch(`/customers/${customerId}/kyc-tier/history`);
+      const data = await res.json();
+      if (!res.ok) {
+        setTableError('kyc-history-tbody', 3, data.error);
+        return;
+      }
+      renderKYCHistory(data.history ?? data ?? []);
+    } catch {
+      setTableError('kyc-history-tbody', 3, 'Failed to load KYC history.');
+    }
+  }
+
+  function renderKYCHistory(history) {
+    const tbody = document.getElementById('kyc-history-tbody');
+    if (!history.length) {
+      tbody.innerHTML = '<tr><td colspan="3"><div class="empty">No tier changes yet.</div></td></tr>';
+      return;
+    }
+    tbody.innerHTML = history.map(h => `
+      <tr>
+        <td>${kycTierBadge(h.from_tier)}</td>
+        <td>${kycTierBadge(h.to_tier)}</td>
+        <td>${formatDate(h.upgraded_at)}</td>
+      </tr>
+    `).join('');
+  }
+
+  function closeKYCHistory() {
+    expandedCustomerId = null;
+    document.getElementById('kyc-history-card').style.display = 'none';
   }
 
   // ---------------------------------------------------------------------------

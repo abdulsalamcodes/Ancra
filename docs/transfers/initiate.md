@@ -3,7 +3,7 @@
 Send funds from a customer's virtual account to a Nigerian bank account.
 
 ```http
-POST /accounts/{id}/transfers
+POST /accounts/{id}/transfer
 Authorization: Bearer <key>
 ```
 

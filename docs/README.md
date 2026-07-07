@@ -27,3 +27,5 @@ https://your-deployment.onrender.com
 | [Webhooks](webhooks/overview.md) | Receive real-time payment notifications |
 | [Transfers](transfers/overview.md) | Send funds to any Nigerian bank account |
 | [API Reference](api-reference/accounts.md) | Full endpoint reference |
+| [Settings](api-reference/settings.md) | Nomba and webhook configuration |
+| [Auth](api-reference/auth.md) | User profile and API key management |

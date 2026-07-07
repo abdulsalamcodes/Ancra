@@ -1,14 +1,18 @@
 # Authentication
 
-All API requests must be authenticated with a Bearer token. Ancra uses opaque API keys that are created and managed through the admin interface.
+All API requests must be authenticated with a Bearer token. Ancra uses opaque API keys that are created and managed through the developer dashboard.
 
 ## Creating an API Key
 
-API keys are created via the admin endpoint. This requires the `Admin-Secret` header.
+1. Sign up at the Ancra dashboard
+2. Navigate to **Settings → API Keys**
+3. Click **Create Key** and give it a name
+
+Or create one programmatically using your dashboard JWT:
 
 ```bash
-curl -X POST https://your-deployment.onrender.com/admin/api-keys \
-  -H "Admin-Secret: your-admin-secret" \
+curl -X POST https://your-deployment.onrender.com/api-keys \
+  -H "Authorization: Bearer <jwt-from-dashboard>" \
   -H "Content-Type: application/json" \
   -d '{"name": "production-key"}'
 ```
@@ -35,12 +39,50 @@ curl https://your-deployment.onrender.com/accounts \
   -H "Authorization: Bearer ancra_live_xxxxxxxxxxxxxxxxxxxx"
 ```
 
+## Listing Keys
+
+```bash
+curl https://your-deployment.onrender.com/api-keys \
+  -H "Authorization: Bearer <jwt-from-dashboard>"
+```
+
+**Response**
+
+```json
+{
+  "keys": [
+    {
+      "id": "3f2a1b...",
+      "name": "production-key",
+      "created_at": "2026-01-01T00:00:00Z",
+      "last_used_at": "2026-01-02T00:00:00Z",
+      "revoked_at": null
+    }
+  ]
+}
+```
+
 ## Revoking Keys
 
 ```bash
-curl -X DELETE https://your-deployment.onrender.com/admin/api-keys/{id} \
-  -H "Admin-Secret: your-admin-secret"
+curl -X DELETE https://your-deployment.onrender.com/api-keys/{id} \
+  -H "Authorization: Bearer <jwt-from-dashboard>"
 ```
+
+**Response**
+
+```json
+{ "status": "revoked" }
+```
+
+## Current User
+
+```bash
+curl https://your-deployment.onrender.com/auth/me \
+  -H "Authorization: Bearer <jwt-from-dashboard>"
+```
+
+See the [Auth API Reference](../api-reference/auth.md) for full details.
 
 ## Key Format
 

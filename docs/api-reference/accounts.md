@@ -44,6 +44,14 @@ Authorization: Bearer <key>
 }
 ```
 
+**Errors**
+
+| Status | Example |
+|---|---|
+| `400` | `{"error":{"message":"missing required fields: customer_id"}}` |
+
+See [Errors](../getting-started/errors.md) for the standard error envelope.
+
 ---
 
 ## Get Account
@@ -54,6 +62,13 @@ Authorization: Bearer <key>
 ```
 
 **Response** `200 OK` — same shape as provision response.
+
+**Errors**
+
+| Status | Example |
+|---|---|
+| `400` | `{"error":{"message":"id must be a valid UUID"}}` |
+| `404` | `{"error":{"message":"account not found"}}` |
 
 ---
 
@@ -97,6 +112,13 @@ Authorization: Bearer <key>
 { "status": "updated" }
 ```
 
+**Errors**
+
+| Status | Example |
+|---|---|
+| `400` | `{"error":{"message":"invalid JSON"}}` |
+| `404` | `{"error":{"message":"account not found"}}` |
+
 ---
 
 ## Get Balance
@@ -118,6 +140,13 @@ Authorization: Bearer <key>
 ```
 
 `Balance` is in **kobo**. Divide by 100 for naira.
+
+**Errors**
+
+| Status | Example |
+|---|---|
+| `400` | `{"error":{"message":"id must be a valid UUID"}}` |
+| `404` | `{"error":{"message":"account not found"}}` |
 
 ---
 
@@ -201,3 +230,11 @@ Authorization: Bearer <key>
 ```
 
 Closure is irreversible. Inbound payments after closure go to a suspense ledger. See [Close an Account](../virtual-accounts/close.md) for details.
+
+**Errors**
+
+| Status | Example |
+|---|---|
+| `400` | `{"error":{"message":"id must be a valid UUID"}}` |
+| `404` | `{"error":{"message":"account not found"}}` |
+| `422` | `{"error":{"message":"account already closed"}}` |

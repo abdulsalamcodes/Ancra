@@ -1,0 +1,151 @@
+# Settings API
+
+Settings endpoints are available to dashboard users (JWT required). These manage your Nomba integration and outbound webhook configuration.
+
+## Get Nomba Settings
+
+```http
+GET /settings/nomba
+Authorization: Bearer <jwt>
+```
+
+Returns the current Nomba integration configuration. Secrets are never returned.
+
+**Response** `200 OK`
+
+```json
+{
+  "org_id": "c8a1b2d3-...",
+  "client_id": "nomba_client_123",
+  "account_id": "acc_456",
+  "sub_account_id": "sub_789",
+  "sandbox": true,
+  "updated_at": "2026-01-01T10:00:00Z"
+}
+```
+
+---
+
+## Update Nomba Settings
+
+```http
+PUT /settings/nomba
+Authorization: Bearer <jwt>
+```
+
+**Request**
+
+```json
+{
+  "client_id": "nomba_client_123",
+  "client_secret": "nomba_secret_abc",
+  "account_id": "acc_456",
+  "sub_account_id": "sub_789",
+  "webhook_secret": "whsec_xyz",
+  "sandbox": false
+}
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `client_id` | string | Yes | Nomba API client ID |
+| `client_secret` | string | Yes | Nomba API client secret |
+| `account_id` | string | Yes | Nomba account ID |
+| `sub_account_id` | string | Yes | Nomba sub-account ID |
+| `webhook_secret` | string | Yes | Nomba webhook signature key |
+| `sandbox` | boolean | No | Use Nomba sandbox (default `false`) |
+
+**Response** `200 OK`
+
+```json
+{ "status": "saved" }
+```
+
+**Errors**
+
+| Status | Meaning |
+|---|---|
+| `400` | Missing required fields or invalid JSON |
+
+---
+
+## Test Nomba Connection
+
+```http
+POST /settings/nomba/test
+Authorization: Bearer <jwt>
+```
+
+Tests the stored Nomba credentials by calling the Nomba authentication endpoint.
+
+**Response** `200 OK`
+
+```json
+{ "status": "ok" }
+```
+
+**Errors**
+
+| Status | Meaning |
+|---|---|
+| `502` | Nomba authentication failed with stored credentials |
+
+---
+
+## Get Webhook Settings
+
+```http
+GET /settings/webhook
+Authorization: Bearer <jwt>
+```
+
+Returns the outbound webhook endpoint URL. The signing secret is never returned.
+
+**Response** `200 OK`
+
+```json
+{
+  "org_id": "c8a1b2d3-...",
+  "endpoint_url": "https://example.com/webhooks/ancra",
+  "updated_at": "2026-01-01T10:00:00Z"
+}
+```
+
+---
+
+## Update Webhook Settings
+
+```http
+PUT /settings/webhook
+Authorization: Bearer <jwt>
+```
+
+**Request**
+
+```json
+{
+  "endpoint_url": "https://example.com/webhooks/ancra"
+}
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `endpoint_url` | string | Yes | HTTPS endpoint that will receive webhook events |
+
+A new signing secret is generated on every update.
+
+**Response** `200 OK`
+
+```json
+{
+  "endpoint_url": "https://example.com/webhooks/ancra",
+  "signing_secret": "a1b2c3d4e5f6...",
+  "note": "Save this signing secret — it will not be shown again."
+}
+```
+
+**Errors**
+
+| Status | Meaning |
+|---|---|
+| `400` | Missing or invalid URL |

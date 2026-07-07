@@ -38,4 +38,5 @@
 * [Accounts](api-reference/accounts.md)
 * [Transfers](api-reference/transfers.md)
 * [Webhooks](api-reference/webhooks.md)
-* [Reconciliation](api-reference/reconciliation.md)
+* [Settings](api-reference/settings.md)
+* [Auth](api-reference/auth.md)

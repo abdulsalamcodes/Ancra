@@ -15,7 +15,7 @@ A **Customer** is the owner of one or more virtual accounts. Every account must 
 | Field | Type | Description |
 |---|---|---|
 | `id` | UUID | Unique customer identifier |
-| `kyc_tier` | integer | KYC level (1–3). See [KYC Tiers](kyc-tiers.md) |
+| `kyc_tier` | integer | KYC level (1–3). Can be upgraded via [KYC Tiers](kyc-tiers.md) |
 | `created_at` | ISO 8601 | Creation timestamp |
 
 ## Create a Customer
