@@ -15,6 +15,17 @@ import (
 	"go.uber.org/zap"
 )
 
+// Nomba API endpoint paths. All paths include their version prefix so the
+// base URL remains version-agnostic (https://api.nomba.com).
+// Nomba uses v1 for most resources and v2 for bank transfers.
+const (
+	endpointToken       = "/v1/auth/token/issue"
+	endpointVirtualAcct = "/v1/accounts/virtual"
+	endpointTransfer    = "/v2/transfers/bank"
+	endpointBankLookup  = "/v1/transfers/bank/lookup"
+	endpointBankList    = "/v1/transfers/bank"
+)
+
 // Client is an authenticated HTTP client for the Nomba API.
 // It manages an OAuth2 client-credentials token with automatic refresh.
 type Client struct {
@@ -68,7 +79,7 @@ func (c *Client) GetToken(ctx context.Context) (string, error) {
 
 	var resp TokenResponse
 	// Token request uses the parent account ID in the header.
-	if err := c.doJSON(ctx, http.MethodPost, "/v1/auth/token/issue", "", c.accountID, body, &resp); err != nil {
+	if err := c.doJSON(ctx, http.MethodPost, endpointToken, "", c.accountID, body, &resp); err != nil {
 		return "", fmt.Errorf("nomba: token refresh: %w", err)
 	}
 
@@ -105,7 +116,7 @@ func (c *Client) CreateVirtualAccount(ctx context.Context, req CreateVirtualAcco
 	}
 
 	var resp CreateVirtualAccountResponse
-	if err := c.doJSON(ctx, http.MethodPost, "/v1/accounts/virtual", token, c.accountID, req, &resp); err != nil {
+	if err := c.doJSON(ctx, http.MethodPost, endpointVirtualAcct, token, c.accountID, req, &resp); err != nil {
 		return nil, fmt.Errorf("nomba: create virtual account: %w", err)
 	}
 	if resp.Code != "00" {
@@ -191,7 +202,7 @@ func (c *Client) Transfer(ctx context.Context, req TransferRequest) (*TransferRe
 	}
 
 	var resp TransferResponse
-	if err := c.doJSON(ctx, http.MethodPost, "/v2/transfers/bank", token, c.subAccountID, req, &resp); err != nil {
+	if err := c.doJSON(ctx, http.MethodPost, endpointTransfer, token, c.subAccountID, req, &resp); err != nil {
 		return nil, fmt.Errorf("nomba: transfer: %w", err)
 	}
 	if resp.Code != "00" {
@@ -209,7 +220,7 @@ func (c *Client) LookupBankAccount(ctx context.Context, req BankLookupRequest) (
 	}
 
 	var resp BankLookupResponse
-	if err := c.doJSON(ctx, http.MethodPost, "/v1/transfers/bank/lookup", token, c.subAccountID, req, &resp); err != nil {
+	if err := c.doJSON(ctx, http.MethodPost, endpointBankLookup, token, c.subAccountID, req, &resp); err != nil {
 		return nil, fmt.Errorf("nomba: bank lookup: %w", err)
 	}
 	if resp.Code != "00" {
@@ -227,7 +238,7 @@ func (c *Client) ListBanks(ctx context.Context) (*BankListResponse, error) {
 	}
 
 	var resp BankListResponse
-	if err := c.doJSON(ctx, http.MethodGet, "/v1/transfers/bank", token, c.subAccountID, nil, &resp); err != nil {
+	if err := c.doJSON(ctx, http.MethodGet, endpointBankList, token, c.subAccountID, nil, &resp); err != nil {
 		return nil, fmt.Errorf("nomba: list banks: %w", err)
 	}
 	if resp.Code != "00" {

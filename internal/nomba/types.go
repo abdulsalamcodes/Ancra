@@ -1,6 +1,9 @@
 package nomba
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 // ---------------------------------------------------------------------------
 // Auth
@@ -62,13 +65,15 @@ type CreateVirtualAccountResponse struct {
 // ---------------------------------------------------------------------------
 
 // WalletBalanceResponse is returned by the wallet-balance endpoint.
-// Nomba returns amount as a decimal string, e.g. "281946.0" (naira).
+// Nomba encodes the balance as a JSON number-string (e.g. "281946.0");
+// json.Number preserves the value without float64 precision loss and decodes
+// cleanly with .Float64().
 type WalletBalanceResponse struct {
 	Code        string `json:"code"`
 	Description string `json:"description"`
 	Data        struct {
-		Amount   string `json:"amount"`   // naira decimal string; parse before converting to kobo
-		Currency string `json:"currency"`
+		Amount   json.Number `json:"amount"`   // naira; call .Float64() before arithmetic
+		Currency string      `json:"currency"`
 	} `json:"data"`
 }
 

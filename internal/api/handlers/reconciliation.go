@@ -57,14 +57,18 @@ func (h *ReconciliationHandler) Trigger(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, run)
 }
 
-// ListWebhooks returns all outbound webhook delivery records.
+// ListWebhooks returns outbound webhook delivery records for the requesting org.
 //
-// GET /admin/webhooks
+// GET /webhooks
 func (h *ReconciliationHandler) ListWebhooks(w http.ResponseWriter, r *http.Request) {
+	orgID, ok := requireOrgID(w, r)
+	if !ok {
+		return
+	}
 	limit := queryInt(r, "limit", 20)
 	offset := queryInt(r, "offset", 0)
 
-	deliveries, err := h.webhooks.ListDeliveries(r.Context(), limit, offset)
+	deliveries, err := h.webhooks.ListDeliveries(r.Context(), orgID, limit, offset)
 	if err != nil {
 		h.log.Error("list webhook deliveries failed", zap.Error(err))
 		writeError(w, http.StatusInternalServerError, "failed to list deliveries")

@@ -158,9 +158,12 @@ func (h *WebhookHandler) handleCredit(w http.ResponseWriter, r *http.Request, pa
 	}
 
 	// Enqueue an outbound webhook delivery for the developer.
+	// OrgID is taken from the resolved virtual account so the delivery is
+	// routed to the correct developer's webhook endpoint in Phase 5.
 	now := time.Now().UTC()
 	delivery := &store.WebhookDelivery{
 		ID:        uuid.New(),
+		OrgID:     va.OrgID,
 		EventType: payload.EventType,
 		Payload:   rawBody,
 		Status:    store.WebhookStatusPending,

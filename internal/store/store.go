@@ -102,6 +102,7 @@ type APIKey struct {
 // Customer represents an end-user of the Ancra platform.
 type Customer struct {
 	ID          uuid.UUID `json:"id"`
+	OrgID       uuid.UUID `json:"org_id"`
 	KYCTier     int       `json:"kyc_tier"`
 	CreatedAt   time.Time `json:"created_at"`
 	DisplayName string    `json:"display_name"` // joined from identity_versions, may be empty
@@ -119,6 +120,7 @@ type IdentityVersion struct {
 // VirtualAccount is a Nomba-backed dedicated virtual account owned by a customer.
 type VirtualAccount struct {
 	ID                uuid.UUID     `json:"id"`
+	OrgID             uuid.UUID     `json:"org_id"`
 	CustomerID        uuid.UUID     `json:"customer_id"`
 	AccountRef        string        `json:"account_ref"`
 	BankAccountNumber string        `json:"bank_account_number"`
@@ -167,6 +169,7 @@ type ReconciliationRun struct {
 // WebhookDelivery tracks an outbound webhook notification to a developer.
 type WebhookDelivery struct {
 	ID          uuid.UUID     `json:"id"`
+	OrgID       uuid.UUID     `json:"org_id"`
 	EventType   string        `json:"event_type"`
 	Payload     []byte        `json:"payload"` // raw JSON
 	Status      WebhookStatus `json:"status"`
@@ -206,7 +209,7 @@ type APIKeyStore interface {
 	CreateKey(ctx context.Context, k *APIKey) error
 	GetByHash(ctx context.Context, hash string) (*APIKey, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*APIKey, error)
-	ListKeys(ctx context.Context) ([]*APIKey, error)
+	ListKeys(ctx context.Context, orgID uuid.UUID) ([]*APIKey, error)
 	RevokeKey(ctx context.Context, id uuid.UUID) error
 	TouchLastUsed(ctx context.Context, id uuid.UUID) error
 }
@@ -214,22 +217,24 @@ type APIKeyStore interface {
 // CustomerStore manages customer and identity-version persistence.
 type CustomerStore interface {
 	CreateCustomer(ctx context.Context, c *Customer) error
-	GetCustomer(ctx context.Context, id uuid.UUID) (*Customer, error)
-	ListCustomers(ctx context.Context, limit, offset int) ([]*Customer, error)
+	GetCustomer(ctx context.Context, orgID uuid.UUID, id uuid.UUID) (*Customer, error)
+	ListCustomers(ctx context.Context, orgID uuid.UUID, limit, offset int) ([]*Customer, error)
 
 	CreateIdentityVersion(ctx context.Context, v *IdentityVersion) error
 	GetCurrentIdentity(ctx context.Context, customerID uuid.UUID) (*IdentityVersion, error)
-	// CloseIdentityVersion sets effective_to on the current identity record.
 	CloseIdentityVersion(ctx context.Context, id uuid.UUID, closedAt time.Time) error
 }
 
 // AccountStore manages virtual account persistence.
 type AccountStore interface {
 	CreateAccount(ctx context.Context, a *VirtualAccount) error
-	GetAccount(ctx context.Context, id uuid.UUID) (*VirtualAccount, error)
+	// GetAccount retrieves an account scoped to the given org.
+	GetAccount(ctx context.Context, orgID uuid.UUID, id uuid.UUID) (*VirtualAccount, error)
+	// GetAccountByNumber looks up an account by bank account number regardless of org.
+	// Used by the inbound webhook handler which resolves the org from the account itself.
 	GetAccountByNumber(ctx context.Context, accountNumber string) (*VirtualAccount, error)
-	ListAccounts(ctx context.Context, limit, offset int) ([]*VirtualAccount, error)
-	ListAccountsByCustomer(ctx context.Context, customerID uuid.UUID) ([]*VirtualAccount, error)
+	ListAccounts(ctx context.Context, orgID uuid.UUID, limit, offset int) ([]*VirtualAccount, error)
+	ListAccountsByCustomer(ctx context.Context, orgID uuid.UUID, customerID uuid.UUID) ([]*VirtualAccount, error)
 	UpdateAccountStatus(ctx context.Context, id uuid.UUID, status AccountStatus) error
 }
 
@@ -268,8 +273,9 @@ type ReconciliationStore interface {
 type WebhookStore interface {
 	CreateDelivery(ctx context.Context, d *WebhookDelivery) error
 	GetDelivery(ctx context.Context, id uuid.UUID) (*WebhookDelivery, error)
-	// ListPending returns deliveries that are due for (re-)delivery.
+	// ListPending returns deliveries due for (re-)delivery regardless of org.
+	// Used by the outbound worker which processes all pending deliveries.
 	ListPending(ctx context.Context, now time.Time, limit int) ([]*WebhookDelivery, error)
-	ListDeliveries(ctx context.Context, limit, offset int) ([]*WebhookDelivery, error)
+	ListDeliveries(ctx context.Context, orgID uuid.UUID, limit, offset int) ([]*WebhookDelivery, error)
 	UpdateDelivery(ctx context.Context, d *WebhookDelivery) error
 }

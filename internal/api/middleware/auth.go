@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/abdulsalamcodes/ancra/internal/store"
+	"github.com/abdulsalamcodes/ancra/internal/tenant"
 )
 
 // cachedKey holds a recently-validated key to avoid a DB hit on every request.
@@ -48,8 +49,13 @@ func APIKeyAuth(keys store.APIKeyStore, staticKey string) func(http.Handler) htt
 			if entry, ok := keyCache.Load(hash); ok {
 				ck := entry.(*cachedKey)
 				if time.Now().Before(ck.expiresAt) {
+					if ck.key.OrgID == nil {
+						http.Error(w, `{"error":"API key is not associated with an organisation; please create a new key from the dashboard"}`, http.StatusForbidden)
+						return
+					}
 					go func() { _ = keys.TouchLastUsed(context.Background(), ck.key.ID) }()
-					next.ServeHTTP(w, r)
+					ctx := tenant.WithOrgID(r.Context(), ck.key.OrgID.String())
+					next.ServeHTTP(w, r.WithContext(ctx))
 					return
 				}
 				keyCache.Delete(hash)
@@ -62,9 +68,16 @@ func APIKeyAuth(keys store.APIKeyStore, staticKey string) func(http.Handler) htt
 				return
 			}
 
+			if k.OrgID == nil {
+				http.Error(w, `{"error":"API key is not associated with an organisation; please create a new key from the dashboard"}`, http.StatusForbidden)
+				return
+			}
+
 			keyCache.Store(hash, &cachedKey{key: k, expiresAt: time.Now().Add(cacheTTL)})
 			go func() { _ = keys.TouchLastUsed(context.Background(), k.ID) }()
-			next.ServeHTTP(w, r)
+
+			ctx := tenant.WithOrgID(r.Context(), k.OrgID.String())
+			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }

@@ -27,11 +27,16 @@ func NewAPIKeyHandler(keys store.APIKeyStore, log *zap.Logger) *APIKeyHandler {
 	return &APIKeyHandler{keys: keys, log: log}
 }
 
-// Create generates a new API key.
+// Create generates a new API key scoped to the requesting org.
 //
-// POST /admin/api-keys
+// POST /api-keys
 // Body: {"name": "my integration"}
 func (h *APIKeyHandler) Create(w http.ResponseWriter, r *http.Request) {
+	orgID, ok := requireOrgID(w, r)
+	if !ok {
+		return
+	}
+
 	var body struct {
 		Name string `json:"name"`
 	}
@@ -53,6 +58,7 @@ func (h *APIKeyHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	k := &store.APIKey{
 		ID:        uuid.New(),
+		OrgID:     &orgID,
 		Name:      body.Name,
 		KeyHash:   hash,
 		CreatedAt: time.Now().UTC(),
@@ -73,11 +79,16 @@ func (h *APIKeyHandler) Create(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// List returns all API keys (hashes are never returned).
+// List returns all API keys for the requesting org (hashes are never returned).
 //
-// GET /admin/api-keys
+// GET /api-keys
 func (h *APIKeyHandler) List(w http.ResponseWriter, r *http.Request) {
-	keys, err := h.keys.ListKeys(r.Context())
+	orgID, ok := requireOrgID(w, r)
+	if !ok {
+		return
+	}
+
+	keys, err := h.keys.ListKeys(r.Context(), orgID)
 	if err != nil {
 		h.log.Error("failed to list api keys", zap.Error(err))
 		writeError(w, http.StatusInternalServerError, "failed to list keys")

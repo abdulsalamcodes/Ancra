@@ -74,36 +74,42 @@ func NewRouter(d RouterDeps) http.Handler {
 	)
 	r.Post("/webhooks/nomba", whHandler.HandleNomba)
 
-	// ---------------------------------------------------------------------------
-	// JWT-protected routes (dashboard / session-based access)
-	// ---------------------------------------------------------------------------
-	r.Group(func(r chi.Router) {
-		r.Use(middleware.JWTAuth(d.AuthSvc))
-		r.Get("/auth/me", authHandler.Me)
-	})
-
-	// ---------------------------------------------------------------------------
-	// Admin routes — protected by Admin-Secret header only
-	// ---------------------------------------------------------------------------
 	apiKeyHandler := handlers.NewAPIKeyHandler(d.APIKeys, d.Log)
 	reconHandler := handlers.NewReconciliationHandler(d.ReconSvc, d.Webhooks, d.Log)
-
-	r.Group(func(r chi.Router) {
-		r.Use(middleware.AdminAuth(d.AdminSecret))
-
-		r.Post("/admin/api-keys", apiKeyHandler.Create)
-		r.Get("/admin/api-keys", apiKeyHandler.List)
-		r.Delete("/admin/api-keys/{id}", apiKeyHandler.Revoke)
-		r.Get("/admin/webhooks", reconHandler.ListWebhooks)
-	})
-
-	// ---------------------------------------------------------------------------
-	// Authenticated developer API
-	// ---------------------------------------------------------------------------
 	acctHandler := handlers.NewAccountHandler(d.AccountSvc, d.Log)
 	txnHandler := handlers.NewTransactionHandler(d.LedgerSvc, d.NombaClient, d.Log)
 	customerHandler := handlers.NewCustomerHandler(d.Customers, d.Log)
 
+	// ---------------------------------------------------------------------------
+	// JWT-protected routes — dashboard / session-based access
+	// ---------------------------------------------------------------------------
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.JWTAuth(d.AuthSvc))
+		r.Use(chimw.StripSlashes)
+
+		r.Get("/auth/me", authHandler.Me)
+
+		// API key management (org-scoped; dashboard creates keys for programmatic use)
+		r.Post("/api-keys", apiKeyHandler.Create)
+		r.Get("/api-keys", apiKeyHandler.List)
+		r.Delete("/api-keys/{id}", apiKeyHandler.Revoke)
+
+		// Webhook deliveries for this org
+		r.Get("/webhooks", reconHandler.ListWebhooks)
+	})
+
+	// ---------------------------------------------------------------------------
+	// Admin routes — protected by Admin-Secret header only (operator use)
+	// ---------------------------------------------------------------------------
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.AdminAuth(d.AdminSecret))
+
+		r.Get("/admin/webhooks", reconHandler.ListWebhooks)
+	})
+
+	// ---------------------------------------------------------------------------
+	// Authenticated developer API — API key bearer token
+	// ---------------------------------------------------------------------------
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.APIKeyAuth(d.APIKeys, d.StaticKey))
 		r.Use(chimw.StripSlashes)

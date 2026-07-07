@@ -45,13 +45,14 @@ func (s *APIKeyStore) GetByID(ctx context.Context, id uuid.UUID) (*store.APIKey,
 	return scanKey(s.Pool.QueryRow(ctx, q, id))
 }
 
-// ListKeys returns all API keys ordered by creation time descending.
-func (s *APIKeyStore) ListKeys(ctx context.Context) ([]*store.APIKey, error) {
+// ListKeys returns all API keys for an org ordered by creation time descending.
+func (s *APIKeyStore) ListKeys(ctx context.Context, orgID uuid.UUID) ([]*store.APIKey, error) {
 	const q = `
 		SELECT id, org_id, name, key_hash, created_at, last_used_at, revoked_at
 		FROM api_keys
+		WHERE org_id = $1
 		ORDER BY created_at DESC`
-	rows, err := s.Pool.Query(ctx, q)
+	rows, err := s.Pool.Query(ctx, q, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("apikeys.List: %w", err)
 	}

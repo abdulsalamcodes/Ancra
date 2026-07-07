@@ -12,6 +12,7 @@ import (
 
 	"github.com/abdulsalamcodes/ancra/internal/domain/account"
 	"github.com/abdulsalamcodes/ancra/internal/store"
+	"github.com/abdulsalamcodes/ancra/internal/tenant"
 )
 
 
@@ -271,6 +272,11 @@ const (
 
 // Create provisions a new customer.
 func (h *CustomerHandler) Create(w http.ResponseWriter, r *http.Request) {
+	orgID, ok := requireOrgID(w, r)
+	if !ok {
+		return
+	}
+
 	var req createCustomerRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
@@ -286,6 +292,7 @@ func (h *CustomerHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	c := &store.Customer{
 		ID:        uuid.New(),
+		OrgID:     orgID,
 		KYCTier:   req.KYCTier,
 		CreatedAt: time.Now().UTC(),
 	}
@@ -298,16 +305,20 @@ func (h *CustomerHandler) Create(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, c)
 }
 
-// GetCustomerByID retrieves a single customer by UUID.
+// GetCustomerByID retrieves a single customer by UUID, scoped to the requesting org.
 //
 // GET /customers/{id}
 func (h *CustomerHandler) GetCustomerByID(w http.ResponseWriter, r *http.Request) {
+	orgID, ok := requireOrgID(w, r)
+	if !ok {
+		return
+	}
 	id, ok := parseUUID(w, r, "id")
 	if !ok {
 		return
 	}
 
-	customer, err := h.customers.GetCustomer(r.Context(), id)
+	customer, err := h.customers.GetCustomer(r.Context(), orgID, id)
 	if err != nil {
 		h.log.Error("get customer failed", zap.String("id", id.String()), zap.Error(err))
 		writeError(w, http.StatusNotFound, "customer not found")
@@ -317,14 +328,18 @@ func (h *CustomerHandler) GetCustomerByID(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, customer)
 }
 
-// List returns a paginated list of customers with their display names.
+// List returns a paginated list of customers for the requesting org.
 //
 // GET /customers
 func (h *CustomerHandler) List(w http.ResponseWriter, r *http.Request) {
+	orgID, ok := requireOrgID(w, r)
+	if !ok {
+		return
+	}
 	limit := queryInt(r, "limit", 20)
 	offset := queryInt(r, "offset", 0)
 
-	customers, err := h.customers.ListCustomers(r.Context(), limit, offset)
+	customers, err := h.customers.ListCustomers(r.Context(), orgID, limit, offset)
 	if err != nil {
 		h.log.Error("list customers failed", zap.Error(err))
 		writeError(w, http.StatusInternalServerError, "failed to list customers")
@@ -343,6 +358,23 @@ func (h *CustomerHandler) List(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------------------
 // helpers
 // ---------------------------------------------------------------------------
+
+// requireOrgID reads the organisation UUID from the request context.
+// It writes a 403 and returns false if the context is missing org identity,
+// which indicates unauthenticated access bypassed middleware.
+func requireOrgID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
+	raw := tenant.OrgIDFromContext(r.Context())
+	if raw == "" {
+		writeError(w, http.StatusForbidden, "missing organisation context")
+		return uuid.UUID{}, false
+	}
+	id, err := uuid.Parse(raw)
+	if err != nil {
+		writeError(w, http.StatusForbidden, "invalid organisation context")
+		return uuid.UUID{}, false
+	}
+	return id, true
+}
 
 func parseUUID(w http.ResponseWriter, r *http.Request, param string) (uuid.UUID, bool) {
 	raw := chi.URLParam(r, param)

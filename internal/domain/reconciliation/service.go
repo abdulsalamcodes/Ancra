@@ -11,7 +11,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -61,14 +60,14 @@ func NewService(
 func (s *Service) Run(ctx context.Context) (*store.ReconciliationRun, error) {
 	runAt := time.Now().UTC()
 
-	// 1. Nomba wallet balance (returned as a naira string; convert to kobo).
+	// 1. Nomba wallet balance (returned as a naira number-string; convert to kobo).
 	balResp, err := s.nomba.GetWalletBalance(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("reconciliation.Run: get nomba balance: %w", err)
 	}
-	balanceNaira, parseErr := strconv.ParseFloat(balResp.Data.Amount, 64)
-	if parseErr != nil {
-		return nil, fmt.Errorf("reconciliation.Run: parse nomba balance %q: %w", balResp.Data.Amount, parseErr)
+	balanceNaira, err := balResp.Data.Amount.Float64()
+	if err != nil {
+		return nil, fmt.Errorf("reconciliation.Run: parse nomba balance %q: %w", balResp.Data.Amount, err)
 	}
 	nombaKobo := nairaToKobo(balanceNaira)
 

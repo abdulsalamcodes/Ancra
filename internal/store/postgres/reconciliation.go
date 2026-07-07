@@ -100,11 +100,11 @@ func NewWebhookStore(db *DB) *WebhookStore { return &WebhookStore{db} }
 func (s *WebhookStore) CreateDelivery(ctx context.Context, d *store.WebhookDelivery) error {
 	const q = `
 		INSERT INTO webhook_deliveries
-			(id, event_type, payload, status, attempts, next_retry_at, created_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7)`
+			(id, org_id, event_type, payload, status, attempts, next_retry_at, created_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`
 
 	_, err := s.Pool.Exec(ctx, q,
-		d.ID, d.EventType, d.Payload,
+		d.ID, d.OrgID, d.EventType, d.Payload,
 		string(d.Status), d.Attempts, d.NextRetryAt, d.CreatedAt,
 	)
 	if err != nil {
@@ -116,16 +116,17 @@ func (s *WebhookStore) CreateDelivery(ctx context.Context, d *store.WebhookDeliv
 // GetDelivery retrieves a webhook delivery by ID.
 func (s *WebhookStore) GetDelivery(ctx context.Context, id uuid.UUID) (*store.WebhookDelivery, error) {
 	const q = `
-		SELECT id, event_type, payload, status, attempts, next_retry_at, created_at
+		SELECT id, org_id, event_type, payload, status, attempts, next_retry_at, created_at
 		FROM webhook_deliveries WHERE id = $1`
 
 	return scanDelivery(s.Pool.QueryRow(ctx, q, id))
 }
 
-// ListPending returns webhook deliveries that are ready for (re-)delivery.
+// ListPending returns deliveries due for (re-)delivery across all orgs.
+// Used by the outbound worker; not scoped to a single organisation.
 func (s *WebhookStore) ListPending(ctx context.Context, now time.Time, limit int) ([]*store.WebhookDelivery, error) {
 	const q = `
-		SELECT id, event_type, payload, status, attempts, next_retry_at, created_at
+		SELECT id, org_id, event_type, payload, status, attempts, next_retry_at, created_at
 		FROM webhook_deliveries
 		WHERE status = 'pending' AND (next_retry_at IS NULL OR next_retry_at <= $1)
 		ORDER BY created_at ASC
@@ -164,15 +165,16 @@ func (s *WebhookStore) UpdateDelivery(ctx context.Context, d *store.WebhookDeliv
 	return nil
 }
 
-// ListDeliveries returns all webhook deliveries, newest first.
-func (s *WebhookStore) ListDeliveries(ctx context.Context, limit, offset int) ([]*store.WebhookDelivery, error) {
+// ListDeliveries returns webhook deliveries for an org, newest first.
+func (s *WebhookStore) ListDeliveries(ctx context.Context, orgID uuid.UUID, limit, offset int) ([]*store.WebhookDelivery, error) {
 	const q = `
-		SELECT id, event_type, payload, status, attempts, next_retry_at, created_at
+		SELECT id, org_id, event_type, payload, status, attempts, next_retry_at, created_at
 		FROM webhook_deliveries
+		WHERE org_id = $1
 		ORDER BY created_at DESC
-		LIMIT $1 OFFSET $2`
+		LIMIT $2 OFFSET $3`
 
-	rows, err := s.Pool.Query(ctx, q, limit, offset)
+	rows, err := s.Pool.Query(ctx, q, orgID, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("webhook.ListDeliveries: %w", err)
 	}
@@ -193,7 +195,7 @@ func scanDelivery(row scanner) (*store.WebhookDelivery, error) {
 	var d store.WebhookDelivery
 	var status string
 	if err := row.Scan(
-		&d.ID, &d.EventType, &d.Payload,
+		&d.ID, &d.OrgID, &d.EventType, &d.Payload,
 		&status, &d.Attempts, &d.NextRetryAt, &d.CreatedAt,
 	); err != nil {
 		return nil, fmt.Errorf("webhook.scan: %w", err)

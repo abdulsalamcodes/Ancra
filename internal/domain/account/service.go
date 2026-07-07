@@ -12,6 +12,7 @@ import (
 
 	"github.com/abdulsalamcodes/ancra/internal/nomba"
 	"github.com/abdulsalamcodes/ancra/internal/store"
+	"github.com/abdulsalamcodes/ancra/internal/tenant"
 )
 
 // Service orchestrates virtual-account operations across the Nomba API and the
@@ -47,8 +48,13 @@ func NewService(
 //  3. Persists the account record locally.
 //  4. Creates the initial identity version.
 func (s *Service) Create(ctx context.Context, req CreateAccountRequest) (*CreateAccountResponse, error) {
-	// 1. Verify customer exists.
-	customer, err := s.customers.GetCustomer(ctx, req.CustomerID)
+	orgID, err := parseOrgID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// 1. Verify customer exists within this org.
+	customer, err := s.customers.GetCustomer(ctx, orgID, req.CustomerID)
 	if err != nil {
 		return nil, fmt.Errorf("account.Create: customer lookup: %w", err)
 	}
@@ -56,7 +62,7 @@ func (s *Service) Create(ctx context.Context, req CreateAccountRequest) (*Create
 	// 1a. Idempotency: return the existing active account rather than
 	// provisioning a duplicate on Nomba. accountRef is the customer UUID so
 	// the same customer always maps to the same Nomba virtual account.
-	existing, _ := s.accounts.ListAccountsByCustomer(ctx, customer.ID)
+	existing, _ := s.accounts.ListAccountsByCustomer(ctx, orgID, customer.ID)
 	for _, va := range existing {
 		if va.Status == store.AccountStatusActive {
 			identity, _ := s.customers.GetCurrentIdentity(ctx, customer.ID)
@@ -89,6 +95,7 @@ func (s *Service) Create(ctx context.Context, req CreateAccountRequest) (*Create
 	// 3. Persist locally.
 	va := &store.VirtualAccount{
 		ID:                uuid.New(),
+		OrgID:             orgID,
 		CustomerID:        customer.ID,
 		AccountRef:        accountRef,
 		BankAccountNumber: nombaResp.Data.BankAccountNumber,
@@ -115,12 +122,16 @@ func (s *Service) Create(ctx context.Context, req CreateAccountRequest) (*Create
 	return &CreateAccountResponse{Account: va, Identity: iv}, nil
 }
 
-// ListAccounts returns a paginated list of all virtual accounts.
+// ListAccounts returns a paginated list of virtual accounts for the requesting org.
 func (s *Service) ListAccounts(ctx context.Context, limit, offset int) ([]*store.VirtualAccount, error) {
+	orgID, err := parseOrgID(ctx)
+	if err != nil {
+		return nil, err
+	}
 	if limit <= 0 || limit > 100 {
 		limit = 20
 	}
-	accounts, err := s.accounts.ListAccounts(ctx, limit, offset)
+	accounts, err := s.accounts.ListAccounts(ctx, orgID, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("account.ListAccounts: %w", err)
 	}
@@ -130,9 +141,13 @@ func (s *Service) ListAccounts(ctx context.Context, limit, offset int) ([]*store
 	return accounts, nil
 }
 
-// Get retrieves a virtual account by ID.
+// Get retrieves a virtual account by ID, scoped to the requesting org.
 func (s *Service) Get(ctx context.Context, id uuid.UUID) (*store.VirtualAccount, error) {
-	va, err := s.accounts.GetAccount(ctx, id)
+	orgID, err := parseOrgID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	va, err := s.accounts.GetAccount(ctx, orgID, id)
 	if err != nil {
 		return nil, fmt.Errorf("account.Get: %w", err)
 	}
@@ -141,7 +156,11 @@ func (s *Service) Get(ctx context.Context, id uuid.UUID) (*store.VirtualAccount,
 
 // GetBalance computes the current balance of a virtual account from the ledger.
 func (s *Service) GetBalance(ctx context.Context, accountID uuid.UUID) (*AccountBalance, error) {
-	if _, err := s.accounts.GetAccount(ctx, accountID); err != nil {
+	orgID, err := parseOrgID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.accounts.GetAccount(ctx, orgID, accountID); err != nil {
 		return nil, fmt.Errorf("account.GetBalance: not found: %w", err)
 	}
 
@@ -160,6 +179,15 @@ func (s *Service) GetBalance(ctx context.Context, accountID uuid.UUID) (*Account
 
 // ListTransactions returns a page of ledger entries for an account.
 func (s *Service) ListTransactions(ctx context.Context, accountID uuid.UUID, limit, offset int) (*TransactionPage, error) {
+	orgID, err := parseOrgID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// Verify account belongs to the requesting org before returning ledger data.
+	if _, err := s.accounts.GetAccount(ctx, orgID, accountID); err != nil {
+		return nil, fmt.Errorf("account.ListTransactions: not found: %w", err)
+	}
+
 	if limit <= 0 || limit > 100 {
 		limit = 20
 	}
@@ -177,6 +205,14 @@ func (s *Service) ListTransactions(ctx context.Context, accountID uuid.UUID, lim
 // as of the page boundary — not against the current total balance — so it
 // remains accurate across all pages.
 func (s *Service) GetStatement(ctx context.Context, accountID uuid.UUID, limit, offset int) (*StatementPage, error) {
+	orgID, err := parseOrgID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.accounts.GetAccount(ctx, orgID, accountID); err != nil {
+		return nil, fmt.Errorf("account.GetStatement: not found: %w", err)
+	}
+
 	if limit <= 0 || limit > 100 {
 		limit = 20
 	}
@@ -232,11 +268,15 @@ func (s *Service) GetStatement(ctx context.Context, accountID uuid.UUID, limit, 
 // Update changes the display name of an account by closing the current
 // identity version and opening a new one.
 func (s *Service) Update(ctx context.Context, req UpdateAccountRequest) error {
+	orgID, err := parseOrgID(ctx)
+	if err != nil {
+		return err
+	}
 	now := time.Now().UTC()
 
 	// Resolve the virtual account first to get the owning customer ID.
 	// req.AccountID is a virtual account ID, not a customer ID.
-	va, err := s.accounts.GetAccount(ctx, req.AccountID)
+	va, err := s.accounts.GetAccount(ctx, orgID, req.AccountID)
 	if err != nil {
 		return fmt.Errorf("account.Update: account lookup: %w", err)
 	}
@@ -269,9 +309,28 @@ func (s *Service) Update(ctx context.Context, req UpdateAccountRequest) error {
 	return nil
 }
 
+// parseOrgID extracts and parses the organisation UUID from the request context.
+// Returns a clear error if the context is missing org identity, which indicates
+// a misconfigured middleware chain rather than a client error.
+func parseOrgID(ctx context.Context) (uuid.UUID, error) {
+	raw := tenant.OrgIDFromContext(ctx)
+	if raw == "" {
+		return uuid.UUID{}, fmt.Errorf("account: org identity missing from context")
+	}
+	id, err := uuid.Parse(raw)
+	if err != nil {
+		return uuid.UUID{}, fmt.Errorf("account: invalid org id in context: %w", err)
+	}
+	return id, nil
+}
+
 // Close marks a virtual account as closed.
 func (s *Service) Close(ctx context.Context, id uuid.UUID) error {
-	va, err := s.accounts.GetAccount(ctx, id)
+	orgID, err := parseOrgID(ctx)
+	if err != nil {
+		return err
+	}
+	va, err := s.accounts.GetAccount(ctx, orgID, id)
 	if err != nil {
 		return fmt.Errorf("account.Close: not found: %w", err)
 	}

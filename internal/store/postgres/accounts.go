@@ -19,11 +19,11 @@ func NewAccountStore(db *DB) *AccountStore { return &AccountStore{db} }
 func (s *AccountStore) CreateAccount(ctx context.Context, a *store.VirtualAccount) error {
 	const q = `
 		INSERT INTO virtual_accounts
-			(id, customer_id, account_ref, bank_account_number, bank_account_name, status, created_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7)`
+			(id, org_id, customer_id, account_ref, bank_account_number, bank_account_name, status, created_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`
 
 	_, err := s.Pool.Exec(ctx, q,
-		a.ID, a.CustomerID, a.AccountRef,
+		a.ID, a.OrgID, a.CustomerID, a.AccountRef,
 		a.BankAccountNumber, a.BankAccountName,
 		string(a.Status), a.CreatedAt,
 	)
@@ -33,33 +33,36 @@ func (s *AccountStore) CreateAccount(ctx context.Context, a *store.VirtualAccoun
 	return nil
 }
 
-// GetAccount retrieves a virtual account by primary key.
-func (s *AccountStore) GetAccount(ctx context.Context, id uuid.UUID) (*store.VirtualAccount, error) {
+// GetAccount retrieves a virtual account by primary key, scoped to the given org.
+func (s *AccountStore) GetAccount(ctx context.Context, orgID uuid.UUID, id uuid.UUID) (*store.VirtualAccount, error) {
 	const q = `
-		SELECT id, customer_id, account_ref, bank_account_number, bank_account_name, status, created_at
-		FROM virtual_accounts WHERE id = $1`
+		SELECT id, org_id, customer_id, account_ref, bank_account_number, bank_account_name, status, created_at
+		FROM virtual_accounts WHERE id = $1 AND org_id = $2`
 
-	row := s.Pool.QueryRow(ctx, q, id)
-	return scanAccount(row)
+	return scanAccount(s.Pool.QueryRow(ctx, q, id, orgID))
 }
 
 // GetAccountByNumber retrieves a virtual account by its bank account number.
+// This lookup is intentionally un-scoped by org: the inbound webhook handler
+// uses it to resolve which org a payment belongs to.
 func (s *AccountStore) GetAccountByNumber(ctx context.Context, accountNumber string) (*store.VirtualAccount, error) {
 	const q = `
-		SELECT id, customer_id, account_ref, bank_account_number, bank_account_name, status, created_at
+		SELECT id, org_id, customer_id, account_ref, bank_account_number, bank_account_name, status, created_at
 		FROM virtual_accounts WHERE bank_account_number = $1`
 
-	row := s.Pool.QueryRow(ctx, q, accountNumber)
-	return scanAccount(row)
+	return scanAccount(s.Pool.QueryRow(ctx, q, accountNumber))
 }
 
-// ListAccounts returns a paginated list of all virtual accounts, newest first.
-func (s *AccountStore) ListAccounts(ctx context.Context, limit, offset int) ([]*store.VirtualAccount, error) {
+// ListAccounts returns a paginated list of virtual accounts for an org, newest first.
+func (s *AccountStore) ListAccounts(ctx context.Context, orgID uuid.UUID, limit, offset int) ([]*store.VirtualAccount, error) {
 	const q = `
-		SELECT id, customer_id, account_ref, bank_account_number, bank_account_name, status, created_at
-		FROM virtual_accounts ORDER BY created_at DESC LIMIT $1 OFFSET $2`
+		SELECT id, org_id, customer_id, account_ref, bank_account_number, bank_account_name, status, created_at
+		FROM virtual_accounts
+		WHERE org_id = $1
+		ORDER BY created_at DESC
+		LIMIT $2 OFFSET $3`
 
-	rows, err := s.Pool.Query(ctx, q, limit, offset)
+	rows, err := s.Pool.Query(ctx, q, orgID, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("accounts.List: %w", err)
 	}
@@ -76,13 +79,15 @@ func (s *AccountStore) ListAccounts(ctx context.Context, limit, offset int) ([]*
 	return accounts, rows.Err()
 }
 
-// ListAccountsByCustomer returns all accounts belonging to a customer.
-func (s *AccountStore) ListAccountsByCustomer(ctx context.Context, customerID uuid.UUID) ([]*store.VirtualAccount, error) {
+// ListAccountsByCustomer returns all accounts for a customer within an org.
+func (s *AccountStore) ListAccountsByCustomer(ctx context.Context, orgID uuid.UUID, customerID uuid.UUID) ([]*store.VirtualAccount, error) {
 	const q = `
-		SELECT id, customer_id, account_ref, bank_account_number, bank_account_name, status, created_at
-		FROM virtual_accounts WHERE customer_id = $1 ORDER BY created_at DESC`
+		SELECT id, org_id, customer_id, account_ref, bank_account_number, bank_account_name, status, created_at
+		FROM virtual_accounts
+		WHERE customer_id = $1 AND org_id = $2
+		ORDER BY created_at DESC`
 
-	rows, err := s.Pool.Query(ctx, q, customerID)
+	rows, err := s.Pool.Query(ctx, q, customerID, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("accounts.ListByCustomer: %w", err)
 	}
@@ -121,7 +126,7 @@ func scanAccount(row scanner) (*store.VirtualAccount, error) {
 	var a store.VirtualAccount
 	var status string
 	err := row.Scan(
-		&a.ID, &a.CustomerID, &a.AccountRef,
+		&a.ID, &a.OrgID, &a.CustomerID, &a.AccountRef,
 		&a.BankAccountNumber, &a.BankAccountName,
 		&status, &a.CreatedAt,
 	)

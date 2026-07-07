@@ -18,22 +18,49 @@ func NewCustomerStore(db *DB) *CustomerStore { return &CustomerStore{db} }
 
 // CreateCustomer inserts a new customer row.
 func (s *CustomerStore) CreateCustomer(ctx context.Context, c *store.Customer) error {
-	const q = `INSERT INTO customers (id, kyc_tier, created_at) VALUES ($1,$2,$3)`
-	_, err := s.Pool.Exec(ctx, q, c.ID, c.KYCTier, c.CreatedAt)
+	const q = `INSERT INTO customers (id, org_id, kyc_tier, created_at) VALUES ($1,$2,$3,$4)`
+	_, err := s.Pool.Exec(ctx, q, c.ID, c.OrgID, c.KYCTier, c.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("customers.Create: %w", err)
 	}
 	return nil
 }
 
-// GetCustomer retrieves a customer by primary key.
-func (s *CustomerStore) GetCustomer(ctx context.Context, id uuid.UUID) (*store.Customer, error) {
-	const q = `SELECT id, kyc_tier, created_at FROM customers WHERE id = $1`
+// GetCustomer retrieves a customer by primary key, scoped to the given org.
+func (s *CustomerStore) GetCustomer(ctx context.Context, orgID uuid.UUID, id uuid.UUID) (*store.Customer, error) {
+	const q = `SELECT id, org_id, kyc_tier, created_at FROM customers WHERE id = $1 AND org_id = $2`
 	var c store.Customer
-	if err := s.Pool.QueryRow(ctx, q, id).Scan(&c.ID, &c.KYCTier, &c.CreatedAt); err != nil {
+	if err := s.Pool.QueryRow(ctx, q, id, orgID).Scan(&c.ID, &c.OrgID, &c.KYCTier, &c.CreatedAt); err != nil {
 		return nil, fmt.Errorf("customers.Get: %w", err)
 	}
 	return &c, nil
+}
+
+// ListCustomers returns customers belonging to an org with their current display name, newest first.
+func (s *CustomerStore) ListCustomers(ctx context.Context, orgID uuid.UUID, limit, offset int) ([]*store.Customer, error) {
+	const q = `
+		SELECT c.id, c.org_id, c.kyc_tier, c.created_at, COALESCE(iv.display_name, '') AS display_name
+		FROM customers c
+		LEFT JOIN identity_versions iv ON iv.customer_id = c.id AND iv.effective_to IS NULL
+		WHERE c.org_id = $1
+		ORDER BY c.created_at DESC
+		LIMIT $2 OFFSET $3`
+
+	rows, err := s.Pool.Query(ctx, q, orgID, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("customers.List: %w", err)
+	}
+	defer rows.Close()
+
+	var customers []*store.Customer
+	for rows.Next() {
+		var c store.Customer
+		if err := rows.Scan(&c.ID, &c.OrgID, &c.KYCTier, &c.CreatedAt, &c.DisplayName); err != nil {
+			return nil, fmt.Errorf("customers.List scan: %w", err)
+		}
+		customers = append(customers, &c)
+	}
+	return customers, rows.Err()
 }
 
 // CreateIdentityVersion inserts a new identity version for a customer.
@@ -65,32 +92,6 @@ func (s *CustomerStore) GetCurrentIdentity(ctx context.Context, customerID uuid.
 		return nil, fmt.Errorf("identity.GetCurrent: %w", err)
 	}
 	return &v, nil
-}
-
-// ListCustomers returns customers with their current display name, newest first.
-func (s *CustomerStore) ListCustomers(ctx context.Context, limit, offset int) ([]*store.Customer, error) {
-	const q = `
-		SELECT c.id, c.kyc_tier, c.created_at, COALESCE(iv.display_name, '') AS display_name
-		FROM customers c
-		LEFT JOIN identity_versions iv ON iv.customer_id = c.id AND iv.effective_to IS NULL
-		ORDER BY c.created_at DESC
-		LIMIT $1 OFFSET $2`
-
-	rows, err := s.Pool.Query(ctx, q, limit, offset)
-	if err != nil {
-		return nil, fmt.Errorf("customers.List: %w", err)
-	}
-	defer rows.Close()
-
-	var customers []*store.Customer
-	for rows.Next() {
-		var c store.Customer
-		if err := rows.Scan(&c.ID, &c.KYCTier, &c.CreatedAt, &c.DisplayName); err != nil {
-			return nil, fmt.Errorf("customers.List scan: %w", err)
-		}
-		customers = append(customers, &c)
-	}
-	return customers, rows.Err()
 }
 
 // CloseIdentityVersion stamps effective_to on the given identity version row.
