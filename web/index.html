@@ -602,12 +602,10 @@
       <div class="card">
         <div class="card-header">
           <div class="card-title" style="margin-bottom:0;">All Customers</div>
+          <button class="btn btn-secondary" onclick="loadCustomers()">↻ Refresh</button>
         </div>
-        <div class="alert alert-info">
-          <span class="alert-icon">ℹ️</span>
-          Customer list endpoint is not yet implemented. Use the form above to create customers, then use the returned ID to create accounts.
-        </div>
-        <div id="cust-table-wrap"></div>
+        <div id="cust-list-error"></div>
+        <div id="cust-table-wrap"><p style="color:#64748b;">Loading…</p></div>
       </div>
     </div>
 
@@ -838,7 +836,7 @@ function switchPanel(panelId) {
   // Auto-load panel data
   switch (panelId) {
     case 'api-keys': loadAPIKeys(); break;
-    case 'customers': break; // no list endpoint
+    case 'customers': loadCustomers(); break;
     case 'accounts': break;
     case 'reconciliation': loadReconciliation(); break;
     case 'webhooks': loadWebhooks(); break;
@@ -1151,13 +1149,53 @@ async function createCustomer() {
       </div>`;
     document.getElementById('cust-result').style.display = 'block';
     showToast('Customer created ✓');
+    loadCustomers();
   } catch (e) {
     setError('cust-error', e.message);
   }
 }
 
 async function loadCustomers() {
-  // List endpoint not implemented — handled by info alert in HTML
+  const wrap = document.getElementById('cust-table-wrap');
+  const err = document.getElementById('cust-list-error');
+  hideEl('cust-list-error');
+  wrap.innerHTML = '<p style="color:#64748b;">Loading…</p>';
+
+  try {
+    const data = await apiFetch('/customers?limit=50');
+    const customers = data.customers || [];
+
+    if (!customers.length) {
+      wrap.innerHTML = '<p style="color:#64748b;">No customers yet. Create one above.</p>';
+      return;
+    }
+
+    wrap.innerHTML = `
+      <table class="table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Display Name</th>
+            <th>KYC Tier</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${customers.map(c => `
+            <tr>
+              <td class="mono" style="font-size:11px;">${escapeHtml(c.id)}</td>
+              <td>${escapeHtml(c.display_name || '—')}</td>
+              <td>${c.kyc_tier}</td>
+              <td>${formatDate(c.created_at)}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch (e) {
+    wrap.innerHTML = '';
+    showEl('cust-list-error');
+    document.getElementById('cust-list-error').innerHTML =
+      `<div class="alert alert-error"><span class="alert-icon">⚠️</span>${escapeHtml(e.message)}</div>`;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
