@@ -70,13 +70,10 @@ func (s *Service) Create(ctx context.Context, req CreateAccountRequest) (*Create
 
 	// 2. Call Nomba.
 	nombaResp, err := s.nomba.CreateVirtualAccount(ctx, nomba.CreateVirtualAccountRequest{
-		AccountName:   req.DisplayName,
-		AccountRef:    accountRef,
-		CustomerEmail: req.CustomerEmail,
-		CustomerName:  req.DisplayName,
-		PhoneNumber:   req.PhoneNumber,
-		BVN:           req.BVN,
-		NIN:           req.NIN,
+		AccountName: req.DisplayName,
+		AccountRef:  accountRef,
+		Currency:    "NGN",
+		BVN:         req.BVN,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("account.Create: nomba: %w", err)
@@ -84,7 +81,7 @@ func (s *Service) Create(ctx context.Context, req CreateAccountRequest) (*Create
 
 	s.log.Info("nomba virtual account created",
 		zap.String("account_ref", accountRef),
-		zap.String("account_number", nombaResp.Data.AccountNumber),
+		zap.String("bank_account_number", nombaResp.Data.BankAccountNumber),
 	)
 
 	now := time.Now().UTC()
@@ -94,7 +91,7 @@ func (s *Service) Create(ctx context.Context, req CreateAccountRequest) (*Create
 		ID:                uuid.New(),
 		CustomerID:        customer.ID,
 		AccountRef:        accountRef,
-		BankAccountNumber: nombaResp.Data.AccountNumber,
+		BankAccountNumber: nombaResp.Data.BankAccountNumber,
 		BankAccountName:   nombaResp.Data.AccountName,
 		Status:            store.AccountStatusActive,
 		CreatedAt:         now,

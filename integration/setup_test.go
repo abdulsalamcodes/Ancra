@@ -229,30 +229,33 @@ func newFakeNombaServer() *httptest.Server {
 		})
 	})
 
+	// Create virtual account: POST /accounts/virtual
+	mux.HandleFunc("/accounts/virtual", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		var req nomba.CreateVirtualAccountRequest
+		json.NewDecoder(r.Body).Decode(&req) //nolint:errcheck
+		json.NewEncoder(w).Encode(map[string]interface{}{ //nolint:errcheck
+			"code":        "00",
+			"description": "Successful",
+			"data": map[string]interface{}{
+				"bankAccountNumber": "1234567890",
+				"accountRef":        req.AccountRef,
+				"accountName":       req.AccountName,
+				"currency":          "NGN",
+				"expired":           false,
+			},
+		})
+	})
+
 	// Catch-all for /accounts/...
 	mux.HandleFunc("/accounts/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
 		switch {
-		// Create virtual account: POST /accounts/{subID}/virtual-accounts
-		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/virtual-accounts"):
-			var req nomba.CreateVirtualAccountRequest
-			json.NewDecoder(r.Body).Decode(&req) //nolint:errcheck
-			json.NewEncoder(w).Encode(map[string]interface{}{ //nolint:errcheck
-				"code":        "00",
-				"description": "Successful",
-				"data": map[string]interface{}{
-					"accountId":     "nomba-va-id",
-					"accountRef":    req.AccountRef,
-					"accountName":   req.AccountName,
-					"accountNumber": "1234567890",
-					"bankCode":      "000026",
-					"bankName":      "Nombank MFB",
-					"customerEmail": req.CustomerEmail,
-					"customerName":  req.CustomerName,
-					"status":        "active",
-				},
-			})
 
 		// Wallet balance: GET /accounts/{subID}/balance
 		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/balance"):

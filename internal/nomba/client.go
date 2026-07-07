@@ -93,17 +93,19 @@ func (c *Client) GetToken(ctx context.Context) (string, error) {
 // Virtual accounts
 // ---------------------------------------------------------------------------
 
-// CreateVirtualAccount provisions a dedicated virtual account under the
-// sub-account. Both path and accountId header use the sub-account ID.
+// CreateVirtualAccount provisions a dedicated virtual account.
+// Path: POST /accounts/virtual — accountId header uses the parent account ID.
 func (c *Client) CreateVirtualAccount(ctx context.Context, req CreateVirtualAccountRequest) (*CreateVirtualAccountResponse, error) {
 	token, err := c.GetToken(ctx)
 	if err != nil {
 		return nil, err
 	}
+	if req.Currency == "" {
+		req.Currency = "NGN"
+	}
 
 	var resp CreateVirtualAccountResponse
-	path := fmt.Sprintf("/accounts/%s/virtual-accounts", c.subAccountID)
-	if err := c.doJSON(ctx, http.MethodPost, path, token, c.subAccountID, req, &resp); err != nil {
+	if err := c.doJSON(ctx, http.MethodPost, "/accounts/virtual", token, c.accountID, req, &resp); err != nil {
 		return nil, fmt.Errorf("nomba: create virtual account: %w", err)
 	}
 	if resp.Code != "00" {

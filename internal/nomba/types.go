@@ -32,14 +32,15 @@ type TokenResponse struct {
 // ---------------------------------------------------------------------------
 
 // CreateVirtualAccountRequest is the payload sent to Nomba to provision a DVA.
+// Endpoint: POST /accounts/virtual — accountId header must be the parent account ID.
+// Ref: https://developer.nomba.com/docs/products/accept-payment/virtual-account
 type CreateVirtualAccountRequest struct {
-	AccountName   string `json:"accountName"`
-	AccountRef    string `json:"accountRef"`             // your internal reference
-	CustomerEmail string `json:"customerEmail"`
-	CustomerName  string `json:"customerName"`
-	PhoneNumber   string `json:"phoneNumber,omitempty"`
-	BVN           string `json:"bvn,omitempty"`
-	NIN           string `json:"nin,omitempty"`
+	AccountName    string  `json:"accountName"`
+	AccountRef     string  `json:"accountRef"`              // your unique internal reference
+	Currency       string  `json:"currency"`                // required: "NGN"
+	BVN            string  `json:"bvn,omitempty"`
+	ExpiryDate     string  `json:"expiryDate,omitempty"`    // for dynamic/one-time accounts
+	ExpectedAmount float64 `json:"expectedAmount,omitempty"` // restrict to exact amount
 }
 
 // CreateVirtualAccountResponse is returned after successful DVA creation.
@@ -47,15 +48,12 @@ type CreateVirtualAccountResponse struct {
 	Code        string `json:"code"`
 	Description string `json:"description"`
 	Data        struct {
-		AccountID     string `json:"accountId"`
-		AccountRef    string `json:"accountRef"`
-		AccountName   string `json:"accountName"`
-		AccountNumber string `json:"accountNumber"`
-		BankCode      string `json:"bankCode"`
-		BankName      string `json:"bankName"`
-		CustomerEmail string `json:"customerEmail"`
-		CustomerName  string `json:"customerName"`
-		Status        string `json:"status"`
+		BankAccountNumber string `json:"bankAccountNumber"` // the assigned virtual account number
+		AccountRef        string `json:"accountRef"`
+		AccountName       string `json:"accountName"`
+		Currency          string `json:"currency"`
+		ExpiryDate        string `json:"expiryDate,omitempty"`
+		Expired           bool   `json:"expired"`
 	} `json:"data"`
 }
 
