@@ -787,10 +787,10 @@ func createAccount(t *testing.T, env *testEnv, customerID string) map[string]int
 	mustStatus(t, resp, http.StatusCreated)
 	var out map[string]interface{}
 	decodeJSON(t, resp, &out)
-	// CreateAccountResponse serialises with Go field names: "Account", "Identity"
-	acct, ok := out["Account"].(map[string]interface{})
+	// CreateAccountResponse serialises as {"account":{...},"identity":{...}}
+	acct, ok := out["account"].(map[string]interface{})
 	if !ok {
-		t.Fatalf("createAccount: response missing 'Account' field, got: %v", out)
+		t.Fatalf("createAccount: response missing 'account' field, got: %v", out)
 	}
 	return acct
 }

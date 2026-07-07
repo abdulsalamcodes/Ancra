@@ -21,8 +21,8 @@ type CreateAccountRequest struct {
 
 // CreateAccountResponse is the result returned after a successful account creation.
 type CreateAccountResponse struct {
-	Account  *store.VirtualAccount
-	Identity *store.IdentityVersion
+	Account  *store.VirtualAccount  `json:"account"`
+	Identity *store.IdentityVersion `json:"identity"`
 }
 
 // UpdateAccountRequest carries the fields that may be changed on an account.
