@@ -1,1144 +1,667 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ancra DVA — Admin Dashboard</title>
-    <style>
-      /* ── Reset & Base ──────────────────────────────────────────────── */
-      *,
-      *::before,
-      *::after {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
-      :root {
-        --sidebar-bg: #0f172a;
-        --sidebar-hover: #1e293b;
-        --sidebar-active: #1d4ed8;
-        --sidebar-text: #94a3b8;
-        --sidebar-text-active: #f8fafc;
-        --topbar-bg: #ffffff;
-        --topbar-border: #e2e8f0;
-        --content-bg: #f8fafc;
-        --card-bg: #ffffff;
-        --card-border: #e2e8f0;
-        --text-primary: #0f172a;
-        --text-secondary: #64748b;
-        --text-muted: #94a3b8;
-        --blue: #2563eb;
-        --blue-hover: #1d4ed8;
-        --blue-light: #eff6ff;
-        --green: #16a34a;
-        --green-light: #f0fdf4;
-        --red: #dc2626;
-        --red-light: #fef2f2;
-        --yellow: #d97706;
-        --yellow-light: #fffbeb;
-        --radius: 8px;
-        --radius-sm: 4px;
-        --shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
-        --shadow-md:
-          0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-      }
-      body {
-        font-family:
-          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-          "Helvetica Neue", Arial, sans-serif;
-        font-size: 14px;
-        line-height: 1.5;
-        color: var(--text-primary);
-        background: var(--content-bg);
-        display: flex;
-        height: 100vh;
-        overflow: hidden;
-      }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ancra — Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-      /* ── Sidebar ───────────────────────────────────────────────────── */
-      #sidebar {
-        width: 240px;
-        flex-shrink: 0;
-        background: var(--sidebar-bg);
-        display: flex;
-        flex-direction: column;
-        height: 100vh;
-        overflow-y: auto;
-      }
-      .sidebar-logo {
-        padding: 20px 20px 16px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-      }
-      .sidebar-logo h1 {
-        font-size: 18px;
-        font-weight: 700;
-        color: #f8fafc;
-        letter-spacing: -0.3px;
-      }
-      .sidebar-logo p {
-        font-size: 11px;
-        color: var(--sidebar-text);
-        margin-top: 2px;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-      }
-      .sidebar-nav {
-        padding: 12px 8px;
-        flex: 1;
-      }
-      .nav-section-label {
-        font-size: 10px;
-        font-weight: 600;
-        color: #475569;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        padding: 8px 12px 4px;
-      }
-      .nav-item {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 9px 12px;
-        border-radius: var(--radius-sm);
-        cursor: pointer;
-        color: var(--sidebar-text);
-        font-size: 13.5px;
-        font-weight: 500;
-        transition:
-          background 0.15s,
-          color 0.15s;
-        user-select: none;
-        border: none;
-        background: none;
-        width: 100%;
-        text-align: left;
-      }
-      .nav-item:hover {
-        background: var(--sidebar-hover);
-        color: #cbd5e1;
-      }
-      .nav-item.active {
-        background: var(--sidebar-active);
-        color: var(--sidebar-text-active);
-      }
-      .nav-item .icon {
-        font-size: 16px;
-        flex-shrink: 0;
-      }
-      .sidebar-footer {
-        padding: 16px 20px;
-        border-top: 1px solid rgba(255, 255, 255, 0.06);
-      }
-      .connection-status {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 12px;
-        color: var(--sidebar-text);
-      }
-      .status-dot {
-        width: 7px;
-        height: 7px;
-        border-radius: 50%;
-        background: #475569;
-        flex-shrink: 0;
-      }
-      .status-dot.ok {
-        background: #22c55e;
-      }
-      .status-dot.err {
-        background: #ef4444;
-      }
+    :root {
+      --canvas:   #f5f5f5;
+      --paper:    #ffffff;
+      --surface:  #fafafa;
+      --ink:      #0a0a0a;
+      --ink-soft: #171717;
+      --gray:     #737373;
+      --hairline: #e5e5e5;
+      --ember:    #e7000b;
+      --green:    #15803d;
+      --green-bg: #dcfce7;
+      --yellow:   #854d0e;
+      --yellow-bg:#fef9c3;
+      --shadow:   0 0 0 1px rgba(23,23,23,0.05), 0 1px 3px rgba(0,0,0,0.10), 0 1px 2px -1px rgba(0,0,0,0.10);
+      --r-card:   24px;
+      --r-pill:   18px;
+      --r-nested: 10px;
+      --font:     'Inter', ui-sans-serif, system-ui, sans-serif;
+    }
 
-      /* ── Main Layout ───────────────────────────────────────────────── */
-      #main {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-      }
+    html, body { height: 100%; font-family: var(--font); background: var(--canvas); color: var(--ink); -webkit-font-smoothing: antialiased; font-size: 14px; }
 
-      /* ── Top Bar ───────────────────────────────────────────────────── */
-      #topbar {
-        background: var(--topbar-bg);
-        border-bottom: 1px solid var(--topbar-border);
-        flex-shrink: 0;
-      }
-      .topbar-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 12px 24px;
-      }
-      .topbar-title {
-        font-size: 15px;
-        font-weight: 600;
-        color: var(--text-primary);
-      }
-      .topbar-actions {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-      #settings-panel {
-        padding: 0 24px 16px;
-        display: none;
-      }
-      #settings-panel.open {
-        display: block;
-      }
-      .settings-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr auto auto;
-        gap: 10px;
-        align-items: end;
-      }
-      .form-group {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
-      .form-group label {
-        font-size: 11px;
-        font-weight: 600;
-        color: var(--text-secondary);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-      }
-      .form-group input,
-      .form-group select,
-      .form-group textarea {
-        padding: 7px 10px;
-        border: 1px solid var(--card-border);
-        border-radius: var(--radius-sm);
-        font-size: 13px;
-        font-family: inherit;
-        color: var(--text-primary);
-        background: #fff;
-        transition:
-          border-color 0.15s,
-          box-shadow 0.15s;
-        width: 100%;
-      }
-      .form-group input:focus,
-      .form-group select:focus,
-      .form-group textarea:focus {
-        outline: none;
-        border-color: var(--blue);
-        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-      }
-      .form-group input[type="password"] {
-        font-family: monospace;
-        letter-spacing: 0.05em;
-      }
+    a { color: inherit; text-decoration: none; }
+    button { font-family: var(--font); cursor: pointer; border: none; }
 
-      /* ── Buttons ───────────────────────────────────────────────────── */
-      .btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        padding: 7px 14px;
-        border-radius: var(--radius-sm);
-        font-size: 13px;
-        font-weight: 500;
-        font-family: inherit;
-        cursor: pointer;
-        border: 1px solid transparent;
-        transition: all 0.15s;
-        white-space: nowrap;
-        text-decoration: none;
-      }
-      .btn:disabled {
-        opacity: 0.55;
-        cursor: not-allowed;
-      }
-      .btn-primary {
-        background: var(--blue);
-        color: #fff;
-        border-color: var(--blue);
-      }
-      .btn-primary:hover:not(:disabled) {
-        background: var(--blue-hover);
-        border-color: var(--blue-hover);
-      }
-      .btn-secondary {
-        background: #fff;
-        color: var(--text-primary);
-        border-color: var(--card-border);
-      }
-      .btn-secondary:hover:not(:disabled) {
-        background: #f8fafc;
-        border-color: #cbd5e1;
-      }
-      .btn-danger {
-        background: var(--red-light);
-        color: var(--red);
-        border-color: #fca5a5;
-      }
-      .btn-danger:hover:not(:disabled) {
-        background: #fee2e2;
-      }
-      .btn-ghost {
-        background: transparent;
-        color: var(--text-secondary);
-        border-color: transparent;
-        padding: 7px 10px;
-      }
-      .btn-ghost:hover:not(:disabled) {
-        background: #f1f5f9;
-        color: var(--text-primary);
-      }
-      .btn-sm {
-        padding: 4px 10px;
-        font-size: 12px;
-      }
-      .btn-icon {
-        padding: 7px;
-      }
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--hairline); border-radius: 99px; }
 
-      /* ── Content Area ──────────────────────────────────────────────── */
-      #content {
-        flex: 1;
-        overflow-y: auto;
-        padding: 24px;
-      }
-      .panel {
-        display: none;
-      }
-      .panel.active {
-        display: block;
-      }
-      .panel-header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        margin-bottom: 20px;
-      }
-      .panel-header h2 {
-        font-size: 20px;
-        font-weight: 700;
-        color: var(--text-primary);
-      }
-      .panel-header p {
-        font-size: 13px;
-        color: var(--text-secondary);
-        margin-top: 2px;
-      }
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 14px; border-radius: var(--r-pill);
+      font-size: 13px; font-weight: 500; white-space: nowrap;
+      transition: opacity 0.15s, background 0.15s; line-height: 1;
+    }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 1.5; fill: none; flex-shrink: 0; }
+    .btn-primary { background: var(--ink); color: #fafafa; }
+    .btn-primary:hover:not(:disabled) { opacity: 0.85; }
+    .btn-secondary { background: var(--canvas); color: var(--ink); }
+    .btn-secondary:hover:not(:disabled) { background: var(--hairline); }
+    .btn-outline { background: transparent; color: var(--ink); border: 1px solid var(--hairline); }
+    .btn-outline:hover:not(:disabled) { background: var(--canvas); }
+    .btn-danger { background: transparent; color: var(--ember); border: 1px solid rgba(231,0,11,0.2); }
+    .btn-danger:hover:not(:disabled) { background: rgba(231,0,11,0.06); }
+    .btn-ghost { background: transparent; color: var(--gray); padding: 8px 10px; }
+    .btn-ghost:hover:not(:disabled) { background: var(--hairline); color: var(--ink); }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
 
-      /* ── Cards ─────────────────────────────────────────────────────── */
-      .card {
-        background: var(--card-bg);
-        border: 1px solid var(--card-border);
-        border-radius: var(--radius);
-        box-shadow: var(--shadow);
-        padding: 20px;
-        margin-bottom: 20px;
-      }
-      .card-title {
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--text-secondary);
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        margin-bottom: 14px;
-      }
-      .card-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 14px;
-      }
+    /* ── Inputs ── */
+    .input {
+      width: 100%; background: var(--canvas); border: none;
+      border-radius: var(--r-pill); padding: 9px 14px;
+      font-size: 14px; font-family: var(--font); color: var(--ink);
+      outline: none; transition: box-shadow 0.15s;
+    }
+    .input:focus { box-shadow: 0 0 0 1.5px var(--hairline); }
+    .input::placeholder { color: var(--gray); }
+    .input-sm { padding: 6px 12px; font-size: 13px; }
+    .input-mono { font-family: 'Menlo', 'Consolas', monospace; font-size: 12.5px; }
+    .select {
+      width: 100%; background: var(--canvas); border: none;
+      border-radius: var(--r-pill); padding: 9px 14px;
+      font-size: 13px; font-family: var(--font); color: var(--ink);
+      outline: none; appearance: none; cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5' stroke='%23737373' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 14px center;
+      padding-right: 36px;
+    }
+    .select:focus { box-shadow: 0 0 0 1.5px var(--hairline); }
+    label { font-size: 12px; font-weight: 500; color: var(--gray); display: block; margin-bottom: 5px; letter-spacing: 0.02em; }
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    .field-hint { font-size: 11px; color: var(--gray); margin-top: 4px; line-height: 1.4; }
 
-      /* ── Grid Layouts ──────────────────────────────────────────────── */
-      .grid-2 {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
-      }
-      .grid-3 {
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 16px;
-      }
-      .form-row {
-        display: flex;
-        gap: 10px;
-        align-items: flex-end;
-        flex-wrap: wrap;
-      }
-      .form-row .form-group {
-        flex: 1;
-        min-width: 160px;
-      }
+    /* ── Cards ── */
+    .card { background: var(--paper); border: 1px solid var(--hairline); border-radius: var(--r-card); box-shadow: var(--shadow); }
+    .card-header {
+      padding: 16px 20px; border-bottom: 1px solid var(--hairline);
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      flex-wrap: wrap;
+    }
+    .card-header-title { font-size: 13px; font-weight: 600; color: var(--ink); }
+    .card-header-sub { font-size: 12px; color: var(--gray); margin-top: 1px; }
+    .card-body { padding: 20px; }
+    .card-footer { padding: 14px 20px; border-top: 1px solid var(--hairline); }
 
-      /* ── Tables ─────────────────────────────────────────────────────── */
-      .table-wrapper {
-        overflow-x: auto;
-        border-radius: var(--radius-sm);
-        border: 1px solid var(--card-border);
-      }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 13px;
-      }
-      thead th {
-        background: #f8fafc;
-        padding: 9px 12px;
-        text-align: left;
-        font-size: 11px;
-        font-weight: 600;
-        color: var(--text-secondary);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        border-bottom: 1px solid var(--card-border);
-        white-space: nowrap;
-      }
-      tbody tr {
-        border-bottom: 1px solid #f1f5f9;
-        transition: background 0.1s;
-      }
-      tbody tr:last-child {
-        border-bottom: none;
-      }
-      tbody tr:hover {
-        background: #f8fafc;
-      }
-      tbody td {
-        padding: 10px 12px;
-        color: var(--text-primary);
-        vertical-align: middle;
-      }
-      .td-mono {
-        font-family: "SF Mono", "Fira Code", monospace;
-        font-size: 12px;
-      }
-      .td-muted {
-        color: var(--text-muted);
-      }
+    /* ── Badges ── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: var(--r-pill);
+      font-size: 11px; font-weight: 500; white-space: nowrap;
+    }
+    .badge-active, .badge-delivered, .badge-ok  { background: var(--green-bg); color: var(--green); }
+    .badge-revoked, .badge-failed, .badge-closed, .badge-mismatch { background: #fee2e2; color: var(--ember); }
+    .badge-pending { background: var(--yellow-bg); color: var(--yellow); }
+    .badge-gray    { background: var(--canvas); color: var(--gray); }
+    .badge-outline { background: transparent; color: var(--ink); border: 1px solid var(--hairline); }
 
-      /* ── Badges ─────────────────────────────────────────────────────── */
-      .badge {
-        display: inline-flex;
-        align-items: center;
-        padding: 2px 8px;
-        border-radius: 99px;
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: capitalize;
-      }
-      .badge-green {
-        background: var(--green-light);
-        color: var(--green);
-      }
-      .badge-red {
-        background: var(--red-light);
-        color: var(--red);
-      }
-      .badge-yellow {
-        background: var(--yellow-light);
-        color: var(--yellow);
-      }
-      .badge-gray {
-        background: #f1f5f9;
-        color: var(--text-secondary);
-      }
-      .badge-blue {
-        background: var(--blue-light);
-        color: var(--blue);
-      }
+    /* ── Alerts ── */
+    .alert { padding: 12px 14px; border-radius: var(--r-nested); font-size: 13px; line-height: 1.5; }
+    .alert-error   { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .alert-success { background: var(--green-bg); color: #14532d; border: 1px solid #86efac; }
+    .alert-info    { background: var(--canvas); color: var(--gray); border: 1px solid var(--hairline); }
+    .alert-warn    { background: var(--yellow-bg); color: var(--yellow); border: 1px solid #fde68a; }
 
-      /* ── Alerts ─────────────────────────────────────────────────────── */
-      .alert {
-        padding: 12px 14px;
-        border-radius: var(--radius-sm);
-        font-size: 13px;
-        margin-bottom: 14px;
-        display: flex;
-        align-items: flex-start;
-        gap: 10px;
-      }
-      .alert-error {
-        background: var(--red-light);
-        color: #991b1b;
-        border: 1px solid #fca5a5;
-      }
-      .alert-success {
-        background: var(--green-light);
-        color: #14532d;
-        border: 1px solid #86efac;
-      }
-      .alert-info {
-        background: var(--blue-light);
-        color: #1e3a8a;
-        border: 1px solid #93c5fd;
-      }
-      .alert-warn {
-        background: var(--yellow-light);
-        color: #78350f;
-        border: 1px solid #fcd34d;
-      }
-      .alert-icon {
-        flex-shrink: 0;
-        font-size: 15px;
-      }
+    /* ── Table ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      text-align: left; padding: 10px 16px;
+      font-size: 11px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase;
+      color: var(--gray); border-bottom: 1px solid var(--hairline); white-space: nowrap;
+    }
+    td { padding: 11px 16px; border-bottom: 1px solid var(--hairline); color: var(--ink); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: var(--surface); }
+    tr.row-revoked td { color: var(--gray); text-decoration: line-through; }
+    tr.row-revoked td .badge { text-decoration: none; }
+    .td-mono { font-family: 'Menlo', 'Consolas', monospace; font-size: 12px; color: var(--gray); }
+    .td-muted { color: var(--gray); }
+    .td-right { text-align: right; }
 
-      /* ── Key reveal box ─────────────────────────────────────────────── */
-      .key-reveal {
-        background: #0f172a;
-        border: 1px solid #1e293b;
-        border-radius: var(--radius-sm);
-        padding: 14px 16px;
-        margin-top: 12px;
-      }
-      .key-reveal p {
-        font-size: 11px;
-        color: #f59e0b;
-        font-weight: 600;
-        margin-bottom: 8px;
-      }
-      .key-value {
-        font-family: "SF Mono", "Fira Code", monospace;
-        font-size: 13px;
-        color: #34d399;
-        word-break: break-all;
-        background: #1e293b;
-        padding: 8px 12px;
-        border-radius: var(--radius-sm);
-      }
-      .key-copy-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        margin-top: 8px;
-      }
+    /* ── Stat cards ── */
+    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+    .stat-card {
+      background: var(--paper); border: 1px solid var(--hairline);
+      border-radius: var(--r-card); padding: 20px; box-shadow: var(--shadow);
+    }
+    .stat-label { font-size: 11px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; color: var(--gray); margin-bottom: 8px; }
+    .stat-value { font-size: 28px; font-weight: 600; letter-spacing: -0.75px; color: var(--ink); line-height: 1; }
+    .stat-sub { font-size: 12px; color: var(--gray); margin-top: 6px; }
 
-      /* ── Loading states ─────────────────────────────────────────────── */
-      .loading {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        color: var(--text-muted);
-        font-size: 13px;
-        padding: 16px 0;
-      }
-      .spinner {
-        width: 16px;
-        height: 16px;
-        border: 2px solid #e2e8f0;
-        border-top-color: var(--blue);
-        border-radius: 50%;
-        animation: spin 0.7s linear infinite;
-        flex-shrink: 0;
-      }
-      @keyframes spin {
-        to {
-          transform: rotate(360deg);
-        }
-      }
+    /* ── Detail grid ── */
+    .detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+    .detail-item { display: flex; flex-direction: column; gap: 3px; }
+    .detail-label { font-size: 11px; color: var(--gray); font-weight: 500; letter-spacing: 0.02em; }
+    .detail-value { font-size: 13px; color: var(--ink); font-weight: 500; }
+    .detail-mono { font-family: 'Menlo', 'Consolas', monospace; font-size: 12px; }
 
-      /* ── Empty state ────────────────────────────────────────────────── */
-      .empty-state {
-        padding: 32px 16px;
-        text-align: center;
-        color: var(--text-muted);
-      }
-      .empty-state .empty-icon {
-        font-size: 32px;
-        margin-bottom: 8px;
-      }
-      .empty-state p {
-        font-size: 13px;
-      }
+    /* ── Form row ── */
+    .form-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+    .form-row .field { flex: 1; min-width: 140px; }
 
-      /* ── Stat cards ─────────────────────────────────────────────────── */
-      .stat-card {
-        background: var(--card-bg);
-        border: 1px solid var(--card-border);
-        border-radius: var(--radius);
-        padding: 16px 20px;
-        box-shadow: var(--shadow);
-      }
-      .stat-card .stat-label {
-        font-size: 11px;
-        font-weight: 600;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-      }
-      .stat-card .stat-value {
-        font-size: 22px;
-        font-weight: 700;
-        color: var(--text-primary);
-        margin-top: 4px;
-      }
-      .stat-card .stat-sub {
-        font-size: 12px;
-        color: var(--text-secondary);
-        margin-top: 2px;
-      }
+    /* ── Key box ── */
+    .key-box {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--ink-soft); border-radius: var(--r-nested); padding: 12px 14px;
+    }
+    .key-val {
+      font-family: 'Menlo', 'Consolas', monospace; font-size: 12.5px;
+      color: #86efac; flex: 1; word-break: break-all; line-height: 1.5;
+    }
+    .key-copy {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.5);
+      background: rgba(255,255,255,0.08); border: none; border-radius: 6px;
+      padding: 4px 8px; cursor: pointer; flex-shrink: 0; transition: background 0.15s;
+    }
+    .key-copy:hover { background: rgba(255,255,255,0.14); color: rgba(255,255,255,0.85); }
+    .key-copy svg { width: 11px; height: 11px; stroke: currentColor; stroke-width: 1.5; fill: none; }
 
-      /* ── Account detail card ────────────────────────────────────────── */
-      .detail-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 12px;
-      }
-      .detail-item {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-      }
-      .detail-label {
-        font-size: 11px;
-        color: var(--text-muted);
-        font-weight: 500;
-      }
-      .detail-value {
-        font-size: 13px;
-        color: var(--text-primary);
-        font-weight: 500;
-      }
-      .detail-value.mono {
-        font-family: "SF Mono", "Fira Code", monospace;
-      }
+    /* ── Copy inline ── */
+    .copy-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--gray); font-size: 11px; padding: 2px 5px; border-radius: 4px;
+    }
+    .copy-btn:hover { background: var(--canvas); color: var(--ink); }
 
-      /* ── Divider ────────────────────────────────────────────────────── */
-      .divider {
-        border: none;
-        border-top: 1px solid var(--card-border);
-        margin: 16px 0;
-      }
+    /* ── Loading / empty ── */
+    .loading { display: flex; align-items: center; gap: 8px; color: var(--gray); font-size: 13px; padding: 20px; }
+    .spinner {
+      width: 14px; height: 14px; border: 1.5px solid var(--hairline);
+      border-top-color: var(--ink); border-radius: 50%;
+      animation: spin 0.7s linear infinite; flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty-state { padding: 40px 20px; text-align: center; color: var(--gray); font-size: 13px; }
+    .empty-icon { font-size: 28px; margin-bottom: 8px; }
 
-      /* ── Scrollbar styling ──────────────────────────────────────────── */
-      ::-webkit-scrollbar {
-        width: 5px;
-        height: 5px;
-      }
-      ::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 99px;
-      }
+    /* ── Divider ── */
+    .divider { border: none; border-top: 1px solid var(--hairline); margin: 20px 0; }
 
-      /* ── Revoked row ────────────────────────────────────────────────── */
-      tr.revoked td {
-        color: var(--text-muted);
-        text-decoration: line-through;
-      }
-      tr.revoked td .badge {
-        text-decoration: none;
-      }
+    /* ═══════════════════════════════════════════════════════════
+       SETUP VIEW
+    ═══════════════════════════════════════════════════════════ */
+    #setup-view {
+      position: fixed; inset: 0; background: var(--canvas);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 200; padding: 24px;
+    }
+    #setup-view.hidden { display: none; }
+    .setup-card { width: 100%; max-width: 440px; }
+    .setup-logo {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 15px; font-weight: 600; letter-spacing: -0.3px;
+      justify-content: center; margin-bottom: 28px;
+    }
+    .logo-mark {
+      width: 26px; height: 26px; border-radius: 7px;
+      background: var(--ink); display: grid; place-items: center;
+    }
+    .logo-mark svg { width: 13px; height: 13px; fill: #fafafa; }
+    .setup-title { font-size: 20px; font-weight: 600; letter-spacing: -0.4px; margin-bottom: 6px; }
+    .setup-sub { font-size: 14px; color: var(--gray); margin-bottom: 20px; line-height: 1.55; }
+    .setup-section-label {
+      font-size: 11px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase;
+      color: var(--gray); margin: 16px 0 10px; padding-top: 16px; border-top: 1px solid var(--hairline);
+    }
+    .setup-section-label:first-of-type { border-top: none; margin-top: 0; }
 
-      /* ── Clickable table rows ───────────────────────────────────────── */
-      tr.clickable-row {
-        cursor: pointer;
-        transition: background 0.1s;
-      }
-      tr.clickable-row:hover td {
-        background: var(--blue-light);
-      }
+    /* ═══════════════════════════════════════════════════════════
+       APP LAYOUT
+    ═══════════════════════════════════════════════════════════ */
+    #app-view { display: flex; height: 100vh; }
 
-      /* ── Account detail drawer ──────────────────────────────────────── */
-      .drawer-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.35);
-        z-index: 100;
-        display: none;
-        animation: fadeIn 0.2s ease;
-      }
-      .drawer-overlay.open {
-        display: block;
-      }
-      @keyframes fadeIn {
-        from { opacity: 0; }
-        to   { opacity: 1; }
-      }
-      .drawer {
-        position: fixed;
-        top: 0;
-        right: 0;
-        width: 580px;
-        max-width: 100vw;
-        height: 100vh;
-        background: var(--card-bg);
-        z-index: 101;
-        transform: translateX(100%);
-        transition: transform 0.25s ease;
-        overflow-y: auto;
-        box-shadow: -4px 0 32px rgba(0, 0, 0, 0.14);
-        display: flex;
-        flex-direction: column;
-      }
-      .drawer.open {
-        transform: translateX(0);
-      }
-      .drawer-header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        padding: 24px 24px 16px;
-        border-bottom: 1px solid var(--card-border);
-        position: sticky;
-        top: 0;
-        background: var(--card-bg);
-        z-index: 1;
-      }
-      .drawer-header h3 {
-        font-size: 17px;
-        font-weight: 700;
-        color: var(--text-primary);
-      }
-      .drawer-header .drawer-subtitle {
-        font-size: 12px;
-        color: var(--text-secondary);
-        margin-top: 2px;
-        font-family: "SF Mono", "Fira Code", monospace;
-      }
-      .drawer-close {
-        background: none;
-        border: none;
-        font-size: 18px;
-        color: var(--text-muted);
-        cursor: pointer;
-        padding: 2px 6px;
-        border-radius: var(--radius-sm);
-        line-height: 1;
-        flex-shrink: 0;
-      }
-      .drawer-close:hover {
-        background: var(--content-bg);
-        color: var(--text-primary);
-      }
-      .drawer-body {
-        padding: 20px 24px;
-        flex: 1;
-      }
-      .drawer-section {
-        margin-bottom: 24px;
-      }
-      .drawer-section-title {
-        font-size: 11px;
-        font-weight: 700;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        margin-bottom: 12px;
-        padding-bottom: 6px;
-        border-bottom: 1px solid var(--card-border);
-      }
-      .copy-btn {
-        background: none;
-        border: none;
-        cursor: pointer;
-        color: var(--text-muted);
-        font-size: 11px;
-        padding: 1px 4px;
-        border-radius: 3px;
-      }
-      .copy-btn:hover {
-        background: var(--content-bg);
-        color: var(--text-primary);
-      }
-    </style>
-  </head>
-  <body>
-    <!-- ════════════════════════════════ SIDEBAR ════════════════════════════════ -->
-    <nav id="sidebar">
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 216px; flex-shrink: 0;
+      background: var(--surface); border-right: 1px solid var(--hairline);
+      display: flex; flex-direction: column;
+      height: 100vh; overflow-y: auto; position: sticky; top: 0;
+    }
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 8px;
+      padding: 18px 14px 14px; border-bottom: 1px solid var(--hairline);
+      font-size: 14px; font-weight: 600; letter-spacing: -0.3px;
+    }
+    .sidebar-logo .logo-mark { width: 20px; height: 20px; border-radius: 5px; }
+    .sidebar-logo .logo-mark svg { width: 10px; height: 10px; }
+    .sidebar-nav { flex: 1; padding: 10px 8px; display: flex; flex-direction: column; gap: 1px; }
+    .nav-group-label {
+      font-size: 10px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--gray); padding: 8px 8px 3px; margin-top: 6px;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 10px; border-radius: 10px; font-size: 13px; font-weight: 500;
+      color: var(--gray); cursor: pointer;
+      transition: background 0.12s, color 0.12s;
+      border: none; background: transparent; width: 100%; text-align: left;
+    }
+    .nav-item:hover { background: var(--hairline); color: var(--ink); }
+    .nav-item.active { background: var(--paper); color: var(--ink); box-shadow: var(--shadow); }
+    .nav-item svg { width: 15px; height: 15px; stroke: currentColor; stroke-width: 1.5; fill: none; flex-shrink: 0; }
+    .sidebar-footer { padding: 10px 8px 12px; border-top: 1px solid var(--hairline); }
+    .conn-status {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 10px; font-size: 12px; color: var(--gray); border-radius: 8px;
+    }
+    .conn-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--hairline); flex-shrink: 0; }
+    .conn-dot.ok { background: #22c55e; }
+    .conn-dot.err { background: var(--ember); }
+    .conn-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ── Main ── */
+    .main { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+    .main-header {
+      padding: 12px 28px; border-bottom: 1px solid var(--hairline);
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--surface); position: sticky; top: 0; z-index: 10; flex-shrink: 0;
+    }
+    .main-header-left { display: flex; align-items: center; gap: 12px; }
+    .main-title { font-size: 14px; font-weight: 600; }
+    .main-content { flex: 1; overflow-y: auto; padding: 28px; max-width: 1060px; }
+
+    /* ── Panels ── */
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .panel-heading { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; margin-bottom: 4px; }
+    .panel-sub { font-size: 14px; color: var(--gray); margin-bottom: 20px; }
+
+    /* ── Drawer ── */
+    .drawer-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.25);
+      z-index: 100; display: none;
+    }
+    .drawer-overlay.open { display: block; }
+    .drawer {
+      position: fixed; top: 0; right: 0;
+      width: 560px; max-width: 100vw; height: 100vh;
+      background: var(--paper); z-index: 101;
+      transform: translateX(100%); transition: transform 0.22s ease;
+      overflow-y: auto; display: flex; flex-direction: column;
+      border-left: 1px solid var(--hairline);
+    }
+    .drawer.open { transform: translateX(0); }
+    .drawer-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      padding: 20px 24px 16px; border-bottom: 1px solid var(--hairline);
+      position: sticky; top: 0; background: var(--paper); z-index: 1;
+    }
+    .drawer-title { font-size: 16px; font-weight: 600; letter-spacing: -0.3px; }
+    .drawer-subtitle { font-size: 12px; color: var(--gray); margin-top: 2px; font-family: monospace; }
+    .drawer-close {
+      background: var(--canvas); border: none; cursor: pointer;
+      width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center;
+      color: var(--gray); flex-shrink: 0; transition: background 0.12s;
+    }
+    .drawer-close:hover { background: var(--hairline); color: var(--ink); }
+    .drawer-close svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 1.5; fill: none; }
+    .drawer-body { padding: 20px 24px; flex: 1; }
+    .drawer-section { margin-bottom: 24px; }
+    .drawer-section-title {
+      font-size: 11px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase;
+      color: var(--gray); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--hairline);
+    }
+
+    /* ── Modal ── */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.25);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 200; padding: 24px;
+    }
+    .modal-backdrop.hidden { display: none; }
+    .modal {
+      background: var(--paper); border: 1px solid var(--hairline);
+      border-radius: var(--r-card); box-shadow: 0 20px 60px rgba(0,0,0,0.14);
+      width: 100%; max-width: 400px;
+    }
+    .modal-header { padding: 20px 24px 16px; border-bottom: 1px solid var(--hairline); }
+    .modal-title { font-size: 15px; font-weight: 600; }
+    .modal-body { padding: 20px 24px; }
+    .modal-footer { padding: 14px 24px; border-top: 1px solid var(--hairline); display: flex; justify-content: flex-end; gap: 8px; }
+
+    /* ── Toast ── */
+    #_toast {
+      position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+      padding: 10px 16px; border-radius: var(--r-pill);
+      font-size: 13px; font-weight: 500; color: #fafafa;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+      transition: opacity 0.3s; opacity: 0; pointer-events: none;
+    }
+    #_toast.show { opacity: 1; }
+
+    /* ── Responsive ── */
+    @media (max-width: 700px) {
+      .sidebar { display: none; }
+      .stats-row { grid-template-columns: 1fr 1fr; }
+      .form-row { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       SETUP VIEW
+  ═══════════════════════════════════════════════════════════ -->
+  <div id="setup-view">
+    <div class="setup-card card">
+      <div class="card-body">
+        <div class="setup-logo">
+          <span class="logo-mark"><svg viewBox="0 0 13 13"><rect x="2" y="2" width="9" height="9" rx="2"/></svg></span>
+          Ancra Dashboard
+        </div>
+
+        <h1 class="setup-title">Connect your instance</h1>
+        <p class="setup-sub">Enter your Ancra deployment URL and credentials to access the dashboard.</p>
+
+        <div id="setup-error" class="alert alert-error" style="display:none;margin-bottom:16px;"></div>
+
+        <div class="setup-section-label">Instance</div>
+        <div class="field" style="margin-bottom:12px;">
+          <label for="cfg-base-url">Base URL</label>
+          <input class="input" id="cfg-base-url" type="url" placeholder="https://api.yourapp.com" />
+          <p class="field-hint">The deployed URL of your Ancra instance.</p>
+        </div>
+
+        <div class="setup-section-label">Credentials</div>
+        <div class="field" style="margin-bottom:12px;">
+          <label for="cfg-admin-secret">Admin Secret</label>
+          <input class="input" id="cfg-admin-secret" type="password" placeholder="ADMIN_SECRET env var value" />
+          <p class="field-hint">Required to create and revoke API keys.</p>
+        </div>
+        <div class="field" style="margin-bottom:20px;">
+          <label for="cfg-api-key">API Key <span style="font-weight:400;color:var(--gray);">(optional — create one after connecting)</span></label>
+          <input class="input input-mono" id="cfg-api-key" type="password" placeholder="ancra_..." />
+          <p class="field-hint">Required for account, customer, and transfer operations.</p>
+        </div>
+
+        <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="connectAndSave()">
+          Connect to Dashboard
+          <svg viewBox="0 0 13 13"><path d="M2.5 6.5h8M7.5 4 10 6.5 7.5 9"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       APP VIEW
+  ═══════════════════════════════════════════════════════════ -->
+  <div id="app-view" style="display:none;">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
       <div class="sidebar-logo">
-        <h1>Ancra DVA</h1>
-        <p>Admin Dashboard</p>
+        <span class="logo-mark"><svg viewBox="0 0 13 13"><rect x="2" y="2" width="9" height="9" rx="2"/></svg></span>
+        Ancra
       </div>
 
-      <div class="sidebar-nav">
-        <div class="nav-section-label">Management</div>
-        <button class="nav-item active" data-panel="api-keys">
-          <span class="icon">🔑</span> API Keys
-        </button>
-        <button class="nav-item" data-panel="customers">
-          <span class="icon">👥</span> Customers
-        </button>
-        <button class="nav-item" data-panel="accounts">
-          <span class="icon">🏦</span> Accounts
+      <nav class="sidebar-nav">
+        <div class="nav-group-label">Setup</div>
+        <button class="nav-item active" data-panel="api-keys" onclick="switchPanel('api-keys',this)">
+          <svg viewBox="0 0 15 15"><circle cx="5.5" cy="9.5" r="3.5"/><path d="m8.5 6.5 5-5M13.5 1.5l-2 2M11.5 3.5l-2 2"/></svg>
+          API Keys
         </button>
 
-        <div class="nav-section-label" style="margin-top: 8px">Operations</div>
-        <button class="nav-item" data-panel="transfer">
-          <span class="icon">💸</span> Transfer
+        <div class="nav-group-label">Management</div>
+        <button class="nav-item" data-panel="customers" onclick="switchPanel('customers',this)">
+          <svg viewBox="0 0 15 15"><circle cx="7.5" cy="5" r="3"/><path d="M1.5 13.5c0-3.314 2.686-6 6-6s6 2.686 6 6"/></svg>
+          Customers
         </button>
-        <button class="nav-item" data-panel="reconciliation">
-          <span class="icon">📊</span> Reconciliation
+        <button class="nav-item" data-panel="accounts" onclick="switchPanel('accounts',this)">
+          <svg viewBox="0 0 15 15"><rect x="1" y="3" width="13" height="10" rx="2"/><path d="M1 7h13"/><path d="M4 10.5h2"/></svg>
+          Accounts
         </button>
-        <button class="nav-item" data-panel="webhooks">
-          <span class="icon">📬</span> Webhooks
+
+        <div class="nav-group-label">Operations</div>
+        <button class="nav-item" data-panel="transfer" onclick="switchPanel('transfer',this)">
+          <svg viewBox="0 0 15 15"><path d="M1.5 5.5h12M10.5 2.5l3 3-3 3M13.5 9.5H1.5M4.5 12.5l-3-3 3-3"/></svg>
+          Transfer
         </button>
-      </div>
+        <button class="nav-item" data-panel="reconciliation" onclick="switchPanel('reconciliation',this)">
+          <svg viewBox="0 0 15 15"><path d="M7.5 1.5v12M1.5 7.5h12M4 4l3.5 3.5L11 4M4 11l3.5-3.5L11 11"/></svg>
+          Reconciliation
+        </button>
+        <button class="nav-item" data-panel="webhooks" onclick="switchPanel('webhooks',this)">
+          <svg viewBox="0 0 15 15"><path d="M5 11a4 4 0 0 1 5.657-5.657M10 4a4 4 0 0 1 0 5.657"/><circle cx="5" cy="11" r="1.5"/><circle cx="10" cy="4" r="1.5"/></svg>
+          Webhooks
+        </button>
+      </nav>
 
       <div class="sidebar-footer">
-        <div class="connection-status">
-          <div class="status-dot" id="conn-dot"></div>
-          <span id="conn-label">Not connected</span>
+        <div class="conn-status">
+          <span class="conn-dot" id="conn-dot"></span>
+          <span class="conn-label" id="conn-label">Not connected</span>
         </div>
+        <button class="nav-item btn-ghost" style="margin-top:4px;" onclick="openSettings()">
+          <svg viewBox="0 0 15 15"><circle cx="7.5" cy="7.5" r="2"/><path d="M7.5 1v1.5M7.5 12.5V14M1 7.5h1.5M12.5 7.5H14M3.1 3.1l1 1M10.9 10.9l1 1M10.9 3.1l1-1M3.1 10.9l1-1"/></svg>
+          Settings
+        </button>
       </div>
-    </nav>
+    </aside>
 
-    <!-- ════════════════════════════════ MAIN ═══════════════════════════════════ -->
-    <div id="main">
-      <!-- ── Top Bar ─────────────────────────────────────────────────────────── -->
-      <div id="topbar">
-        <div class="topbar-header">
-          <span class="topbar-title">Connection Settings</span>
-          <div class="topbar-actions">
-            <button
-              class="btn btn-ghost btn-sm"
-              id="test-conn-btn"
-              onclick="testConnection()"
-            >
-              ⚡ Test Connection
-            </button>
-            <button class="btn btn-secondary btn-sm" onclick="toggleSettings()">
-              ⚙️ Settings
-            </button>
-          </div>
+    <!-- Main -->
+    <div class="main">
+      <div class="main-header">
+        <div class="main-header-left">
+          <span class="main-title" id="main-title">API Keys</span>
         </div>
-
-        <div id="settings-panel">
-          <div class="settings-grid">
-            <div class="form-group">
-              <label>Base URL</label>
-              <input
-                type="text"
-                id="cfg-base-url"
-                placeholder="http://localhost:8080"
-              />
-            </div>
-            <div class="form-group">
-              <label>Admin Secret</label>
-              <input
-                type="password"
-                id="cfg-admin-secret"
-                placeholder="admin secret key"
-              />
-            </div>
-            <div class="form-group">
-              <label>API Key</label>
-              <input type="password" id="cfg-api-key" placeholder="ancra_..." />
-            </div>
-            <button class="btn btn-primary" onclick="saveSettings()">
-              💾 Save
-            </button>
-            <button class="btn btn-ghost" onclick="testConnection()">
-              ⚡ Test
-            </button>
-          </div>
+        <div style="display:flex;gap:8px;" id="main-actions">
+          <button class="btn btn-ghost btn-sm" onclick="testConnection()">
+            <svg viewBox="0 0 13 13"><circle cx="6.5" cy="6.5" r="5"/><path d="M6.5 4v2.5l1.5 1"/></svg>
+            Test connection
+          </button>
         </div>
       </div>
 
-      <!-- ── Content ──────────────────────────────────────────────────────────── -->
-      <div id="content">
-        <!-- ══════════════════════════ API KEYS ════════════════════════════════ -->
+      <div class="main-content">
+
+        <!-- ── API Keys ── -->
         <div class="panel active" id="panel-api-keys">
-          <div class="panel-header">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap;">
             <div>
-              <h2>🔑 API Keys</h2>
-              <p>Create and manage developer API keys for the Ancra platform</p>
+              <h2 class="panel-heading">API Keys</h2>
+              <p class="panel-sub">Create and manage keys that authenticate your API requests.</p>
             </div>
-            <button class="btn btn-primary" onclick="loadAPIKeys()">
-              ↻ Refresh
+            <button class="btn btn-primary" onclick="openCreateKeyModal()">
+              <svg viewBox="0 0 13 13"><path d="M6.5 1v11M1 6.5h11"/></svg>
+              New key
             </button>
           </div>
 
-          <!-- Generate Key Form -->
-          <div class="card">
-            <div class="card-title">Generate New Key</div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Key Name</label>
-                <input
-                  type="text"
-                  id="ak-name"
-                  placeholder="e.g. Production Server"
-                />
+          <div id="ak-alert" style="display:none;margin-bottom:16px;"></div>
+
+          <div class="card" style="margin-bottom:20px;">
+            <div class="card-header">
+              <div>
+                <div class="card-header-title">Your keys</div>
+                <div class="card-header-sub">Only active keys can authenticate requests.</div>
               </div>
-              <button class="btn btn-primary" onclick="generateAPIKey()">
-                + Generate Key
+              <button class="btn btn-outline btn-sm" onclick="loadAPIKeys()">
+                <svg viewBox="0 0 13 13"><path d="M11 6.5A4.5 4.5 0 0 1 2 8.5M2 6.5A4.5 4.5 0 0 1 11 4.5"/><path d="M2 4v3h3M11 9v-3h-3"/></svg>
+                Refresh
               </button>
             </div>
+            <div class="table-wrap" id="ak-table-wrap">
+              <div class="loading"><div class="spinner"></div> Loading keys…</div>
+            </div>
+          </div>
 
-            <div id="ak-new-key-box" style="display: none">
-              <div class="key-reveal">
-                <p>⚠️ This key will not be shown again. Copy it now.</p>
-                <div class="key-value" id="ak-raw-key"></div>
-                <div class="key-copy-row">
-                  <span style="font-size: 11px; color: #94a3b8"
-                    >Store this in a secure secrets manager.</span
-                  >
-                  <button
-                    class="btn btn-sm"
-                    style="
-                      background: #1e293b;
-                      color: #34d399;
-                      border: 1px solid #374151;
-                    "
-                    onclick="copyRawKey()"
-                  >
-                    📋 Copy
-                  </button>
+          <div class="card">
+            <div class="card-header"><div class="card-header-title">Using a key</div></div>
+            <div class="card-body">
+              <p style="font-size:13px;color:var(--gray);line-height:1.6;margin-bottom:12px;">Pass your key in the <code>Authorization</code> header on every authenticated request.</p>
+              <div class="key-box">
+                <span class="key-val" style="color:rgba(255,255,255,0.65);">Authorization: Bearer ancra_<span style="color:#86efac;">your_key_here</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Customers ── -->
+        <div class="panel" id="panel-customers">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap;">
+            <div>
+              <h2 class="panel-heading">Customers</h2>
+              <p class="panel-sub">Every virtual account must belong to a customer record.</p>
+            </div>
+            <button class="btn btn-primary" onclick="openCreateCustomerModal()">
+              <svg viewBox="0 0 13 13"><path d="M6.5 1v11M1 6.5h11"/></svg>
+              New customer
+            </button>
+          </div>
+
+          <div id="cust-alert" style="display:none;margin-bottom:16px;"></div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-header-title">All customers</div>
+              <button class="btn btn-outline btn-sm" onclick="loadCustomers()">
+                <svg viewBox="0 0 13 13"><path d="M11 6.5A4.5 4.5 0 0 1 2 8.5M2 6.5A4.5 4.5 0 0 1 11 4.5"/><path d="M2 4v3h3M11 9v-3h-3"/></svg>
+                Refresh
+              </button>
+            </div>
+            <div class="table-wrap" id="cust-table-wrap">
+              <div class="loading"><div class="spinner"></div> Loading customers…</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Accounts ── -->
+        <div class="panel" id="panel-accounts">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap;">
+            <div>
+              <h2 class="panel-heading">Virtual Accounts</h2>
+              <p class="panel-sub">Provision dedicated NGN bank accounts for your customers.</p>
+            </div>
+            <button class="btn btn-primary" onclick="openProvisionModal()">
+              <svg viewBox="0 0 13 13"><path d="M6.5 1v11M1 6.5h11"/></svg>
+              Provision account
+            </button>
+          </div>
+
+          <div id="acc-alert" style="display:none;margin-bottom:16px;"></div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-header-title">All accounts</div>
+              <button class="btn btn-outline btn-sm" onclick="loadAccounts()">
+                <svg viewBox="0 0 13 13"><path d="M11 6.5A4.5 4.5 0 0 1 2 8.5M2 6.5A4.5 4.5 0 0 1 11 4.5"/><path d="M2 4v3h3M11 9v-3h-3"/></svg>
+                Refresh
+              </button>
+            </div>
+            <div class="table-wrap" id="acc-table-wrap">
+              <div class="loading"><div class="spinner"></div> Loading accounts…</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Transfer ── -->
+        <div class="panel" id="panel-transfer">
+          <h2 class="panel-heading">Transfer</h2>
+          <p class="panel-sub">Send funds from a virtual account to any Nigerian bank account.</p>
+
+          <div class="card" style="margin-bottom:16px;">
+            <div class="card-header">
+              <div>
+                <div class="card-header-title">Step 1 — Verify recipient</div>
+                <div class="card-header-sub">Always confirm the account name before sending.</div>
+              </div>
+            </div>
+            <div class="card-body">
+              <div id="txfr-lookup-alert" style="display:none;margin-bottom:12px;"></div>
+              <div class="form-row" style="align-items:flex-end;">
+                <div class="field" style="max-width:140px;">
+                  <label for="txfr-bank-code">Bank Code</label>
+                  <input class="input input-sm" id="txfr-bank-code" type="text" placeholder="044" maxlength="10" />
+                </div>
+                <div class="field">
+                  <label for="txfr-dest-account">Account Number</label>
+                  <input class="input input-sm" id="txfr-dest-account" type="text" placeholder="10-digit NUBAN" maxlength="10" />
+                </div>
+                <button class="btn btn-outline" id="txfr-lookup-btn" onclick="lookupRecipient()">Verify</button>
+              </div>
+              <div id="txfr-lookup-result" style="margin-top:12px;"></div>
+            </div>
+          </div>
+
+          <div class="card" id="txfr-details-card" style="display:none;">
+            <div class="card-header">
+              <div class="card-header-title">Step 2 — Transfer details</div>
+            </div>
+            <div class="card-body">
+              <div id="txfr-submit-alert" style="display:none;margin-bottom:12px;"></div>
+              <div class="form-row" style="margin-bottom:12px;">
+                <div class="field" style="flex:2;">
+                  <label for="txfr-source-account">From account</label>
+                  <select class="select" id="txfr-source-account"></select>
+                </div>
+                <div class="field" style="max-width:160px;">
+                  <label for="txfr-amount">Amount (NGN)</label>
+                  <input class="input input-sm" id="txfr-amount" type="number" placeholder="0.00" min="1" step="0.01" />
                 </div>
               </div>
-            </div>
-
-            <div
-              id="ak-form-error"
-              class="alert alert-error"
-              style="display: none; margin-top: 12px"
-            ></div>
-          </div>
-
-          <!-- Keys Table -->
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title" style="margin-bottom: 0">
-                Existing Keys
+              <div class="form-row" style="margin-bottom:12px;">
+                <div class="field">
+                  <label for="txfr-sender-name">Sender name</label>
+                  <input class="input input-sm" id="txfr-sender-name" type="text" placeholder="Name on source account" />
+                </div>
+                <div class="field">
+                  <label for="txfr-narration">Narration</label>
+                  <input class="input input-sm" id="txfr-narration" type="text" placeholder="Payment for…" />
+                </div>
               </div>
-            </div>
-            <div id="ak-table-wrap">
-              <div class="loading">
-                <div class="spinner"></div>
-                Loading keys…
+              <div class="form-row">
+                <div class="field">
+                  <label for="txfr-reference">Reference <span style="font-weight:400;">(auto-generated)</span></label>
+                  <input class="input input-sm input-mono" id="txfr-reference" type="text" readonly />
+                </div>
+                <button class="btn btn-primary" id="txfr-submit-btn" onclick="submitTransfer()" style="flex-shrink:0;align-self:flex-end;">
+                  Send money
+                  <svg viewBox="0 0 13 13"><path d="M2.5 6.5h8M7.5 4 10 6.5 7.5 9"/></svg>
+                </button>
               </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ══════════════════════════ CUSTOMERS ═══════════════════════════════ -->
-        <div class="panel" id="panel-customers">
-          <div class="panel-header">
-            <div>
-              <h2>👥 Customers</h2>
-              <p>Create and view customer records</p>
-            </div>
-            <button class="btn btn-primary" onclick="loadCustomers()">
-              ↻ Refresh
-            </button>
-          </div>
-
-          <!-- Create Customer -->
-          <div class="card">
-            <div class="card-title">Create Customer</div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>KYC Tier</label>
-                <select id="cust-kyc-tier">
-                  <option value="1">Tier 1</option>
-                  <option value="2">Tier 2</option>
-                  <option value="3">Tier 3</option>
-                </select>
-              </div>
-              <button class="btn btn-primary" onclick="createCustomer()">
-                + Create Customer
-              </button>
-            </div>
-            <div id="cust-result" style="display: none; margin-top: 12px"></div>
-            <div
-              id="cust-error"
-              class="alert alert-error"
-              style="display: none; margin-top: 12px"
-            ></div>
-          </div>
-
-          <!-- Customers Table -->
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title" style="margin-bottom: 0">
-                All Customers
-              </div>
-              <button class="btn btn-secondary" onclick="loadCustomers()">
-                ↻ Refresh
-              </button>
-            </div>
-            <div id="cust-list-error"></div>
-            <div id="cust-table-wrap">
-              <p style="color: #64748b">Loading…</p>
+              <div id="txfr-submit-result" style="margin-top:12px;"></div>
             </div>
           </div>
         </div>
 
-        <!-- ══════════════════════════ ACCOUNTS ════════════════════════════════ -->
-        <div class="panel" id="panel-accounts">
-          <div class="panel-header">
-            <div>
-              <h2>🏦 Virtual Accounts</h2>
-              <p>Provision and manage dedicated virtual accounts</p>
-            </div>
-          </div>
-
-          <!-- Create Account -->
-          <div class="card">
-            <div class="card-title">Provision New Account</div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Customer ID (UUID)</label>
-                <input
-                  type="text"
-                  id="acc-customer-id"
-                  placeholder="e.g. 3fa85f64-5717-4562-b3fc-…"
-                />
-              </div>
-              <div class="form-group">
-                <label>Display Name</label>
-                <input
-                  type="text"
-                  id="acc-display-name"
-                  placeholder="e.g. John Doe Savings"
-                />
-              </div>
-              <div class="form-group">
-                <label>Customer Email</label>
-                <input
-                  type="text"
-                  id="acc-email"
-                  placeholder="customer@example.com"
-                />
-              </div>
-              <div class="form-group">
-                <label
-                  >Phone Number
-                  <span style="color: #94a3b8; font-weight: 400"
-                    >(optional)</span
-                  ></label
-                >
-                <input
-                  type="text"
-                  id="acc-phone"
-                  placeholder="+2348012345678"
-                />
-              </div>
-              <button class="btn btn-primary" onclick="createAccount()">
-                + Provision
-              </button>
-            </div>
-            <div
-              id="acc-create-result"
-              style="display: none; margin-top: 12px"
-            ></div>
-            <div
-              id="acc-create-error"
-              class="alert alert-error"
-              style="display: none; margin-top: 12px"
-            ></div>
-          </div>
-
-          <!-- All Accounts -->
-          <div class="card">
-            <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
-              <span>All Accounts</span>
-              <button class="btn btn-secondary btn-sm" onclick="loadAccounts()">Refresh</button>
-            </div>
-            <div id="accounts-list-content">
-              <p class="td-muted" style="padding:16px 0;">Click Refresh to load accounts.</p>
-            </div>
-          </div>
-
-        </div>
-
-        <!-- ══════════════════════════ TRANSFER ══════════════════════════════════ -->
-        <div class="panel" id="panel-transfer">
-          <div class="panel-header">
-            <div>
-              <h2>💸 Transfer</h2>
-              <p>Send funds from a virtual account to any Nigerian bank account</p>
-            </div>
-          </div>
-
-          <!-- Step 1: Recipient lookup -->
-          <div class="card">
-            <div class="card-title">Step 1 — Verify Recipient</div>
-            <div class="form-row">
-              <div class="form-group" style="max-width:160px;">
-                <label>Bank Code</label>
-                <input type="text" id="txfr-bank-code" placeholder="e.g. 044" maxlength="10" />
-              </div>
-              <div class="form-group">
-                <label>Account Number</label>
-                <input type="text" id="txfr-dest-account" placeholder="10-digit number" maxlength="10" />
-              </div>
-              <button class="btn btn-secondary" onclick="lookupRecipient()" id="txfr-lookup-btn">
-                Verify
-              </button>
-            </div>
-            <div id="txfr-lookup-error" class="alert alert-error" style="display:none;margin-top:12px;"></div>
-            <div id="txfr-lookup-result" style="margin-top:12px;"></div>
-          </div>
-
-          <!-- Step 2: Transfer details -->
-          <div class="card" id="txfr-details-card" style="display:none;">
-            <div class="card-title">Step 2 — Transfer Details</div>
-            <div class="form-row">
-              <div class="form-group" style="flex:2;">
-                <label>From Account</label>
-                <select id="txfr-source-account">
-                  <option value="">— select account —</option>
-                </select>
-              </div>
-              <div class="form-group" style="max-width:160px;">
-                <label>Amount (NGN)</label>
-                <input type="number" id="txfr-amount" placeholder="0.00" min="1" step="0.01" />
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Sender Name</label>
-                <input type="text" id="txfr-sender-name" placeholder="Name on source account" />
-              </div>
-              <div class="form-group">
-                <label>Narration</label>
-                <input type="text" id="txfr-narration" placeholder="Payment for…" />
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Reference <span style="color:var(--text-muted);font-size:11px;">(auto-generated)</span></label>
-                <input type="text" id="txfr-reference" readonly style="background:var(--content-bg);color:var(--text-secondary);" />
-              </div>
-              <button class="btn btn-primary" onclick="submitTransfer()" id="txfr-submit-btn" style="align-self:flex-end;">
-                Send Money
-              </button>
-            </div>
-            <div id="txfr-submit-error" class="alert alert-error" style="display:none;margin-top:12px;"></div>
-            <div id="txfr-submit-result" style="margin-top:12px;"></div>
-          </div>
-        </div>
-
-        <!-- ══════════════════════════ RECONCILIATION ═══════════════════════════ -->
+        <!-- ── Reconciliation ── -->
         <div class="panel" id="panel-reconciliation">
-          <div class="panel-header">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap;">
             <div>
-              <h2>📊 Reconciliation</h2>
-              <p>View reconciliation run history and trigger new runs</p>
+              <h2 class="panel-heading">Reconciliation</h2>
+              <p class="panel-sub">Cross-reference your ledger against Nomba's records.</p>
             </div>
-            <div style="display: flex; gap: 8px">
-              <button class="btn btn-secondary" onclick="loadReconciliation()">
-                ↻ Refresh
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-outline" onclick="loadReconciliation()">
+                <svg viewBox="0 0 13 13"><path d="M11 6.5A4.5 4.5 0 0 1 2 8.5M2 6.5A4.5 4.5 0 0 1 11 4.5"/><path d="M2 4v3h3M11 9v-3h-3"/></svg>
+                Refresh
               </button>
               <button class="btn btn-primary" onclick="triggerReconciliation()">
-                ▶ Run Now
+                <svg viewBox="0 0 13 13"><path d="M6.5 1v5l3-3M3.5 4 6.5 1l3 3M6.5 12c-3.038 0-5.5-2.462-5.5-5.5h2"/></svg>
+                Run now
               </button>
             </div>
           </div>
 
-          <div
-            id="recon-trigger-result"
-            style="margin-bottom: 14px; display: none"
-          ></div>
+          <div id="recon-trigger-alert" style="display:none;margin-bottom:16px;"></div>
 
-          <!-- Stats row -->
-          <div class="grid-3" id="recon-stats" style="margin-bottom: 20px">
+          <div class="stats-row" style="margin-bottom:20px;">
             <div class="stat-card">
               <div class="stat-label">Latest Status</div>
               <div class="stat-value" id="recon-stat-status">—</div>
@@ -1155,1230 +678,941 @@
           </div>
 
           <div class="card">
-            <div class="card-header">
-              <div class="card-title" style="margin-bottom: 0">Run History</div>
-            </div>
-            <div id="recon-table-wrap">
-              <div class="loading">
-                <div class="spinner"></div>
-                Loading runs…
-              </div>
+            <div class="card-header"><div class="card-header-title">Run history</div></div>
+            <div class="table-wrap" id="recon-table-wrap">
+              <div class="loading"><div class="spinner"></div> Loading runs…</div>
             </div>
           </div>
         </div>
 
-        <!-- ══════════════════════════ WEBHOOKS ════════════════════════════════ -->
+        <!-- ── Webhooks ── -->
         <div class="panel" id="panel-webhooks">
-          <div class="panel-header">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap;">
             <div>
-              <h2>📬 Webhook Deliveries</h2>
-              <p>Outbound webhook delivery log for developer integrations</p>
+              <h2 class="panel-heading">Webhook Deliveries</h2>
+              <p class="panel-sub">Outbound event delivery log for developer integrations.</p>
             </div>
-            <button class="btn btn-primary" onclick="loadWebhooks()">
-              ↻ Refresh
+            <button class="btn btn-outline" onclick="loadWebhooks()">
+              <svg viewBox="0 0 13 13"><path d="M11 6.5A4.5 4.5 0 0 1 2 8.5M2 6.5A4.5 4.5 0 0 1 11 4.5"/><path d="M2 4v3h3M11 9v-3h-3"/></svg>
+              Refresh
             </button>
           </div>
 
-          <!-- Stats row -->
-          <div class="grid-3" style="margin-bottom: 20px">
+          <div class="stats-row" style="margin-bottom:20px;">
             <div class="stat-card">
-              <div class="stat-label">Total Shown</div>
+              <div class="stat-label">Total</div>
               <div class="stat-value" id="wh-stat-total">—</div>
             </div>
             <div class="stat-card">
               <div class="stat-label">Delivered</div>
-              <div
-                class="stat-value"
-                id="wh-stat-delivered"
-                style="color: var(--green)"
-              >
-                —
-              </div>
+              <div class="stat-value" style="color:var(--green);" id="wh-stat-delivered">—</div>
             </div>
             <div class="stat-card">
               <div class="stat-label">Failed / Pending</div>
-              <div
-                class="stat-value"
-                id="wh-stat-failed"
-                style="color: var(--red)"
-              >
-                —
-              </div>
+              <div class="stat-value" style="color:var(--ember);" id="wh-stat-failed">—</div>
             </div>
           </div>
 
           <div class="card">
             <div class="card-header">
-              <div class="card-title" style="margin-bottom: 0">
-                Delivery Log
-              </div>
-              <div style="display: flex; align-items: center; gap: 8px">
-                <label style="font-size: 12px; color: var(--text-secondary)"
-                  >Limit:</label
-                >
-                <input
-                  type="number"
-                  id="wh-limit"
-                  value="20"
-                  min="1"
-                  max="100"
-                  style="
-                    width: 70px;
-                    padding: 4px 8px;
-                    border: 1px solid var(--card-border);
-                    border-radius: 4px;
-                    font-size: 12px;
-                  "
-                />
+              <div class="card-header-title">Delivery log</div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <label style="margin:0;font-size:12px;">Limit:</label>
+                <input class="input input-sm" type="number" id="wh-limit" value="20" min="1" max="100" style="width:64px;" />
               </div>
             </div>
-            <div id="wh-table-wrap">
-              <div class="loading">
-                <div class="spinner"></div>
-                Loading webhooks…
-              </div>
+            <div class="table-wrap" id="wh-table-wrap">
+              <div class="loading"><div class="spinner"></div> Loading…</div>
             </div>
+          </div>
+        </div>
+
+      </div><!-- /main-content -->
+    </div><!-- /main -->
+  </div><!-- /app-view -->
+
+  <!-- ═══════════════════════════════════════════════════════════
+       ACCOUNT DETAIL DRAWER
+  ═══════════════════════════════════════════════════════════ -->
+  <div id="drawer-overlay" class="drawer-overlay" onclick="closeAccountDetail()"></div>
+  <div id="account-drawer" class="drawer">
+    <div class="drawer-header">
+      <div>
+        <div class="drawer-title" id="drawer-title">Account</div>
+        <div class="drawer-subtitle" id="drawer-subtitle"></div>
+      </div>
+      <button class="drawer-close" onclick="closeAccountDetail()">
+        <svg viewBox="0 0 13 13"><path d="M2 2l9 9M11 2 2 11"/></svg>
+      </button>
+    </div>
+    <div class="drawer-body" id="drawer-body">
+      <div class="loading"><div class="spinner"></div> Loading…</div>
+    </div>
+  </div>
+
+  <!-- Create API Key Modal -->
+  <div class="modal-backdrop hidden" id="modal-create-key">
+    <div class="modal">
+      <div class="modal-header"><div class="modal-title" id="modal-key-title">Create API Key</div></div>
+      <div class="modal-body">
+        <div id="modal-key-create">
+          <div id="modal-key-error" class="alert alert-error" style="display:none;margin-bottom:12px;"></div>
+          <div class="field">
+            <label for="ak-name">Key name</label>
+            <input class="input" id="ak-name" type="text" placeholder="e.g. Production, Staging" />
+            <p class="field-hint">A label to identify this key. Shown in the key list.</p>
+          </div>
+        </div>
+        <div id="modal-key-reveal" style="display:none;">
+          <div class="alert alert-success" style="margin-bottom:12px;">Key created. Copy it now — it will not be shown again.</div>
+          <div class="key-box">
+            <span class="key-val" id="ak-raw-key"></span>
+            <button class="key-copy" onclick="copyText(document.getElementById('ak-raw-key').textContent, this)">
+              <svg viewBox="0 0 11 11"><rect x="3" y="3" width="7" height="7" rx="1"/><path d="M1 8V1h7"/></svg>
+              Copy
+            </button>
           </div>
         </div>
       </div>
-      <!-- /#content -->
+      <div class="modal-footer" id="modal-key-footer">
+        <button class="btn btn-secondary" onclick="closeCreateKeyModal()">Cancel</button>
+        <button class="btn btn-primary" id="modal-key-btn" onclick="submitCreateKey()">Create key</button>
+      </div>
     </div>
-    <!-- /#main -->
+  </div>
 
-    <script>
-      // ═══════════════════════════════════════════════════════════════════════════════
-      // Configuration & State
-      // ═══════════════════════════════════════════════════════════════════════════════
+  <!-- Create Customer Modal -->
+  <div class="modal-backdrop hidden" id="modal-create-customer">
+    <div class="modal">
+      <div class="modal-header"><div class="modal-title">Create Customer</div></div>
+      <div class="modal-body">
+        <div id="modal-cust-error" class="alert alert-error" style="display:none;margin-bottom:12px;"></div>
+        <div class="field">
+          <label for="cust-kyc-tier">KYC Tier</label>
+          <select class="select" id="cust-kyc-tier">
+            <option value="1">Tier 1 — Phone number only</option>
+            <option value="2">Tier 2 — BVN required</option>
+            <option value="3">Tier 3 — BVN + NIN required</option>
+          </select>
+          <p class="field-hint">Determines transaction limits. Can be upgraded later.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('modal-create-customer')">Cancel</button>
+        <button class="btn btn-primary" onclick="submitCreateCustomer()">Create customer</button>
+      </div>
+    </div>
+  </div>
 
-      const LS_KEY = "ancra_dashboard_cfg";
-
-      let cfg = {
-        baseUrl: window.location.origin,
-        adminSecret: "",
-        apiKey: "",
-      };
-
-      function loadConfig() {
-        try {
-          const saved = JSON.parse(localStorage.getItem(LS_KEY) || "{}");
-          cfg = {
-            baseUrl: saved.baseUrl || window.location.origin,
-            adminSecret: saved.adminSecret || "",
-            apiKey: saved.apiKey || "",
-          };
-        } catch (e) {
-          /* ignore */
-        }
-
-        document.getElementById("cfg-base-url").value = cfg.baseUrl;
-        document.getElementById("cfg-admin-secret").value = cfg.adminSecret;
-        document.getElementById("cfg-api-key").value = cfg.apiKey;
-      }
-
-      function saveSettings() {
-        cfg.baseUrl = document
-          .getElementById("cfg-base-url")
-          .value.trim()
-          .replace(/\/$/, "");
-        cfg.adminSecret = document
-          .getElementById("cfg-admin-secret")
-          .value.trim();
-        cfg.apiKey = document.getElementById("cfg-api-key").value.trim();
-
-        localStorage.setItem(LS_KEY, JSON.stringify(cfg));
-        showToast("Settings saved ✓");
-        document.getElementById("settings-panel").classList.remove("open");
-      }
-
-      function toggleSettings() {
-        document.getElementById("settings-panel").classList.toggle("open");
-      }
-
-      // ═══════════════════════════════════════════════════════════════════════════════
-      // Navigation
-      // ═══════════════════════════════════════════════════════════════════════════════
-
-      function switchPanel(panelId) {
-        document
-          .querySelectorAll(".panel")
-          .forEach((p) => p.classList.remove("active"));
-        document
-          .querySelectorAll(".nav-item")
-          .forEach((n) => n.classList.remove("active"));
-
-        const panel = document.getElementById("panel-" + panelId);
-        if (panel) panel.classList.add("active");
-
-        const navBtn = document.querySelector(`[data-panel="${panelId}"]`);
-        if (navBtn) navBtn.classList.add("active");
-
-        // Auto-load panel data
-        switch (panelId) {
-          case "api-keys":
-            loadAPIKeys();
-            break;
-          case "customers":
-            loadCustomers();
-            break;
-          case "accounts":
-            loadAccounts();
-            break;
-          case "transfer":
-            loadTransferAccounts();
-            break;
-          case "reconciliation":
-            loadReconciliation();
-            break;
-          case "webhooks":
-            loadWebhooks();
-            break;
-        }
-      }
-
-      document.querySelectorAll(".nav-item").forEach((btn) => {
-        btn.addEventListener("click", () => switchPanel(btn.dataset.panel));
-      });
-
-      // ═══════════════════════════════════════════════════════════════════════════════
-      // HTTP Helpers
-      // ═══════════════════════════════════════════════════════════════════════════════
-
-      function authHeaders(isAdmin = false) {
-        const h = { "Content-Type": "application/json" };
-        if (cfg.apiKey) h["Authorization"] = `Bearer ${cfg.apiKey}`;
-        if (isAdmin && cfg.adminSecret) h["Admin-Secret"] = cfg.adminSecret;
-        return h;
-      }
-
-      async function apiFetch(path, opts = {}, isAdmin = false) {
-        const url = cfg.baseUrl + path;
-        const headers = { ...authHeaders(isAdmin), ...(opts.headers || {}) };
-
-        const res = await fetch(url, { ...opts, headers });
-        const text = await res.text();
-
-        let data;
-        try {
-          data = JSON.parse(text);
-        } catch {
-          data = { raw: text };
-        }
-
-        if (!res.ok) {
-          const errMsg =
-            data?.error?.message ||
-            data?.message ||
-            data?.raw ||
-            `HTTP ${res.status}`;
-          throw new Error(errMsg);
-        }
-
-        return data;
-      }
-
-      // ═══════════════════════════════════════════════════════════════════════════════
-      // Connection Test
-      // ═══════════════════════════════════════════════════════════════════════════════
-
-      async function testConnection() {
-        const dot = document.getElementById("conn-dot");
-        const label = document.getElementById("conn-label");
-        const btn = document.getElementById("test-conn-btn");
-
-        btn.disabled = true;
-        btn.textContent = "⏳ Testing…";
-        dot.className = "status-dot";
-        label.textContent = "Checking…";
-
-        try {
-          const data = await apiFetch("/status");
-          dot.className = "status-dot ok";
-          label.textContent = `Connected — ${data.service || "ok"} v${data.version || "?"}`;
-          showToast("Connection successful ✓");
-        } catch (e) {
-          dot.className = "status-dot err";
-          label.textContent = "Connection failed";
-          showToast("Connection failed: " + e.message, "error");
-        } finally {
-          btn.disabled = false;
-          btn.textContent = "⚡ Test Connection";
-        }
-      }
-
-      // ═══════════════════════════════════════════════════════════════════════════════
-      // Toast notification (lightweight)
-      // ═══════════════════════════════════════════════════════════════════════════════
-
-      function showToast(msg, type = "success") {
-        let toast = document.getElementById("_toast");
-        if (!toast) {
-          toast = document.createElement("div");
-          toast.id = "_toast";
-          Object.assign(toast.style, {
-            position: "fixed",
-            bottom: "24px",
-            right: "24px",
-            zIndex: "9999",
-            padding: "10px 18px",
-            borderRadius: "6px",
-            fontSize: "13px",
-            fontWeight: "500",
-            boxShadow: "0 4px 12px rgba(0,0,0,.15)",
-            transition: "opacity .3s",
-            maxWidth: "360px",
-          });
-          document.body.appendChild(toast);
-        }
-        toast.textContent = msg;
-        toast.style.background = type === "error" ? "#dc2626" : "#16a34a";
-        toast.style.color = "#fff";
-        toast.style.opacity = "1";
-        clearTimeout(toast._timer);
-        toast._timer = setTimeout(() => {
-          toast.style.opacity = "0";
-        }, 3000);
-      }
-
-      // ═══════════════════════════════════════════════════════════════════════════════
-      // Formatters
-      // ═══════════════════════════════════════════════════════════════════════════════
-
-      function formatNGN(kobo) {
-        if (kobo == null) return "—";
-        const naira = kobo / 100;
-        return (
-          "₦" +
-          naira.toLocaleString("en-NG", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })
-        );
-      }
-
-      function formatDate(dateStr) {
-        if (!dateStr) return "—";
-        try {
-          return new Date(dateStr).toLocaleString("en-GB", {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          });
-        } catch {
-          return dateStr;
-        }
-      }
-
-      function formatDateShort(dateStr) {
-        if (!dateStr) return "—";
-        try {
-          return new Date(dateStr).toLocaleDateString("en-GB", {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-          });
-        } catch {
-          return dateStr;
-        }
-      }
-
-      function shortUUID(uuid) {
-        if (!uuid) return "—";
-        return uuid.slice(0, 8) + "…";
-      }
-
-      function statusBadge(status) {
-        const map = {
-          active: "badge-green",
-          pending: "badge-yellow",
-          delivered: "badge-green",
-          failed: "badge-red",
-          revoked: "badge-red",
-          closed: "badge-red",
-          ok: "badge-green",
-          mismatch: "badge-red",
-        };
-        const cls = map[status?.toLowerCase()] || "badge-gray";
-        return `<span class="badge ${cls}">${status || "—"}</span>`;
-      }
-
-      // ═══════════════════════════════════════════════════════════════════════════════
-      // DOM Helpers
-      // ═══════════════════════════════════════════════════════════════════════════════
-
-      function setLoading(el, msg = "Loading…") {
-        el.innerHTML = `<div class="loading"><div class="spinner"></div> ${msg}</div>`;
-      }
-
-      function setError(el, msg) {
-        if (typeof el === "string") el = document.getElementById(el);
-        el.innerHTML = `<span class="alert-icon">⚠️</span> ${escapeHtml(msg)}`;
-        el.style.display = "flex";
-      }
-
-      function hideEl(id) {
-        const el = document.getElementById(id);
-        if (el) el.style.display = "none";
-      }
-
-      function showEl(id) {
-        const el = document.getElementById(id);
-        if (el) el.style.display = "";
-      }
-
-      function escapeHtml(str) {
-        const d = document.createElement("div");
-        d.textContent = str;
-        return d.innerHTML;
-      }
-
-      function emptyState(icon, msg) {
-        return `<div class="empty-state"><div class="empty-icon">${icon}</div><p>${escapeHtml(msg)}</p></div>`;
-      }
-
-      // ═══════════════════════════════════════════════════════════════════════════════
-      // API KEYS Panel
-      // ═══════════════════════════════════════════════════════════════════════════════
-
-      async function loadAPIKeys() {
-        const wrap = document.getElementById("ak-table-wrap");
-        setLoading(wrap, "Loading API keys…");
-
-        try {
-          const data = await apiFetch("/admin/api-keys", {}, true);
-          const keys = Array.isArray(data)
-            ? data
-            : data.keys || data.data || [];
-          renderAPIKeysTable(wrap, keys);
-        } catch (e) {
-          wrap.innerHTML = `<div class="alert alert-error"><span class="alert-icon">⚠️</span> ${escapeHtml(e.message)}</div>`;
-        }
-      }
-
-      function renderAPIKeysTable(wrap, keys) {
-        if (!keys || keys.length === 0) {
-          wrap.innerHTML = emptyState(
-            "🔑",
-            "No API keys yet. Generate one above.",
-          );
-          return;
-        }
-
-        const rows = keys
-          .map((k) => {
-            const revoked = !!k.revoked_at || k.status === "revoked";
-            const lastUsed = k.last_used_at
-              ? formatDate(k.last_used_at)
-              : '<span class="td-muted">Never</span>';
-            return `
-      <tr class="${revoked ? "revoked" : ""}">
-        <td><strong>${escapeHtml(k.name || "—")}</strong></td>
-        <td class="td-mono" title="${k.id}">${shortUUID(k.id)}</td>
-        <td class="td-muted">${formatDate(k.created_at)}</td>
-        <td>${lastUsed}</td>
-        <td>${revoked ? statusBadge("revoked") : statusBadge("active")}</td>
-        <td>
-          ${!revoked ? `<button class="btn btn-danger btn-sm" onclick="revokeAPIKey('${k.id}', '${escapeHtml(k.name || "")}')">Revoke</button>` : '<span class="td-muted">—</span>'}
-        </td>
-      </tr>`;
-          })
-          .join("");
-
-        wrap.innerHTML = `
-    <div class="table-wrapper">
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>ID</th>
-            <th>Created</th>
-            <th>Last Used</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>`;
-      }
-
-      async function generateAPIKey() {
-        const name = document.getElementById("ak-name").value.trim();
-        if (!name) {
-          showToast("Please enter a key name", "error");
-          return;
-        }
-
-        hideEl("ak-form-error");
-        document.getElementById("ak-new-key-box").style.display = "none";
-
-        try {
-          const data = await apiFetch(
-            "/admin/api-keys",
-            {
-              method: "POST",
-              body: JSON.stringify({ name }),
-            },
-            true,
-          );
-
-          const rawKey = data.key || data.raw_key || data.api_key || data.token;
-          if (rawKey) {
-            document.getElementById("ak-raw-key").textContent = rawKey;
-            document.getElementById("ak-new-key-box").style.display = "block";
-          }
-
-          document.getElementById("ak-name").value = "";
-          showToast("API key generated ✓");
-          loadAPIKeys();
-        } catch (e) {
-          setError("ak-form-error", e.message);
-        }
-      }
-
-      function copyRawKey() {
-        const key = document.getElementById("ak-raw-key").textContent;
-        navigator.clipboard
-          .writeText(key)
-          .then(() => showToast("Copied to clipboard ✓"));
-      }
-
-      async function revokeAPIKey(id, name) {
-        if (!confirm(`Revoke key "${name}"? This cannot be undone.`)) return;
-
-        try {
-          await apiFetch(`/admin/api-keys/${id}`, { method: "DELETE" }, true);
-          showToast("Key revoked ✓");
-          loadAPIKeys();
-        } catch (e) {
-          showToast("Failed to revoke: " + e.message, "error");
-        }
-      }
-
-      // ═══════════════════════════════════════════════════════════════════════════════
-      // CUSTOMERS Panel
-      // ═══════════════════════════════════════════════════════════════════════════════
-
-      async function createCustomer() {
-        const kycTier = parseInt(
-          document.getElementById("cust-kyc-tier").value,
-          10,
-        );
-
-        hideEl("cust-error");
-        document.getElementById("cust-result").style.display = "none";
-
-        try {
-          const data = await apiFetch("/customers", {
-            method: "POST",
-            body: JSON.stringify({ kyc_tier: kycTier }),
-          });
-
-          document.getElementById("cust-result").innerHTML = `
-      <div class="alert alert-success">
-        <span class="alert-icon">✅</span>
-        <div>
-          <strong>Customer created</strong>
-          <div class="detail-grid" style="margin-top:8px;">
-            <div class="detail-item">
-              <span class="detail-label">ID</span>
-              <span class="detail-value mono" style="font-size:12px;">${escapeHtml(data.id || "—")}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">KYC Tier</span>
-              <span class="detail-value">${data.kyc_tier || "—"}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Created</span>
-              <span class="detail-value">${formatDate(data.created_at)}</span>
-            </div>
+  <!-- Provision Account Modal -->
+  <div class="modal-backdrop hidden" id="modal-provision">
+    <div class="modal" style="max-width:520px;">
+      <div class="modal-header"><div class="modal-title">Provision Virtual Account</div></div>
+      <div class="modal-body">
+        <div id="modal-acc-error" class="alert alert-error" style="display:none;margin-bottom:12px;"></div>
+        <div class="field" style="margin-bottom:12px;">
+          <label for="acc-customer-id">Customer ID</label>
+          <input class="input input-mono" id="acc-customer-id" type="text" placeholder="UUID from the Customers panel" />
+        </div>
+        <div class="field" style="margin-bottom:12px;">
+          <label for="acc-display-name">Display Name</label>
+          <input class="input" id="acc-display-name" type="text" placeholder="John Doe" />
+        </div>
+        <div class="field" style="margin-bottom:12px;">
+          <label for="acc-email">Customer Email</label>
+          <input class="input" id="acc-email" type="email" placeholder="john@example.com" />
+        </div>
+        <div class="field" style="margin-bottom:12px;">
+          <label for="acc-phone">Phone Number <span style="font-weight:400;">optional</span></label>
+          <input class="input" id="acc-phone" type="text" placeholder="+2348012345678" />
+        </div>
+        <div class="form-row" style="flex-wrap:wrap;">
+          <div class="field" style="flex:1;min-width:120px;">
+            <label for="acc-bvn">BVN <span style="font-weight:400;">optional</span></label>
+            <input class="input input-mono" id="acc-bvn" type="text" placeholder="12345678901" maxlength="11" />
+          </div>
+          <div class="field" style="flex:1;min-width:120px;">
+            <label for="acc-nin">NIN <span style="font-weight:400;">optional</span></label>
+            <input class="input input-mono" id="acc-nin" type="text" placeholder="98765432101" maxlength="11" />
           </div>
         </div>
-      </div>`;
-          document.getElementById("cust-result").style.display = "block";
-          showToast("Customer created ✓");
-          loadCustomers();
-        } catch (e) {
-          setError("cust-error", e.message);
-        }
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('modal-provision')">Cancel</button>
+        <button class="btn btn-primary" onclick="submitProvision()">Provision account</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-backdrop hidden" id="modal-settings">
+    <div class="modal">
+      <div class="modal-header"><div class="modal-title">Connection Settings</div></div>
+      <div class="modal-body">
+        <div class="field" style="margin-bottom:12px;">
+          <label for="settings-base-url">Base URL</label>
+          <input class="input" id="settings-base-url" type="url" placeholder="https://api.yourapp.com" />
+        </div>
+        <div class="field" style="margin-bottom:12px;">
+          <label for="settings-admin-secret">Admin Secret</label>
+          <input class="input" id="settings-admin-secret" type="password" placeholder="ADMIN_SECRET" />
+        </div>
+        <div class="field">
+          <label for="settings-api-key">API Key</label>
+          <input class="input input-mono" id="settings-api-key" type="password" placeholder="ancra_..." />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('modal-settings')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveSettings()">Save settings</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="_toast"></div>
+
+  <script>
+    // ═══════════════════════════════════════════════════════════════════════
+    // Config & State
+    // ═══════════════════════════════════════════════════════════════════════
+
+    const LS_KEY = 'ancra_dash_cfg';
+
+    let cfg = { baseUrl: window.location.origin, adminSecret: '', apiKey: '' };
+    let transferRecipient = null;
+
+    function loadConfig() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
+        cfg = {
+          baseUrl:     saved.baseUrl     || window.location.origin,
+          adminSecret: saved.adminSecret || '',
+          apiKey:      saved.apiKey      || '',
+        };
+      } catch (_) {}
+    }
+
+    function persistConfig() {
+      localStorage.setItem(LS_KEY, JSON.stringify(cfg));
+    }
+
+    function isConfigured() {
+      return !!(cfg.adminSecret || cfg.apiKey);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Boot
+    // ═══════════════════════════════════════════════════════════════════════
+
+    loadConfig();
+
+    if (isConfigured()) {
+      showApp();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Setup Flow
+    // ═══════════════════════════════════════════════════════════════════════
+
+    async function connectAndSave() {
+      const base   = document.getElementById('cfg-base-url').value.trim().replace(/\/$/, '');
+      const secret = document.getElementById('cfg-admin-secret').value.trim();
+      const key    = document.getElementById('cfg-api-key').value.trim();
+      const errEl  = document.getElementById('setup-error');
+
+      errEl.style.display = 'none';
+      if (!base) { showAlert(errEl, 'error', 'Instance URL is required.'); return; }
+      if (!secret && !key) { showAlert(errEl, 'error', 'Enter at least an Admin Secret or API Key.'); return; }
+
+      cfg = { baseUrl: base, adminSecret: secret, apiKey: key };
+
+      try {
+        await apiFetch('/status');
+      } catch (e) {
+        showAlert(errEl, 'error', 'Could not reach the instance. Check the URL and try again.');
+        return;
       }
 
-      async function loadCustomers() {
-        const wrap = document.getElementById("cust-table-wrap");
-        const err = document.getElementById("cust-list-error");
-        hideEl("cust-list-error");
-        wrap.innerHTML = '<p style="color:#64748b;">Loading…</p>';
+      persistConfig();
+      showApp();
+    }
 
-        try {
-          const data = await apiFetch("/customers?limit=50");
-          const customers = data.customers || [];
+    function showApp() {
+      document.getElementById('setup-view').classList.add('hidden');
+      document.getElementById('app-view').style.display = 'flex';
+      testConnection();
+      loadAPIKeys();
+    }
 
-          if (!customers.length) {
-            wrap.innerHTML =
-              '<p style="color:#64748b;">No customers yet. Create one above.</p>';
-            return;
-          }
+    // ═══════════════════════════════════════════════════════════════════════
+    // Settings Modal
+    // ═══════════════════════════════════════════════════════════════════════
 
-          wrap.innerHTML = `
-      <table class="table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Display Name</th>
-            <th>KYC Tier</th>
-            <th>Created</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${customers
-            .map(
-              (c) => `
-            <tr>
-              <td class="mono" style="font-size:11px;">${escapeHtml(c.id)}</td>
-              <td>${escapeHtml(c.display_name || "—")}</td>
-              <td>${c.kyc_tier}</td>
-              <td>${formatDate(c.created_at)}</td>
-            </tr>`,
-            )
-            .join("")}
-        </tbody>
+    function openSettings() {
+      document.getElementById('settings-base-url').value    = cfg.baseUrl;
+      document.getElementById('settings-admin-secret').value = cfg.adminSecret;
+      document.getElementById('settings-api-key').value     = cfg.apiKey;
+      openModal('modal-settings');
+    }
+
+    function saveSettings() {
+      cfg.baseUrl     = document.getElementById('settings-base-url').value.trim().replace(/\/$/, '');
+      cfg.adminSecret = document.getElementById('settings-admin-secret').value.trim();
+      cfg.apiKey      = document.getElementById('settings-api-key').value.trim();
+      persistConfig();
+      closeModal('modal-settings');
+      testConnection();
+      showToast('Settings saved');
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Navigation
+    // ═══════════════════════════════════════════════════════════════════════
+
+    const panelTitles = {
+      'api-keys':       'API Keys',
+      'customers':      'Customers',
+      'accounts':       'Accounts',
+      'transfer':       'Transfer',
+      'reconciliation': 'Reconciliation',
+      'webhooks':       'Webhooks',
+    };
+
+    function switchPanel(id, btn) {
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      document.getElementById('panel-' + id).classList.add('active');
+      btn.classList.add('active');
+      document.getElementById('main-title').textContent = panelTitles[id] || id;
+
+      switch (id) {
+        case 'api-keys':       loadAPIKeys();       break;
+        case 'customers':      loadCustomers();      break;
+        case 'accounts':       loadAccounts();       break;
+        case 'transfer':       loadTransferAccounts(); break;
+        case 'reconciliation': loadReconciliation(); break;
+        case 'webhooks':       loadWebhooks();       break;
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // HTTP Helpers
+    // ═══════════════════════════════════════════════════════════════════════
+
+    function authHeaders(isAdmin = false) {
+      const h = { 'Content-Type': 'application/json' };
+      if (cfg.apiKey)      h['Authorization'] = `Bearer ${cfg.apiKey}`;
+      if (isAdmin && cfg.adminSecret) h['Admin-Secret'] = cfg.adminSecret;
+      return h;
+    }
+
+    async function apiFetch(path, opts = {}, isAdmin = false) {
+      const res  = await fetch(cfg.baseUrl + path, { ...opts, headers: { ...authHeaders(isAdmin), ...(opts.headers || {}) } });
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch { data = { raw: text }; }
+      if (!res.ok) throw new Error(data?.error?.message || data?.message || data?.raw || `HTTP ${res.status}`);
+      return data;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Connection Test
+    // ═══════════════════════════════════════════════════════════════════════
+
+    async function testConnection() {
+      const dot   = document.getElementById('conn-dot');
+      const label = document.getElementById('conn-label');
+      dot.className = 'conn-dot'; label.textContent = 'Checking…';
+      try {
+        const data = await apiFetch('/status');
+        dot.className = 'conn-dot ok';
+        label.textContent = `${data.service || 'connected'} v${data.version || '?'}`;
+      } catch (e) {
+        dot.className = 'conn-dot err';
+        label.textContent = 'Connection failed';
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Formatters
+    // ═══════════════════════════════════════════════════════════════════════
+
+    function formatNGN(kobo) {
+      if (kobo == null) return '—';
+      return '₦' + (kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function formatDate(s) {
+      if (!s) return '—';
+      try {
+        return new Date(s).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      } catch { return s; }
+    }
+
+    function shortUUID(id) { return id ? id.slice(0, 8) + '…' : '—'; }
+
+    function statusBadge(status) {
+      const cls = { active:'badge-active', delivered:'badge-delivered', ok:'badge-ok', pending:'badge-pending', failed:'badge-failed', revoked:'badge-revoked', closed:'badge-revoked', mismatch:'badge-failed' }[status?.toLowerCase()] || 'badge-gray';
+      return `<span class="badge ${cls}">${escHtml(status || '—')}</span>`;
+    }
+
+    function escHtml(s) {
+      const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Alert / Toast / Modal Helpers
+    // ═══════════════════════════════════════════════════════════════════════
+
+    function showAlert(el, type, msg) {
+      if (typeof el === 'string') el = document.getElementById(el);
+      el.className = 'alert alert-' + type;
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+
+    function hideEl(id) { const e = document.getElementById(id); if (e) e.style.display = 'none'; }
+
+    function showToast(msg, type = 'success') {
+      const t = document.getElementById('_toast');
+      t.textContent = msg;
+      t.style.background = type === 'error' ? 'var(--ember)' : 'var(--ink)';
+      t.classList.add('show');
+      clearTimeout(t._t);
+      t._t = setTimeout(() => t.classList.remove('show'), 2800);
+    }
+
+    function openModal(id)  { document.getElementById(id).classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    async function copyText(text, btn) {
+      await navigator.clipboard.writeText(text).catch(() => {});
+      const orig = btn.innerHTML;
+      btn.innerHTML = btn.innerHTML.replace(/Copy/, 'Copied!');
+      setTimeout(() => { btn.innerHTML = orig; }, 1500);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // API KEYS Panel
+    // ═══════════════════════════════════════════════════════════════════════
+
+    async function loadAPIKeys() {
+      const wrap = document.getElementById('ak-table-wrap');
+      wrap.innerHTML = '<div class="loading"><div class="spinner"></div> Loading keys…</div>';
+      try {
+        const data = await apiFetch('/admin/api-keys', {}, true);
+        renderKeysTable(wrap, data.keys || []);
+      } catch (e) {
+        wrap.innerHTML = `<div class="alert alert-error" style="margin:16px;">${escHtml(e.message)}</div>`;
+      }
+    }
+
+    function renderKeysTable(wrap, keys) {
+      if (!keys.length) {
+        wrap.innerHTML = '<div class="empty-state">No API keys yet. Create one to start making requests.</div>';
+        return;
+      }
+      const rows = keys.map(k => {
+        const revoked = !!k.revoked_at;
+        const revokeBtn = revoked ? '' : `<button class="btn btn-danger btn-sm" onclick="revokeKey('${k.id}','${escHtml(k.name)}')">Revoke</button>`;
+        return `<tr class="${revoked ? 'row-revoked' : ''}">
+          <td style="font-weight:500;">${escHtml(k.name || '—')}</td>
+          <td class="td-mono">${shortUUID(k.id)}<button class="copy-btn" onclick="navigator.clipboard.writeText('${k.id}').then(()=>showToast('Copied'))">⎘</button></td>
+          <td class="td-mono td-muted">${formatDate(k.created_at)}</td>
+          <td class="td-mono td-muted">${k.last_used_at ? formatDate(k.last_used_at) : '—'}</td>
+          <td>${revoked ? statusBadge('revoked') : statusBadge('active')}</td>
+          <td class="td-right">${revokeBtn}</td>
+        </tr>`;
+      }).join('');
+      wrap.innerHTML = `<table>
+        <thead><tr><th>Name</th><th>ID</th><th>Created</th><th>Last used</th><th>Status</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
       </table>`;
-        } catch (e) {
-          wrap.innerHTML = "";
-          showEl("cust-list-error");
-          document.getElementById("cust-list-error").innerHTML =
-            `<div class="alert alert-error"><span class="alert-icon">⚠️</span>${escapeHtml(e.message)}</div>`;
-        }
+    }
+
+    function openCreateKeyModal() {
+      document.getElementById('ak-name').value = '';
+      document.getElementById('modal-key-error').style.display = 'none';
+      document.getElementById('modal-key-create').style.display = 'block';
+      document.getElementById('modal-key-reveal').style.display = 'none';
+      document.getElementById('modal-key-title').textContent = 'Create API Key';
+      document.getElementById('modal-key-btn').style.display = '';
+      document.getElementById('modal-key-footer').querySelector('.btn-secondary').textContent = 'Cancel';
+      openModal('modal-create-key');
+      setTimeout(() => document.getElementById('ak-name').focus(), 50);
+    }
+
+    function closeCreateKeyModal() { closeModal('modal-create-key'); loadAPIKeys(); }
+
+    async function submitCreateKey() {
+      const name  = document.getElementById('ak-name').value.trim();
+      const errEl = document.getElementById('modal-key-error');
+      errEl.style.display = 'none';
+      if (!name) { showAlert(errEl, 'error', 'Key name is required.'); return; }
+
+      const btn = document.getElementById('modal-key-btn');
+      btn.textContent = 'Creating…'; btn.disabled = true;
+
+      try {
+        const data = await apiFetch('/admin/api-keys', { method: 'POST', body: JSON.stringify({ name }) }, true);
+        document.getElementById('ak-raw-key').textContent = data.key;
+        document.getElementById('modal-key-create').style.display = 'none';
+        document.getElementById('modal-key-reveal').style.display = 'block';
+        document.getElementById('modal-key-title').textContent = 'API Key Created';
+        document.getElementById('modal-key-btn').style.display = 'none';
+        document.getElementById('modal-key-footer').querySelector('.btn-secondary').textContent = 'Done';
+      } catch (e) {
+        showAlert(errEl, 'error', 'Failed to create key: ' + e.message);
+      } finally {
+        btn.textContent = 'Create key'; btn.disabled = false;
       }
-
-      // ═══════════════════════════════════════════════════════════════════════════════
-      // ACCOUNTS Panel
-      // ═══════════════════════════════════════════════════════════════════════════════
-
-      async function createAccount() {
-        const customerId = document
-          .getElementById("acc-customer-id")
-          .value.trim();
-        const displayName = document
-          .getElementById("acc-display-name")
-          .value.trim();
-        const email = document.getElementById("acc-email").value.trim();
-        const phone = document.getElementById("acc-phone").value.trim();
-
-        hideEl("acc-create-error");
-        document.getElementById("acc-create-result").style.display = "none";
-
-        if (!customerId || !displayName || !email) {
-          setError(
-            "acc-create-error",
-            "Customer ID, Display Name and Email are required.",
-          );
-          return;
-        }
-
-        const body = {
-          customer_id: customerId,
-          display_name: displayName,
-          customer_email: email,
-        };
-        if (phone) body.phone_number = phone;
-
-        try {
-          const resp = await apiFetch("/accounts", {
-            method: "POST",
-            body: JSON.stringify(body),
-          });
-          const data = resp.account || resp;
-
-          document.getElementById("acc-create-result").innerHTML = `
-      <div class="alert alert-success">
-        <span class="alert-icon">✅</span>
-        <div>
-          <strong>Account provisioned</strong>
-          <div class="detail-grid" style="margin-top:8px;">
-            <div class="detail-item">
-              <span class="detail-label">Account ID</span>
-              <span class="detail-value mono" style="font-size:12px;">${escapeHtml(data.id || "—")}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Account Number</span>
-              <span class="detail-value mono">${escapeHtml(data.bank_account_number || "—")}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Account Name</span>
-              <span class="detail-value">${escapeHtml(data.bank_account_name || "—")}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Status</span>
-              <span class="detail-value">${statusBadge(data.status)}</span>
-            </div>
-          </div>
-        </div>
-      </div>`;
-          document.getElementById("acc-create-result").style.display = "block";
-          showToast("Account provisioned ✓");
-          loadAccounts();
-        } catch (e) {
-          setError("acc-create-error", e.message);
-        }
-      }
-
-      async function loadAccounts() {
-        const container = document.getElementById("accounts-list-content");
-        container.innerHTML = '<p class="td-muted" style="padding:8px 0;">Loading…</p>';
-        try {
-          const data = await apiFetch("/accounts?limit=50");
-          const accounts = data.accounts || [];
-          if (accounts.length === 0) {
-            container.innerHTML = '<p class="td-muted" style="padding:8px 0;">No accounts provisioned yet.</p>';
-            return;
-          }
-          container.innerHTML = buildAccountsTable(accounts);
-        } catch (e) {
-          container.innerHTML = `<p class="alert alert-error" style="margin-top:8px;">${escapeHtml(e.message)}</p>`;
-        }
-      }
-
-      function buildAccountsTable(accounts) {
-        const rows = accounts.map(buildAccountRow).join("");
-        return `
-          <table class="table" style="margin-top:8px;">
-            <thead><tr>
-              <th>Account ID</th>
-              <th>Account Number</th>
-              <th>Name</th>
-              <th>Status</th>
-              <th>Created</th>
-            </tr></thead>
-            <tbody>${rows}</tbody>
-          </table>`;
-      }
-
-      function buildAccountRow(account) {
-        return `
-          <tr class="clickable-row" onclick="openAccountDetail('${escapeHtml(account.id)}')">
-            <td class="td-mono" style="font-size:11px;">
-              ${shortUUID(account.id)}
-              <button class="copy-btn" title="Copy full ID"
-                onclick="event.stopPropagation(); copyText('${escapeHtml(account.id)}', 'Account ID copied ✓')">
-                ⎘
-              </button>
-            </td>
-            <td class="mono">${escapeHtml(account.bank_account_number || "—")}</td>
-            <td>${escapeHtml(account.bank_account_name || "—")}</td>
-            <td>${statusBadge(account.status)}</td>
-            <td class="td-muted" style="font-size:11px;">${formatDate(account.created_at)}</td>
-          </tr>`;
-      }
-
-      function copyText(text, toastMessage) {
-        navigator.clipboard.writeText(text).then(() => showToast(toastMessage));
-      }
-
-      // ── Account detail drawer ─────────────────────────────────────────────────
-
-      async function openAccountDetail(accountId) {
-        showDrawer("Loading account details…");
-        const [accountResult, balanceResult, transactionsResult] = await Promise.allSettled([
-          apiFetch(`/accounts/${accountId}`),
-          apiFetch(`/accounts/${accountId}/balance`),
-          apiFetch(`/accounts/${accountId}/transactions?limit=20`),
-        ]);
-
-        const account = accountResult.status === "fulfilled" ? accountResult.value : null;
-        const balance = balanceResult.status === "fulfilled" ? balanceResult.value : null;
-        const transactions = transactionsResult.status === "fulfilled" ? transactionsResult.value : null;
-
-        updateDrawerHeader(account);
-
-        const customerResult = account
-          ? await Promise.allSettled([apiFetch(`/customers/${account.customer_id}`)])
-          : [{ status: "rejected" }];
-        const customer = customerResult[0].status === "fulfilled" ? customerResult[0].value : null;
-
-        document.getElementById("drawer-body").innerHTML =
-          renderDrawerAccountSection(account) +
-          renderDrawerCustomerSection(customer) +
-          renderDrawerBalanceSection(balance) +
-          renderDrawerTransactionsSection(transactions);
-      }
-
-      function showDrawer(loadingMessage) {
-        document.getElementById("drawer-body").innerHTML =
-          `<p style="color:var(--text-muted);">${escapeHtml(loadingMessage)}</p>`;
-        document.getElementById("drawer-account-name").textContent = "Loading…";
-        document.getElementById("drawer-account-number").textContent = "";
-        document.getElementById("account-drawer-overlay").classList.add("open");
-        document.getElementById("account-drawer").classList.add("open");
-      }
-
-      function closeAccountDetail() {
-        document.getElementById("account-drawer-overlay").classList.remove("open");
-        document.getElementById("account-drawer").classList.remove("open");
-      }
-
-      function updateDrawerHeader(account) {
-        document.getElementById("drawer-account-name").textContent =
-          account ? (account.bank_account_name || "Virtual Account") : "Account";
-        document.getElementById("drawer-account-number").textContent =
-          account ? (account.bank_account_number || "") : "";
-      }
-
-      function renderDrawerAccountSection(account) {
-        if (!account) return drawerSectionError("Account Details", "Failed to load account.");
-        return `
-          <div class="drawer-section">
-            <div class="drawer-section-title">Account Details</div>
-            <div class="detail-grid">
-              ${detailItem("Account ID",
-                `${shortUUID(account.id)}
-                 <button class="copy-btn" onclick="copyText('${escapeHtml(account.id)}', 'Account ID copied ✓')">⎘</button>`)}
-              ${detailItem("Account Number", account.bank_account_number || "—", true)}
-              ${detailItem("Account Name", account.bank_account_name || "—")}
-              ${detailItem("Status", statusBadge(account.status))}
-              ${detailItem("Account Ref", account.account_ref || "—", true)}
-              ${detailItem("Created", formatDate(account.created_at))}
-            </div>
-          </div>`;
-      }
-
-      function renderDrawerCustomerSection(customer) {
-        if (!customer) return drawerSectionError("Customer Details", "Failed to load customer.");
-        return `
-          <div class="drawer-section">
-            <div class="drawer-section-title">Customer Details</div>
-            <div class="detail-grid">
-              ${detailItem("Customer ID",
-                `${shortUUID(customer.id)}
-                 <button class="copy-btn" onclick="copyText('${escapeHtml(customer.id)}', 'Customer ID copied ✓')">⎘</button>`)}
-              ${detailItem("Display Name", customer.display_name || "—")}
-              ${detailItem("KYC Tier", `Tier ${customer.kyc_tier || "—"}`)}
-              ${detailItem("Member Since", formatDate(customer.created_at))}
-            </div>
-          </div>`;
-      }
-
-      function renderDrawerBalanceSection(balance) {
-        if (!balance) return drawerSectionError("Balance", "Failed to load balance.");
-        const balanceNaira = balance.balance != null
-          ? `₦${(balance.balance / 100).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`
-          : "₦0.00";
-        return `
-          <div class="drawer-section">
-            <div class="drawer-section-title">Balance</div>
-            <div style="font-size:28px;font-weight:700;color:var(--text-primary);margin-bottom:4px;">
-              ${balanceNaira}
-            </div>
-            <div style="font-size:12px;color:var(--text-muted);">
-              ${balance.currency || "NGN"} · as of ${formatDate(balance.as_of)}
-            </div>
-          </div>`;
-      }
-
-      function renderDrawerTransactionsSection(data) {
-        if (!data) return drawerSectionError("Settlements", "Failed to load transactions.");
-        const entries = data.entries || [];
-        if (entries.length === 0) {
-          return `
-            <div class="drawer-section">
-              <div class="drawer-section-title">Settlements</div>
-              <p class="td-muted">No transactions yet.</p>
-            </div>`;
-        }
-        const rows = entries.map(entry => `
-          <tr>
-            <td class="td-muted" style="font-size:11px;">${formatDate(entry.created_at)}</td>
-            <td>${escapeHtml(entry.entry_type || entry.direction || "—")}</td>
-            <td class="mono" style="color:${entry.direction === 'credit' ? 'var(--green)' : 'var(--red)'};">
-              ${entry.direction === 'credit' ? '+' : '-'}₦${((entry.amount_kobo || entry.amount || 0) / 100).toLocaleString("en-NG", { minimumFractionDigits: 2 })}
-            </td>
-            <td class="td-muted" style="font-size:11px;">${escapeHtml(entry.external_ref || "—")}</td>
-          </tr>`).join("");
-        return `
-          <div class="drawer-section">
-            <div class="drawer-section-title">Settlements (last ${entries.length})</div>
-            <table class="table">
-              <thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Reference</th></tr></thead>
-              <tbody>${rows}</tbody>
-            </table>
-          </div>`;
-      }
-
-      function detailItem(label, value, mono = false) {
-        return `
-          <div class="detail-item">
-            <span class="detail-label">${escapeHtml(label)}</span>
-            <span class="detail-value${mono ? ' mono' : ''}" style="font-size:${mono ? '12px' : '13px'};">${value}</span>
-          </div>`;
-      }
-
-      function drawerSectionError(title, message) {
-        return `
-          <div class="drawer-section">
-            <div class="drawer-section-title">${escapeHtml(title)}</div>
-            <p style="color:var(--text-muted);font-size:13px;">${escapeHtml(message)}</p>
-          </div>`;
-      }
-
-      // ═══════════════════════════════════════════════════════════════════════════════
-      // TRANSFER Panel
-      // ═══════════════════════════════════════════════════════════════════════════════
-
-      // Keeps the verified recipient so submitTransfer can read it.
-      let transferRecipient = null;
-
-      // Populate the source-account dropdown when the panel opens.
-      async function loadTransferAccounts() {
-        const sel = document.getElementById("txfr-source-account");
-        sel.innerHTML = '<option value="">— loading accounts… —</option>';
-        try {
-          const data = await apiFetch("/accounts?limit=100");
-          const accounts = data.accounts || [];
-          sel.innerHTML = '<option value="">— select account —</option>';
-          accounts.forEach((a) => {
-            const opt = document.createElement("option");
-            opt.value = a.id;
-            opt.textContent = `${a.bank_account_name || a.display_name || shortUUID(a.id)} · ${a.bank_account_number || ""}`;
-            sel.appendChild(opt);
-          });
-        } catch (e) {
-          sel.innerHTML = '<option value="">— failed to load accounts —</option>';
-        }
-        // Reset the form each time the panel is opened.
-        resetTransferForm();
-      }
-
-      function resetTransferForm() {
-        transferRecipient = null;
-        document.getElementById("txfr-bank-code").value = "";
-        document.getElementById("txfr-dest-account").value = "";
-        document.getElementById("txfr-lookup-result").innerHTML = "";
-        hideEl("txfr-lookup-error");
-        document.getElementById("txfr-details-card").style.display = "none";
-        document.getElementById("txfr-amount").value = "";
-        document.getElementById("txfr-sender-name").value = "";
-        document.getElementById("txfr-narration").value = "";
-        document.getElementById("txfr-reference").value = generateRef();
-        document.getElementById("txfr-submit-result").innerHTML = "";
-        hideEl("txfr-submit-error");
-      }
-
-      function generateRef() {
-        return "TXN-" + Date.now().toString(36).toUpperCase() + "-" + Math.random().toString(36).slice(2, 6).toUpperCase();
-      }
-
-      async function lookupRecipient() {
-        const bankCode = document.getElementById("txfr-bank-code").value.trim();
-        const accountNumber = document.getElementById("txfr-dest-account").value.trim();
-
-        if (!bankCode || !accountNumber) {
-          setError("txfr-lookup-error", "Bank code and account number are required.");
-          return;
-        }
-
-        const btn = document.getElementById("txfr-lookup-btn");
-        btn.disabled = true;
-        btn.textContent = "⏳ Verifying…";
-        hideEl("txfr-lookup-error");
-        document.getElementById("txfr-lookup-result").innerHTML = "";
-        document.getElementById("txfr-details-card").style.display = "none";
-        transferRecipient = null;
-
-        try {
-          const data = await apiFetch("/transfers/lookup", {
-            method: "POST",
-            body: JSON.stringify({ account_number: accountNumber, bank_code: bankCode }),
-          });
-
-          const name = data.account_name || data.accountName || "—";
-          transferRecipient = { bankCode, accountNumber, accountName: name };
-
-          document.getElementById("txfr-lookup-result").innerHTML = `
-            <div class="alert alert-success" style="display:flex;align-items:center;gap:10px;">
-              <span style="font-size:18px;">✓</span>
-              <div>
-                <div style="font-weight:600;">${escapeHtml(name)}</div>
-                <div style="color:var(--text-muted);font-size:12px;">${escapeHtml(accountNumber)} · Bank ${escapeHtml(bankCode)}</div>
-              </div>
-            </div>`;
-          document.getElementById("txfr-details-card").style.display = "";
-        } catch (e) {
-          setError("txfr-lookup-error", e.message);
-        } finally {
-          btn.disabled = false;
-          btn.textContent = "Verify";
-        }
-      }
-
-      async function submitTransfer() {
-        if (!transferRecipient) {
-          showToast("Verify the recipient first.", "error");
-          return;
-        }
-
-        const accountID = document.getElementById("txfr-source-account").value;
-        const amountNaira = parseFloat(document.getElementById("txfr-amount").value);
-        const senderName = document.getElementById("txfr-sender-name").value.trim();
-        const narration = document.getElementById("txfr-narration").value.trim();
-        const reference = document.getElementById("txfr-reference").value.trim();
-
-        if (!accountID) { showToast("Select a source account.", "error"); return; }
-        if (!amountNaira || amountNaira <= 0) { showToast("Enter a valid amount.", "error"); return; }
-        if (!senderName) { showToast("Sender name is required.", "error"); return; }
-
-        const amountKobo = Math.round(amountNaira * 100);
-
-        const btn = document.getElementById("txfr-submit-btn");
-        btn.disabled = true;
-        btn.textContent = "⏳ Sending…";
-        hideEl("txfr-submit-error");
-        document.getElementById("txfr-submit-result").innerHTML = "";
-
-        try {
-          const data = await apiFetch(`/accounts/${accountID}/transfer`, {
-            method: "POST",
-            body: JSON.stringify({
-              amount: amountKobo,
-              narration: narration || "Transfer",
-              reference,
-              sender_name: senderName,
-              destination_bank: transferRecipient.bankCode,
-              destination_account: transferRecipient.accountNumber,
-              destination_name: transferRecipient.accountName,
-            }),
-          });
-
-          document.getElementById("txfr-submit-result").innerHTML = `
-            <div class="alert alert-success">
-              <strong>Transfer submitted</strong>
-              <div class="detail-grid" style="margin-top:10px;">
-                <div class="detail-item"><span class="detail-label">Status</span><span class="detail-value">${escapeHtml(data.nomba_transaction?.status || data.status || "submitted")}</span></div>
-                <div class="detail-item"><span class="detail-label">Nomba ID</span><span class="detail-value mono" style="font-size:11px;">${escapeHtml(data.nomba_transaction?.id || "—")}</span></div>
-                <div class="detail-item"><span class="detail-label">Amount</span><span class="detail-value">${formatNGN(amountKobo)}</span></div>
-                <div class="detail-item"><span class="detail-label">Reference</span><span class="detail-value mono">${escapeHtml(reference)}</span></div>
-              </div>
-            </div>`;
-
-          showToast("Transfer submitted ✓");
-          // Refresh reference so accidental re-submit uses a new one.
-          document.getElementById("txfr-reference").value = generateRef();
-        } catch (e) {
-          setError("txfr-submit-error", e.message);
-        } finally {
-          btn.disabled = false;
-          btn.textContent = "Send Money";
-        }
-      }
-
-      // ═══════════════════════════════════════════════════════════════════════════════
-      // RECONCILIATION Panel
-      // ═══════════════════════════════════════════════════════════════════════════════
-
-      async function loadReconciliation() {
-        const wrap = document.getElementById("recon-table-wrap");
-        setLoading(wrap, "Loading reconciliation runs…");
-
-        try {
-          const data = await apiFetch("/reconciliation?limit=10");
-          const runs =
-            data.runs || data.data || (Array.isArray(data) ? data : []);
-          updateReconStats(runs);
-          renderReconTable(wrap, runs);
-        } catch (e) {
-          wrap.innerHTML = `<div class="alert alert-error"><span class="alert-icon">⚠️</span> ${escapeHtml(e.message)}</div>`;
-        }
-      }
-
-      function updateReconStats(runs) {
-        if (!runs || !runs.length) return;
-        const latest = runs[0];
-        document.getElementById("recon-stat-status").innerHTML = statusBadge(
-          latest.status,
-        );
-        document.getElementById("recon-stat-run-at").textContent = formatDate(
-          latest.run_at,
-        );
-        document.getElementById("recon-stat-nomba").textContent = formatNGN(
-          latest.nomba_wallet_balance,
-        );
-        document.getElementById("recon-stat-pool").textContent = formatNGN(
-          latest.computed_pool_balance,
-        );
-      }
-
-      function renderReconTable(wrap, runs) {
-        if (!runs || runs.length === 0) {
-          wrap.innerHTML = emptyState("📊", "No reconciliation runs yet.");
-          return;
-        }
-
-        const rows = runs
-          .map((r) => {
-            const delta = r.delta ?? 0;
-            const deltaClass =
-              delta === 0 ? "color:var(--green)" : "color:var(--red)";
-            return `
-      <tr>
-        <td class="td-mono" title="${r.id}">${shortUUID(r.id)}</td>
-        <td class="td-muted">${formatDate(r.run_at)}</td>
-        <td>${formatNGN(r.nomba_wallet_balance)}</td>
-        <td>${formatNGN(r.computed_pool_balance)}</td>
-        <td><span style="${deltaClass};font-weight:600;">${formatNGN(delta)}</span></td>
-        <td>${statusBadge(r.status)}</td>
-      </tr>`;
-          })
-          .join("");
-
-        wrap.innerHTML = `
-    <div class="table-wrapper">
-      <table>
-        <thead>
-          <tr>
-            <th>Run ID</th>
-            <th>Run At</th>
-            <th>Nomba Balance</th>
-            <th>Pool Balance</th>
-            <th>Delta</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>`;
-      }
-
-      async function triggerReconciliation() {
-        const result = document.getElementById("recon-trigger-result");
-        result.style.display = "none";
-
-        try {
-          const data = await apiFetch("/reconciliation/trigger", {
-            method: "POST",
-          });
-          result.innerHTML = `
-      <div class="alert alert-success">
-        <span class="alert-icon">✅</span>
-        Reconciliation triggered successfully. ${data.message || ""}
-      </div>`;
-          result.style.display = "flex";
-          setTimeout(loadReconciliation, 1000);
-        } catch (e) {
-          result.innerHTML = `<div class="alert alert-error"><span class="alert-icon">⚠️</span> ${escapeHtml(e.message)}</div>`;
-          result.style.display = "flex";
-        }
-      }
-
-      // ═══════════════════════════════════════════════════════════════════════════════
-      // WEBHOOKS Panel
-      // ═══════════════════════════════════════════════════════════════════════════════
-
-      async function loadWebhooks() {
-        const wrap = document.getElementById("wh-table-wrap");
-        const limit =
-          parseInt(document.getElementById("wh-limit").value, 10) || 20;
-        setLoading(wrap, "Loading webhook deliveries…");
-
-        try {
-          const data = await apiFetch(
-            `/admin/webhooks?limit=${limit}`,
-            {},
-            true,
-          );
-          const deliveries =
-            data.deliveries || data.data || (Array.isArray(data) ? data : []);
-          updateWebhookStats(deliveries);
-          renderWebhooksTable(wrap, deliveries);
-        } catch (e) {
-          wrap.innerHTML = `<div class="alert alert-error"><span class="alert-icon">⚠️</span> ${escapeHtml(e.message)}</div>`;
-        }
-      }
-
-      function updateWebhookStats(deliveries) {
-        const total = deliveries.length;
-        const delivered = deliveries.filter(
-          (d) => d.status === "delivered",
-        ).length;
-        const failed = deliveries.filter(
-          (d) => d.status === "failed" || d.status === "pending",
-        ).length;
-
-        document.getElementById("wh-stat-total").textContent = total;
-        document.getElementById("wh-stat-delivered").textContent = delivered;
-        document.getElementById("wh-stat-failed").textContent = failed;
-      }
-
-      function renderWebhooksTable(wrap, deliveries) {
-        if (!deliveries || deliveries.length === 0) {
-          wrap.innerHTML = emptyState("📬", "No webhook deliveries found.");
-          return;
-        }
-
-        const rows = deliveries
-          .map((d) => {
-            return `
-      <tr>
-        <td class="td-mono" title="${d.id}">${shortUUID(d.id)}</td>
-        <td><span class="badge badge-blue">${escapeHtml(d.event_type || "—")}</span></td>
-        <td>${statusBadge(d.status)}</td>
-        <td style="text-align:center;">${d.attempts ?? 0}</td>
-        <td class="td-muted">${d.next_retry_at ? formatDate(d.next_retry_at) : "—"}</td>
-        <td class="td-muted">${formatDate(d.created_at)}</td>
-      </tr>`;
-          })
-          .join("");
-
-        wrap.innerHTML = `
-    <div class="table-wrapper">
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Event Type</th>
-            <th>Status</th>
-            <th style="text-align:center;">Attempts</th>
-            <th>Next Retry</th>
-            <th>Created</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>`;
-      }
-
-      // ═══════════════════════════════════════════════════════════════════════════════
-      // Boot
-      // ═══════════════════════════════════════════════════════════════════════════════
-
-      document.addEventListener("DOMContentLoaded", () => {
-        loadConfig();
-        // Load the active panel (API Keys)
+    }
+
+    async function revokeKey(id, name) {
+      if (!confirm(`Revoke "${name}"? This cannot be undone.`)) return;
+      try {
+        await apiFetch(`/admin/api-keys/${id}`, { method: 'DELETE' }, true);
+        showToast('Key revoked');
         loadAPIKeys();
+      } catch (e) {
+        showToast('Failed: ' + e.message, 'error');
+      }
+    }
 
-        // If config has baseUrl, auto-test
-        if (cfg.apiKey || cfg.adminSecret) {
-          testConnection();
+    // ═══════════════════════════════════════════════════════════════════════
+    // CUSTOMERS Panel
+    // ═══════════════════════════════════════════════════════════════════════
+
+    async function loadCustomers() {
+      const wrap = document.getElementById('cust-table-wrap');
+      wrap.innerHTML = '<div class="loading"><div class="spinner"></div> Loading…</div>';
+      try {
+        const data = await apiFetch('/customers?limit=50');
+        const customers = data.customers || [];
+        if (!customers.length) {
+          wrap.innerHTML = '<div class="empty-state">No customers yet. Create one to get started.</div>';
+          return;
         }
-      });
+        const rows = customers.map(c => `<tr>
+          <td class="td-mono" style="font-size:12px;">${escHtml(c.id)}<button class="copy-btn" onclick="navigator.clipboard.writeText('${c.id}').then(()=>showToast('Copied'))">⎘</button></td>
+          <td>${escHtml(c.display_name || '—')}</td>
+          <td><span class="badge badge-outline">Tier ${c.kyc_tier}</span></td>
+          <td class="td-mono td-muted">${formatDate(c.created_at)}</td>
+        </tr>`).join('');
+        wrap.innerHTML = `<table>
+          <thead><tr><th>ID</th><th>Display Name</th><th>KYC Tier</th><th>Created</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+      } catch (e) {
+        wrap.innerHTML = `<div class="alert alert-error" style="margin:16px;">${escHtml(e.message)}</div>`;
+      }
+    }
 
-      document.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") closeAccountDetail();
-      });
-    </script>
+    function openCreateCustomerModal() {
+      document.getElementById('modal-cust-error').style.display = 'none';
+      openModal('modal-create-customer');
+    }
 
-    <!-- ══════════════════════════ ACCOUNT DETAIL DRAWER ═══════════════════════ -->
-    <div id="account-drawer-overlay" class="drawer-overlay" onclick="closeAccountDetail()"></div>
-    <div id="account-drawer" class="drawer" role="dialog" aria-modal="true" aria-label="Account details">
-      <div class="drawer-header">
-        <div>
-          <h3 id="drawer-account-name">Loading…</h3>
-          <div id="drawer-account-number" class="drawer-subtitle"></div>
-        </div>
-        <button class="drawer-close" onclick="closeAccountDetail()" aria-label="Close">✕</button>
-      </div>
-      <div class="drawer-body" id="drawer-body">
-        <p style="color:var(--text-muted);">Loading account details…</p>
-      </div>
-    </div>
-  </body>
+    async function submitCreateCustomer() {
+      const kyc   = parseInt(document.getElementById('cust-kyc-tier').value, 10);
+      const errEl = document.getElementById('modal-cust-error');
+      errEl.style.display = 'none';
+      try {
+        const data = await apiFetch('/customers', { method: 'POST', body: JSON.stringify({ kyc_tier: kyc }) });
+        closeModal('modal-create-customer');
+        showToast('Customer created');
+        loadCustomers();
+        // Show the new ID
+        showAlert(document.getElementById('cust-alert'), 'success', `Customer created — ID: ${data.id}`);
+      } catch (e) {
+        showAlert(errEl, 'error', e.message);
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ACCOUNTS Panel
+    // ═══════════════════════════════════════════════════════════════════════
+
+    async function loadAccounts() {
+      const wrap = document.getElementById('acc-table-wrap');
+      wrap.innerHTML = '<div class="loading"><div class="spinner"></div> Loading…</div>';
+      try {
+        const data     = await apiFetch('/accounts?limit=50');
+        const accounts = data.accounts || [];
+        if (!accounts.length) {
+          wrap.innerHTML = '<div class="empty-state">No accounts provisioned yet.</div>';
+          return;
+        }
+        const rows = accounts.map(a => `<tr style="cursor:pointer;" onclick="openAccountDetail('${a.id}')">
+          <td class="td-mono" style="font-size:12px;">${shortUUID(a.id)}<button class="copy-btn" onclick="event.stopPropagation();navigator.clipboard.writeText('${a.id}').then(()=>showToast('Copied'))">⎘</button></td>
+          <td class="td-mono" style="font-weight:500;">${escHtml(a.bank_account_number || '—')}</td>
+          <td>${escHtml(a.bank_account_name || '—')}</td>
+          <td>${statusBadge(a.status)}</td>
+          <td class="td-mono td-muted">${formatDate(a.created_at)}</td>
+        </tr>`).join('');
+        wrap.innerHTML = `<table>
+          <thead><tr><th>ID</th><th>Account No.</th><th>Account Name</th><th>Status</th><th>Created</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+      } catch (e) {
+        wrap.innerHTML = `<div class="alert alert-error" style="margin:16px;">${escHtml(e.message)}</div>`;
+      }
+    }
+
+    function openProvisionModal() {
+      ['acc-customer-id','acc-display-name','acc-email','acc-phone','acc-bvn','acc-nin'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+      document.getElementById('modal-acc-error').style.display = 'none';
+      openModal('modal-provision');
+    }
+
+    async function submitProvision() {
+      const customerId  = document.getElementById('acc-customer-id').value.trim();
+      const displayName = document.getElementById('acc-display-name').value.trim();
+      const email       = document.getElementById('acc-email').value.trim();
+      const phone       = document.getElementById('acc-phone').value.trim();
+      const bvn         = document.getElementById('acc-bvn').value.trim();
+      const nin         = document.getElementById('acc-nin').value.trim();
+      const errEl       = document.getElementById('modal-acc-error');
+      errEl.style.display = 'none';
+
+      if (!customerId || !displayName || !email) {
+        showAlert(errEl, 'error', 'Customer ID, Display Name, and Email are required.');
+        return;
+      }
+
+      const body = { customer_id: customerId, display_name: displayName, customer_email: email };
+      if (phone) body.phone_number = phone;
+      if (bvn)   body.bvn = bvn;
+      if (nin)   body.nin = nin;
+
+      try {
+        const data = await apiFetch('/accounts', { method: 'POST', body: JSON.stringify(body) });
+        closeModal('modal-provision');
+        showToast('Account provisioned');
+        loadAccounts();
+        const acc = data.account || data;
+        showAlert(document.getElementById('acc-alert'), 'success', `Account provisioned — ${acc.bank_account_name} · ${acc.bank_account_number}`);
+      } catch (e) {
+        showAlert(errEl, 'error', e.message);
+      }
+    }
+
+    // ── Account Detail Drawer ──
+
+    async function openAccountDetail(accountId) {
+      document.getElementById('drawer-title').textContent   = 'Loading…';
+      document.getElementById('drawer-subtitle').textContent = '';
+      document.getElementById('drawer-body').innerHTML       = '<div class="loading"><div class="spinner"></div> Loading…</div>';
+      document.getElementById('drawer-overlay').classList.add('open');
+      document.getElementById('account-drawer').classList.add('open');
+
+      const [accountRes, balanceRes, txnsRes] = await Promise.allSettled([
+        apiFetch(`/accounts/${accountId}`),
+        apiFetch(`/accounts/${accountId}/balance`),
+        apiFetch(`/accounts/${accountId}/transactions?limit=20`),
+      ]);
+
+      const account  = accountRes.status  === 'fulfilled' ? accountRes.value  : null;
+      const balance  = balanceRes.status  === 'fulfilled' ? balanceRes.value  : null;
+      const txnsData = txnsRes.status     === 'fulfilled' ? txnsRes.value     : null;
+
+      if (account) {
+        document.getElementById('drawer-title').textContent    = account.bank_account_name || 'Account';
+        document.getElementById('drawer-subtitle').textContent = account.bank_account_number || '';
+      }
+
+      let customerSection = '';
+      if (account?.customer_id) {
+        try {
+          const c = await apiFetch(`/customers/${account.customer_id}`);
+          customerSection = drawerSection('Customer', `
+            <div class="detail-grid">
+              ${di('Customer ID', shortUUID(c.id) + `<button class="copy-btn" onclick="navigator.clipboard.writeText('${c.id}').then(()=>showToast('Copied'))">⎘</button>`)}
+              ${di('Display Name', escHtml(c.display_name || '—'))}
+              ${di('KYC Tier', 'Tier ' + c.kyc_tier)}
+              ${di('Member Since', formatDate(c.created_at))}
+            </div>`);
+        } catch (_) {}
+      }
+
+      const balanceSection = !balance ? '' : drawerSection('Balance', `
+        <div style="font-size:32px;font-weight:600;letter-spacing:-0.75px;color:var(--ink);margin-bottom:6px;">${formatNGN(balance.Balance ?? balance.balance)}</div>
+        <div style="font-size:12px;color:var(--gray);">${balance.Currency || 'NGN'} · as of ${formatDate(balance.AsOf || balance.as_of)}</div>`);
+
+      let txnsSection = '';
+      const entries = txnsData?.Entries || txnsData?.entries || [];
+      if (entries.length) {
+        const rows = entries.map(e => `<tr>
+          <td class="td-mono td-muted" style="font-size:11px;">${formatDate(e.created_at)}</td>
+          <td>${escHtml(e.entry_type || e.direction || '—')}</td>
+          <td class="td-mono" style="color:${e.direction==='credit'?'var(--green)':'var(--ember)'};">${e.direction==='credit'?'+':'-'}${formatNGN(e.amount)}</td>
+          <td class="td-mono td-muted" style="font-size:11px;">${escHtml(e.external_ref||'—')}</td>
+        </tr>`).join('');
+        txnsSection = drawerSection(`Transactions (last ${entries.length})`, `<table>
+          <thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Reference</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`);
+      }
+
+      const accountSection = !account ? '' : drawerSection('Account', `
+        <div class="detail-grid">
+          ${di('Account ID', shortUUID(account.id) + `<button class="copy-btn" onclick="navigator.clipboard.writeText('${account.id}').then(()=>showToast('Copied'))">⎘</button>`)}
+          ${di('Account Number', `<span class="detail-mono">${escHtml(account.bank_account_number || '—')}</span>`)}
+          ${di('Account Name', escHtml(account.bank_account_name || '—'))}
+          ${di('Status', statusBadge(account.status))}
+          ${di('Created', formatDate(account.created_at))}
+        </div>`);
+
+      document.getElementById('drawer-body').innerHTML = accountSection + customerSection + balanceSection + txnsSection;
+    }
+
+    function drawerSection(title, content) {
+      return `<div class="drawer-section"><div class="drawer-section-title">${escHtml(title)}</div>${content}</div>`;
+    }
+
+    function di(label, value) {
+      return `<div class="detail-item"><div class="detail-label">${escHtml(label)}</div><div class="detail-value">${value}</div></div>`;
+    }
+
+    function closeAccountDetail() {
+      document.getElementById('drawer-overlay').classList.remove('open');
+      document.getElementById('account-drawer').classList.remove('open');
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // TRANSFER Panel
+    // ═══════════════════════════════════════════════════════════════════════
+
+    async function loadTransferAccounts() {
+      const sel = document.getElementById('txfr-source-account');
+      sel.innerHTML = '<option value="">— loading… —</option>';
+      try {
+        const data = await apiFetch('/accounts?limit=100');
+        sel.innerHTML = '<option value="">— select account —</option>';
+        (data.accounts || []).forEach(a => {
+          const opt = document.createElement('option');
+          opt.value       = a.id;
+          opt.textContent = `${a.bank_account_name || shortUUID(a.id)} · ${a.bank_account_number || ''}`;
+          sel.appendChild(opt);
+        });
+      } catch (_) {
+        sel.innerHTML = '<option value="">— failed to load —</option>';
+      }
+      resetTransferForm();
+    }
+
+    function resetTransferForm() {
+      transferRecipient = null;
+      ['txfr-bank-code','txfr-dest-account','txfr-amount','txfr-sender-name','txfr-narration'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+      document.getElementById('txfr-reference').value      = generateRef();
+      document.getElementById('txfr-lookup-result').innerHTML = '';
+      document.getElementById('txfr-details-card').style.display = 'none';
+      document.getElementById('txfr-submit-result').innerHTML  = '';
+      hideEl('txfr-lookup-alert'); hideEl('txfr-submit-alert');
+    }
+
+    function generateRef() {
+      return 'TXN-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2,6).toUpperCase();
+    }
+
+    async function lookupRecipient() {
+      const bankCode = document.getElementById('txfr-bank-code').value.trim();
+      const account  = document.getElementById('txfr-dest-account').value.trim();
+      const alertEl  = document.getElementById('txfr-lookup-alert');
+
+      hideEl('txfr-lookup-alert');
+      document.getElementById('txfr-lookup-result').innerHTML = '';
+      document.getElementById('txfr-details-card').style.display = 'none';
+      transferRecipient = null;
+
+      if (!bankCode || !account) { showAlert(alertEl, 'error', 'Bank code and account number are required.'); return; }
+
+      const btn = document.getElementById('txfr-lookup-btn');
+      btn.disabled = true; btn.textContent = 'Verifying…';
+
+      try {
+        const data = await apiFetch('/transfers/lookup', { method: 'POST', body: JSON.stringify({ account_number: account, bank_code: bankCode }) });
+        const name = data.account_name || '—';
+        transferRecipient = { bankCode, accountNumber: account, accountName: name };
+        document.getElementById('txfr-lookup-result').innerHTML = `
+          <div class="alert alert-success" style="display:flex;align-items:center;gap:10px;">
+            <svg width="16" height="16" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5.5"/><path d="M4 6.5 6 9 9 4"/></svg>
+            <div><div style="font-weight:600;">${escHtml(name)}</div><div style="font-size:12px;opacity:0.75;">${escHtml(account)} · ${escHtml(bankCode)}</div></div>
+          </div>`;
+        document.getElementById('txfr-details-card').style.display = 'block';
+      } catch (e) {
+        showAlert(alertEl, 'error', e.message);
+      } finally {
+        btn.disabled = false; btn.textContent = 'Verify';
+      }
+    }
+
+    async function submitTransfer() {
+      if (!transferRecipient) { showToast('Verify the recipient first.', 'error'); return; }
+
+      const accountID   = document.getElementById('txfr-source-account').value;
+      const amountNaira = parseFloat(document.getElementById('txfr-amount').value);
+      const senderName  = document.getElementById('txfr-sender-name').value.trim();
+      const narration   = document.getElementById('txfr-narration').value.trim();
+      const reference   = document.getElementById('txfr-reference').value.trim();
+      const alertEl     = document.getElementById('txfr-submit-alert');
+
+      hideEl('txfr-submit-alert');
+      document.getElementById('txfr-submit-result').innerHTML = '';
+
+      if (!accountID)              { showAlert(alertEl, 'error', 'Select a source account.'); return; }
+      if (!amountNaira || amountNaira <= 0) { showAlert(alertEl, 'error', 'Enter a valid amount.'); return; }
+      if (!senderName)             { showAlert(alertEl, 'error', 'Sender name is required.'); return; }
+
+      const btn = document.getElementById('txfr-submit-btn');
+      btn.disabled = true; btn.textContent = 'Sending…';
+
+      try {
+        const data = await apiFetch(`/accounts/${accountID}/transfer`, {
+          method: 'POST',
+          body: JSON.stringify({
+            amount:               Math.round(amountNaira * 100),
+            narration:            narration || 'Transfer',
+            reference,
+            sender_name:          senderName,
+            destination_bank:     transferRecipient.bankCode,
+            destination_account:  transferRecipient.accountNumber,
+            destination_name:     transferRecipient.accountName,
+          }),
+        });
+        const txn = data.nomba_transaction || {};
+        document.getElementById('txfr-submit-result').innerHTML = `
+          <div class="alert alert-success">
+            <div style="font-weight:600;margin-bottom:8px;">Transfer submitted</div>
+            <div class="detail-grid">
+              ${di('Status', escHtml(txn.status || data.status || 'submitted'))}
+              ${di('Nomba ID', `<span class="detail-mono">${escHtml(txn.id || '—')}</span>`)}
+              ${di('Amount', formatNGN(Math.round(amountNaira * 100)))}
+              ${di('Reference', `<span class="detail-mono">${escHtml(reference)}</span>`)}
+            </div>
+          </div>`;
+        showToast('Transfer submitted');
+        document.getElementById('txfr-reference').value = generateRef();
+      } catch (e) {
+        showAlert(alertEl, 'error', e.message);
+      } finally {
+        btn.disabled = false; btn.textContent = 'Send money';
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // RECONCILIATION Panel
+    // ═══════════════════════════════════════════════════════════════════════
+
+    async function loadReconciliation() {
+      const wrap = document.getElementById('recon-table-wrap');
+      wrap.innerHTML = '<div class="loading"><div class="spinner"></div> Loading…</div>';
+      try {
+        const data = await apiFetch('/reconciliation?limit=10');
+        const runs = data.runs || data.data || (Array.isArray(data) ? data : []);
+        if (runs.length) {
+          const r = runs[0];
+          document.getElementById('recon-stat-status').innerHTML = statusBadge(r.status);
+          document.getElementById('recon-stat-run-at').textContent = formatDate(r.run_at);
+          document.getElementById('recon-stat-nomba').textContent = formatNGN(r.nomba_wallet_balance);
+          document.getElementById('recon-stat-pool').textContent  = formatNGN(r.computed_pool_balance);
+        }
+        renderReconTable(wrap, runs);
+      } catch (e) {
+        wrap.innerHTML = `<div class="alert alert-error" style="margin:16px;">${escHtml(e.message)}</div>`;
+      }
+    }
+
+    function renderReconTable(wrap, runs) {
+      if (!runs.length) { wrap.innerHTML = '<div class="empty-state">No reconciliation runs yet.</div>'; return; }
+      const rows = runs.map(r => {
+        const delta = r.delta ?? 0;
+        return `<tr>
+          <td class="td-mono">${shortUUID(r.id)}</td>
+          <td class="td-mono td-muted">${formatDate(r.run_at)}</td>
+          <td>${formatNGN(r.nomba_wallet_balance)}</td>
+          <td>${formatNGN(r.computed_pool_balance)}</td>
+          <td style="font-weight:600;color:${delta===0?'var(--green)':'var(--ember)'};">${formatNGN(delta)}</td>
+          <td>${statusBadge(r.status)}</td>
+        </tr>`;
+      }).join('');
+      wrap.innerHTML = `<table>
+        <thead><tr><th>Run ID</th><th>Run At</th><th>Nomba Balance</th><th>Pool Balance</th><th>Delta</th><th>Status</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    }
+
+    async function triggerReconciliation() {
+      const alertEl = document.getElementById('recon-trigger-alert');
+      hideEl('recon-trigger-alert');
+      try {
+        await apiFetch('/reconciliation/trigger', { method: 'POST' });
+        showAlert(alertEl, 'success', 'Reconciliation triggered. Results will appear shortly.');
+        setTimeout(loadReconciliation, 1500);
+      } catch (e) {
+        showAlert(alertEl, 'error', e.message);
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // WEBHOOKS Panel
+    // ═══════════════════════════════════════════════════════════════════════
+
+    async function loadWebhooks() {
+      const limit = parseInt(document.getElementById('wh-limit').value, 10) || 20;
+      const wrap  = document.getElementById('wh-table-wrap');
+      wrap.innerHTML = '<div class="loading"><div class="spinner"></div> Loading…</div>';
+      try {
+        const data       = await apiFetch(`/admin/webhooks?limit=${limit}`, {}, true);
+        const deliveries = data.webhooks || data.deliveries || data.data || (Array.isArray(data) ? data : []);
+        const total     = deliveries.length;
+        const delivered = deliveries.filter(d => d.status === 'delivered').length;
+        const failed    = deliveries.filter(d => d.status !== 'delivered').length;
+        document.getElementById('wh-stat-total').textContent     = total;
+        document.getElementById('wh-stat-delivered').textContent = delivered;
+        document.getElementById('wh-stat-failed').textContent    = failed;
+
+        if (!deliveries.length) { wrap.innerHTML = '<div class="empty-state">No webhook deliveries found.</div>'; return; }
+
+        const rows = deliveries.map(d => `<tr>
+          <td class="td-mono">${shortUUID(d.id)}</td>
+          <td><span class="badge badge-outline">${escHtml(d.event_type || '—')}</span></td>
+          <td>${statusBadge(d.status)}</td>
+          <td class="td-mono td-muted" style="text-align:center;">${d.attempts ?? 0}</td>
+          <td class="td-mono td-muted">${d.next_retry_at ? formatDate(d.next_retry_at) : '—'}</td>
+          <td class="td-mono td-muted">${formatDate(d.created_at)}</td>
+        </tr>`).join('');
+        wrap.innerHTML = `<table>
+          <thead><tr><th>ID</th><th>Event</th><th>Status</th><th style="text-align:center;">Attempts</th><th>Next Retry</th><th>Created</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+      } catch (e) {
+        wrap.innerHTML = `<div class="alert alert-error" style="margin:16px;">${escHtml(e.message)}</div>`;
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Keyboard shortcuts
+    // ═══════════════════════════════════════════════════════════════════════
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        closeAccountDetail();
+        document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.add('hidden'));
+      }
+      if (e.key === 'Enter' && !document.getElementById('setup-view').classList.contains('hidden')) {
+        connectAndSave();
+      }
+    });
+
+    document.querySelectorAll('.modal-backdrop').forEach(m => {
+      m.addEventListener('click', e => { if (e.target === m) m.classList.add('hidden'); });
+    });
+  </script>
+</body>
 </html>
