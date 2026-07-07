@@ -52,6 +52,7 @@ func NewRouter(d RouterDeps) http.Handler {
 	// Public routes
 	// ---------------------------------------------------------------------------
 	r.Get("/health", healthHandler)
+	r.Get("/status", healthHandler) // alias — some ad blockers flag /health
 
 	// Dashboard — served at root only
 	r.Get("/", web.Handler().ServeHTTP)

@@ -895,7 +895,7 @@ async function testConnection() {
   label.textContent = 'Checking…';
 
   try {
-    const data = await apiFetch('/health');
+    const data = await apiFetch('/status');
     dot.className = 'status-dot ok';
     label.textContent = `Connected — ${data.service || 'ok'} v${data.version || '?'}`;
     showToast('Connection successful ✓');
