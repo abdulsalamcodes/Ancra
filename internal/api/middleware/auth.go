@@ -70,9 +70,14 @@ func APIKeyAuth(keys store.APIKeyStore, staticKey string) func(http.Handler) htt
 }
 
 // AdminAuth returns middleware that validates the Admin-Secret header.
+// If secret is empty the admin routes are disabled entirely.
 func AdminAuth(secret string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if secret == "" {
+				http.Error(w, `{"error":"admin routes disabled: ADMIN_SECRET not configured"}`, http.StatusServiceUnavailable)
+				return
+			}
 			if r.Header.Get("Admin-Secret") != secret {
 				http.Error(w, `{"error":"invalid admin secret"}`, http.StatusForbidden)
 				return

@@ -53,8 +53,8 @@ func NewRouter(d RouterDeps) http.Handler {
 	// ---------------------------------------------------------------------------
 	r.Get("/health", healthHandler)
 
-	// Dashboard — served at root
-	r.Handle("/*", web.Handler())
+	// Dashboard — served at root only
+	r.Get("/", web.Handler().ServeHTTP)
 
 	// Nomba webhook — public but HMAC-verified inside the handler.
 	whHandler := handlers.NewWebhookHandler(

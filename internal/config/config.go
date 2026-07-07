@@ -43,8 +43,8 @@ func Load() (*Config, error) {
 	if cfg.NombaWebhookSecret == "" {
 		cfg.NombaWebhookSecret = mustGetEnv("NOMBA_WEBHOOK_SIGNING_KEY")
 	}
-	cfg.APIKey = getEnv("API_KEY", "")     // optional; legacy static key
-	cfg.AdminSecret = mustGetEnv("ADMIN_SECRET")
+	cfg.APIKey = getEnv("API_KEY", "")      // optional; legacy static key
+	cfg.AdminSecret = getEnv("ADMIN_SECRET", "") // optional; admin routes disabled if unset
 
 	sweepStr := getEnv("SWEEP_INTERVAL_SECONDS", "60")
 	sweep, err := strconv.Atoi(sweepStr)

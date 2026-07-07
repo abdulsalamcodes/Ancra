@@ -28,7 +28,7 @@ services:
       - key: NOMBA_WEBHOOK_SECRET
         sync: false
       - key: ADMIN_SECRET
-        generateValue: true
+        sync: false
       - key: API_KEY
         generateValue: true
       - key: WEBHOOK_ENDPOINT
