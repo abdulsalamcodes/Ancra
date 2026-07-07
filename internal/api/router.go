@@ -121,21 +121,24 @@ func NewRouter(d RouterDeps) http.Handler {
 	})
 
 	// ---------------------------------------------------------------------------
-	// JWT-or-API-key routes — org-scoped reads and reconciliation.
-	// Accessible from the dashboard (JWT) and from server-side integrations
-	// (API key). A single registration per route keeps the router DRY and avoids
-	// the chi runtime panic that duplicate route registrations would cause.
+	// JWT-or-API-key routes — customer and account operations accessible from
+	// both the dashboard (JWT session) and server-side integrations (API key).
 	// ---------------------------------------------------------------------------
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.JWTOrAPIKeyAuth(d.AuthSvc, d.APIKeys, d.StaticKey, d.StaticKeyOrgID))
 		r.Use(chimw.StripSlashes)
 
+		r.Post("/customers", customerHandler.Create)
 		r.Get("/customers", customerHandler.List)
 		r.Get("/customers/{id}", customerHandler.GetCustomerByID)
+		r.Put("/customers/{id}/kyc-tier", customerHandler.UpgradeKYCTier)
 		r.Get("/customers/{id}/kyc-tier/history", customerHandler.ListKYCTierHistory)
 
+		r.Post("/accounts", acctHandler.Create)
 		r.Get("/accounts", acctHandler.List)
 		r.Get("/accounts/{id}", acctHandler.GetByID)
+		r.Put("/accounts/{id}", acctHandler.Update)
+		r.Post("/accounts/{id}/close", acctHandler.Close)
 		r.Get("/accounts/{id}/balance", acctHandler.GetBalance)
 		r.Get("/accounts/{id}/transactions", acctHandler.ListTransactions)
 		r.Get("/accounts/{id}/statement", acctHandler.GetStatement)
@@ -162,19 +165,11 @@ func NewRouter(d RouterDeps) http.Handler {
 	})
 
 	// ---------------------------------------------------------------------------
-	// API-key-only routes — write operations for server-side integrations.
-	// These mutate data and are intentionally not exposed to dashboard sessions.
+	// API-key-only routes — transfer operations for server-side integrations.
 	// ---------------------------------------------------------------------------
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.APIKeyAuth(d.APIKeys, d.StaticKey, d.StaticKeyOrgID))
 		r.Use(chimw.StripSlashes)
-
-		r.Post("/customers", customerHandler.Create)
-		r.Put("/customers/{id}/kyc-tier", customerHandler.UpgradeKYCTier)
-
-		r.Post("/accounts", acctHandler.Create)
-		r.Put("/accounts/{id}", acctHandler.Update)
-		r.Post("/accounts/{id}/close", acctHandler.Close)
 
 		r.Post("/transfers/lookup", txnHandler.LookupBank)
 		r.Post("/accounts/{id}/transfer", txnHandler.Transfer)

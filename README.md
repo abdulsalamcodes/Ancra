@@ -1,67 +1,85 @@
 # Ancra
 
-> Persistent Dedicated Virtual Account (DVA) infrastructure on Nomba rails.
+> Dedicated Virtual Account (DVA) infrastructure for Nigerian fintech — built on Nomba rails.
 
-Ancra provisions a permanent Nigerian bank account number for each customer, attributes every inbound transfer to the correct customer via a double-entry ledger, and exposes the result as a clean REST API that other services can build on.
+Ancra provisions a permanent NGN bank account number for each customer, attributes every inbound NIP transfer to the correct customer via a double-entry ledger, and exposes the result as a clean multi-tenant REST API.
 
 **Core guarantee:** `sum(customer balances) + fees + suspense == Nomba wallet balance` — at all times, provably.
 
+Live docs: [ancra.mintlify.app](https://ancra.mintlify.app)
+
 ---
 
-## Table of Contents
+## What it does
 
-- [Architecture](#architecture)
-- [Prerequisites](#prerequisites)
-- [Local Development](#local-development)
-- [Environment Variables](#environment-variables)
-- [Running Tests](#running-tests)
-- [Database Migrations](#database-migrations)
-- [Deployment](#deployment)
-- [API Documentation](#api-documentation)
-- [Project Structure](#project-structure)
-- [License](#license)
+| Capability | Detail |
+|---|---|
+| **Virtual account provisioning** | Each customer gets one permanent NGN bank account number via Nomba. Re-calling create returns the same account (idempotent). |
+| **Real-time payment crediting** | Inbound NIP transfers trigger an HMAC-SHA256 verified webhook → ledger credit, fully automatic. |
+| **Double-entry ledger** | Every naira is double-posted (customer credit + pool credit). Balances are derived, never stored — complete audit trail. |
+| **Reconciliation** | Automated sweeps cross-reference the ledger pool balance against Nomba's wallet. Missed credits are backfilled automatically. |
+| **Outbound webhooks** | When a payment lands, Ancra notifies your configured endpoint with a signed event. Up to 5 attempts with exponential backoff. |
+| **Outbound transfers** | Send from a customer's virtual account to any Nigerian bank. Ledger is debited atomically before the Nomba call. |
+| **Account statements** | Paginated statements with a correct running balance per line — accurate across all pages, not just the first. |
+| **KYC tier management** | Customers carry Tier 1/2/3 KYC status. Upgrades are one-way, append-only, and fully auditable via history endpoint. |
+| **Customer identity versioning** | Renames close the current identity record and open a new one. Historical statements always reflect the name active at the time of each entry. |
+| **Closed-account protection** | Payments to a closed account route to the suspense ledger rather than being lost or incorrectly credited. |
+| **Multi-tenant SaaS** | Full org isolation — customers, accounts, keys, ledger entries, and Nomba credentials are all org-scoped. |
+| **BYOK Nomba credentials** | Each org can supply its own Nomba client credentials (encrypted AES-256-GCM at rest). |
+| **Dashboard** | Web UI for org signup, login, API key management, and reconciliation history. |
 
 ---
 
 ## Architecture
 
 ```
-Client Request
+HTTP Request
       │
       ▼
-  Chi Router  ─── Admin routes (Admin-Secret)
-      │        ─── Developer API (Bearer API key)
-      │        ─── Webhook endpoint (HMAC-SHA512 verified)
+  Chi Router
+  ├── Public        — /health, /auth/signup, /auth/login, /webhooks/nomba
+  ├── JWT auth      — /auth/me, /api-keys, /settings/*, /reconciliation (dashboard)
+  ├── API key auth  — /customers, /accounts, /transfers (developer API)
+  └── Admin-Secret  — /admin/api-keys, /admin/webhooks, /admin/orgs (operator)
       │
       ▼
  Domain Services
-  ├── account      — provision, rename, close DVAs via Nomba
-  ├── ledger       — double-entry bookkeeping (all amounts in kobo)
-  └── reconciliation — sweep Nomba wallet balance vs. pool ledger
+  ├── auth          — JWT sign/verify, org + user creation, refresh tokens
+  ├── account       — provision, rename, close DVAs via Nomba
+  ├── ledger        — double-entry bookkeeping (all amounts in kobo = NGN × 100)
+  └── reconciliation — sweep Nomba wallet balance vs. pool ledger + backfill
       │
       ▼
- PostgreSQL (pgx/v5)
-  ├── customers / identity_versions  (point-in-time rename history)
+ PostgreSQL (pgx/v5) — 8 migrations, fully versioned
+  ├── orgs / users / refresh_tokens
+  ├── api_keys                        (SHA-256 hashed; shown once)
+  ├── customers / identity_versions   (point-in-time rename history)
   ├── virtual_accounts
-  ├── ledger_entries                 (append-only)
-  ├── system_accounts                (pool, suspense, fees, returns_clearing)
-  ├── processed_events               (webhook idempotency)
+  ├── ledger_entries                  (append-only, immutable)
+  ├── system_accounts                 (pool · suspense · fees · returns_clearing, per org)
+  ├── kyc_tier_history                (immutable upgrade audit trail)
+  ├── org_nomba_configs               (per-org BYOK credentials, AES-256-GCM encrypted)
+  ├── org_webhook_configs             (per-org outbound endpoint + signing secret)
+  ├── processed_events                (webhook idempotency — exact-once processing)
   ├── reconciliation_runs
-  ├── webhook_deliveries             (outbound retry queue)
-  └── api_keys                       (hashed)
+  └── webhook_deliveries              (outbound retry queue)
       │
       ▼
  Background Workers
-  ├── SweepWorker    — reconciliation on a configurable interval
-  └── OutboundWorker — retries failed webhook deliveries with exponential backoff
+  ├── SweepWorker    — runs reconciliation for every org on a configurable interval
+  └── OutboundWorker — delivers webhook_deliveries to each org's endpoint (max 5 attempts, exp. backoff)
 ```
 
-**Key design decisions:**
+---
 
-- **Ledger-first.** Balances are never stored directly — they are derived from immutable append-only ledger entries. This makes concurrent credits safe and provides a complete audit trail.
-- **Dual-source ingest.** Inbound credits are posted via webhook *and* recovered by the reconciliation sweep. The system stays correct even when webhooks are dropped.
-- **Identity versioning.** Customer renames close the current `identity_version` row and open a new one. Historical statements remain correct retroactively.
-- **Closed-account protection.** Credits to a closed account are routed to the `suspense` system account rather than silently credited or lost.
+## Key design decisions
+
+- **Ledger-first.** Balances are derived from append-only `ledger_entries`, never stored. Concurrent credits are safe; every naira has a full audit trail.
+- **Dual-source ingest.** Credits arrive via Nomba webhook *and* are recovered by the reconciliation sweep. The system stays correct even during webhook outages.
+- **Idempotent provisioning.** `accountRef` is always `customer.ID` — Nomba's own idempotency key — so re-calling `POST /accounts` for the same customer returns the existing account without a Nomba round-trip.
+- **Exact-once webhook processing.** `processed_events` stores the SHA of each `transactionId`. A duplicate webhook is rejected atomically before any ledger write.
+- **Point-in-time identity.** `identity_versions` is append-only. A rename doesn't touch existing ledger entries — statements always show the name that was active at the time of each transaction.
+- **KYC tiers are one-way.** `UpgradeKYCTier` holds a `FOR UPDATE` lock, validates `newTier > currentTier`, and writes both the update and the `kyc_tier_history` row in a single transaction. Downgrades are rejected with a typed sentinel error.
 
 ---
 
@@ -78,44 +96,25 @@ Client Request
 
 ## Local Development
 
-### 1. Clone and install dependencies
-
 ```bash
 git clone https://github.com/abdulsalamcodes/ancra.git
 cd ancra
 go mod tidy
-```
-
-### 2. Configure environment
-
-```bash
-cp .env.example .env
-# Edit .env with your values — see Environment Variables below
-```
-
-### 3. Apply database migrations
-
-```bash
+cp .env.example .env   # fill in values — see Environment Variables below
 make migrate-up
+make run               # starts on :8080
 ```
 
-### 4. Run the server
-
-```bash
-make run
-# Server starts on :8080 by default
-```
-
-### 5. Create your first API key
+**Create your first API key:**
 
 ```bash
 curl -X POST http://localhost:8080/admin/api-keys \
-  -H "Admin-Secret: <your-ADMIN_SECRET>" \
+  -H "Admin-Secret: <ADMIN_SECRET>" \
   -H "Content-Type: application/json" \
-  -d '{"name": "local-dev"}'
+  -d '{"name": "local-dev", "org_id": "<your-org-uuid>"}'
 ```
 
-The response contains the raw key — copy it now, it is shown only once.
+The raw key is returned once — copy it immediately.
 
 ---
 
@@ -124,127 +123,79 @@ The response contains the raw key — copy it now, it is shown only once.
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `DATABASE_URL` | yes | — | PostgreSQL connection string |
-| `NOMBA_CLIENT_ID` | yes | — | OAuth2 client ID from Nomba dashboard |
-| `NOMBA_CLIENT_SECRET` | yes | — | OAuth2 client secret |
-| `NOMBA_ACCOUNT_ID` | yes | — | Parent Nomba merchant account ID |
-| `NOMBA_SUB_ACCOUNT_ID` | yes | — | Sub-account used for DVA creation and transfers |
-| `NOMBA_WEBHOOK_SECRET` | yes | — | HMAC-SHA512 signing secret for inbound webhooks |
-| `ADMIN_SECRET` | yes | — | Protects `/admin/*` endpoints; keep this out of client code |
+| `JWT_SECRET` | yes | — | Signs dashboard access tokens; min 32 chars |
+| `ENCRYPTION_KEY` | yes | — | Exactly 32 bytes; used for AES-256-GCM encryption of Nomba credentials |
+| `ADMIN_SECRET` | yes | — | Protects `/admin/*`; omit to disable admin routes entirely |
+| `NOMBA_CLIENT_ID` | no* | — | Global Nomba OAuth2 client ID; omit when all orgs use BYOK |
+| `NOMBA_CLIENT_SECRET` | no* | — | Global Nomba client secret |
+| `NOMBA_ACCOUNT_ID` | no* | — | Parent Nomba merchant account ID |
+| `NOMBA_SUB_ACCOUNT_ID` | no* | — | Sub-account for DVA creation and transfers |
+| `NOMBA_WEBHOOK_SECRET` | no* | — | HMAC-SHA256 signing secret for inbound Nomba webhooks |
+| `NOMBA_BASE_URL` | no | `https://api.nomba.com` | Override for sandboxes; trailing `/v1` is stripped automatically |
 | `PORT` | no | `8080` | HTTP listen port |
-| `NOMBA_BASE_URL` | no | `https://api.nomba.com/v1` | Override for sandbox testing |
-| `API_KEY` | no | — | Legacy static key; prefer DB-managed keys for production |
-| `SWEEP_INTERVAL_SECONDS` | no | `60` | How often the reconciliation worker runs |
-| `WEBHOOK_ENDPOINT` | no | — | Your endpoint to receive outbound event notifications |
+| `API_KEY` | no | — | Legacy static key for single-tenant mode |
+| `SWEEP_INTERVAL_SECONDS` | no | `60` | Reconciliation worker cadence |
 
-Create a `.env.example` by copying `.env` and blanking the secret values before committing.
+\* Required when using the global Nomba client; optional when all orgs supply their own BYOK credentials via the settings API.
 
 ---
 
 ## Running Tests
 
-The integration suite uses in-memory fake stores and a fake Nomba HTTP server — no real database or Nomba credentials are required.
+The integration suite wires the **real router** against **in-memory fake stores** and a **fake Nomba HTTP server** — no database or Nomba account required.
 
 ```bash
-# All tests (unit + integration), with race detector
-make test
-
-# Integration tests only
-go test ./integration/... -v
-
-# A single test by name
-go test ./integration/... -run TestWebhook_DuplicateCreditIsNoop -v
+make test                                                        # all tests, race detector
+go test ./integration/... -v                                     # integration only, verbose
+go test ./integration/... -run TestKYCTier_DowngradeRejected -v  # single test
 ```
 
-The suite covers:
+**65 integration tests across 9 areas:**
 
 | Area | Tests |
 |---|---|
-| Auth — missing / wrong key, admin secret | 7 |
-| Customer CRUD and pagination | 7 |
-| Account lifecycle — provision, balance, transactions, statement, rename, close | 16 |
-| Webhook — signature verify, credit, exact-once dedup, suspense, ignored events | 9 |
-| Reconciliation — trigger, delta=0, run history | 4 |
-| Edge cases — closed account → suspense, point-in-time identity | 2 |
-| Transfers — happy path, debit ledger entry, insufficient funds, validation | 6 |
-| Statement — running balance, debit impact, cross-page balance continuity | 3 |
-| API key lifecycle — create → use → revoke → rejected | 4 |
+| Auth — API key, admin secret, JWT middleware | 7 |
+| Customers — CRUD, pagination, KYC validation | 8 |
+| KYC tiers — upgrade, downgrade rejection, same-tier rejection, audit history | 7 |
+| Account lifecycle — provision, idempotency, balance, transactions, statement, rename, close | 16 |
+| Webhooks (inbound) — signature verify, credit, exact-once dedup, suspense routing, delivery enqueue | 9 |
+| Reconciliation — trigger, delta=0 when balanced, run history | 4 |
+| Transfers — happy path, ledger debit, insufficient funds, validation | 6 |
+| Statement — running balance correctness, debit impact, cross-page continuity | 3 |
+| API key lifecycle — admin create → authenticate → revoke → rejected | 4 |
+| Edge cases — closed account → suspense, point-in-time identity after rename | 2 |
 
 ---
 
 ## Database Migrations
 
-Migrations live in `db/migrations/` and are managed by [golang-migrate](https://github.com/golang-migrate/migrate).
-
 ```bash
-# Apply all pending migrations
-make migrate-up
-
-# Roll back the last migration
-make migrate-down
-
-# Force a specific version (use after a failed migration)
-make migrate-force VERSION=1
+make migrate-up              # apply all pending
+make migrate-down            # roll back last
+make migrate-force VERSION=3 # force a specific version after a failed migration
 ```
 
-The application also runs migrations automatically on startup via the embedded migration runner in `db/migrate.go`.
+Migrations also run automatically on startup.
 
 ---
 
 ## Deployment
 
-The project ships with a `render.yaml` that provisions a web service and a free-tier PostgreSQL database on [Render](https://render.com).
+The project ships with `render.yaml` — one click deploys a web service + PostgreSQL on [Render](https://render.com).
 
-### Deploy via Blueprint (recommended)
-
-1. Fork or push this repository to GitHub.
-2. In the Render dashboard, click **New → Blueprint**.
-3. Connect your repository — Render detects `render.yaml` automatically.
-4. Set the secret environment variables (`NOMBA_CLIENT_ID`, `NOMBA_CLIENT_SECRET`, `NOMBA_ACCOUNT_ID`, `NOMBA_SUB_ACCOUNT_ID`, `NOMBA_WEBHOOK_SECRET`, `ADMIN_SECRET`, `WEBHOOK_ENDPOINT`) in the Render dashboard after the first deploy.
-
-### Manual deploy
+1. Fork the repo and connect it to Render via **New → Blueprint**.
+2. After the first deploy, set secrets in the Render dashboard: `JWT_SECRET`, `ENCRYPTION_KEY`, `ADMIN_SECRET`, and any Nomba credentials.
 
 ```bash
-# Build a production binary
-make build
-
-# The binary at ./bin/ancra reads environment variables at startup
-./bin/ancra
+make build      # compile → ./bin/ancra
+./bin/ancra     # reads env vars at startup
 ```
 
 ---
 
 ## API Documentation
 
-Full developer documentation lives in [`docs/`](./docs/README.md), including:
-
-- [Authentication](./docs/getting-started/authentication.md)
-- [Quickstart](./docs/getting-started/quickstart.md)
-- [Virtual Accounts](./docs/virtual-accounts/overview.md)
-- [Webhooks](./docs/webhooks/overview.md)
-- [Transfers](./docs/transfers/overview.md)
-- [Full API Reference](./docs/api-reference/accounts.md)
-
----
-
-## Project Structure
-
-```
-ancra/
-├── cmd/api/          — application entry point (main.go)
-├── db/               — migration runner and SQL migration files
-├── docs/             — developer-facing API documentation
-├── integration/      — HTTP integration tests (no DB required)
-├── internal/
-│   ├── api/          — chi router, middleware, HTTP handlers
-│   ├── config/       — environment variable loading
-│   ├── domain/       — business logic (account, ledger, reconciliation)
-│   ├── nomba/        — Nomba API client, webhook verifier, types
-│   ├── store/        — store interfaces and PostgreSQL implementations
-│   └── worker/       — background goroutines (sweep, outbound webhooks)
-├── web/              — embedded dashboard SPA
-├── Makefile
-└── render.yaml       — Render IaC definition
-```
+Full docs at [ancra.mintlify.app](https://ancra.mintlify.app), including quickstart, authentication, virtual accounts, webhooks, transfers, KYC tiers, and the full API reference.
 
 ---
 

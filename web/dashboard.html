@@ -373,6 +373,61 @@
       font-size: 12px;
       color: var(--ink-soft);
     }
+
+    /* ── Modal ── */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 24px;
+    }
+    .modal-backdrop.hidden { display: none; }
+    .modal {
+      background: var(--paper);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-card);
+      box-shadow: var(--shadow);
+      width: 100%;
+      max-width: 440px;
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--hairline);
+    }
+    .modal-title { font-size: 14px; font-weight: 600; }
+    .modal-close {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--gray);
+      font-size: 20px;
+      line-height: 1;
+      padding: 0 2px;
+      font-family: var(--font);
+    }
+    .modal-close:hover { color: var(--ink); }
+    .modal-body { padding: 20px; }
+    .form-select {
+      width: 100%;
+      background: var(--canvas);
+      border: none;
+      border-radius: var(--r-pill);
+      padding: 9px 14px;
+      font-size: 13px;
+      font-family: var(--font);
+      color: var(--ink);
+      outline: none;
+      appearance: none;
+      cursor: pointer;
+    }
+    .form-select:focus { box-shadow: 0 0 0 1.5px var(--hairline); }
   </style>
 </head>
 <body>
@@ -474,7 +529,10 @@
       <!-- ── Customers ── -->
       <div class="panel" id="panel-customers">
         <div class="card">
-          <div class="card-header"><span class="card-title">Customers</span></div>
+          <div class="card-header">
+            <span class="card-title">Customers</span>
+            <button class="btn btn-primary btn-sm" onclick="openNewCustomerModal()">+ New Customer</button>
+          </div>
           <div class="table-wrap">
             <table>
               <thead>
@@ -523,7 +581,10 @@
       <!-- ── Accounts ── -->
       <div class="panel" id="panel-accounts">
         <div class="card">
-          <div class="card-header"><span class="card-title">Virtual Accounts</span></div>
+          <div class="card-header">
+            <span class="card-title">Virtual Accounts</span>
+            <button class="btn btn-primary btn-sm" onclick="openNewAccountModal()">+ New Account</button>
+          </div>
           <div class="table-wrap">
             <table>
               <thead>
@@ -704,6 +765,76 @@
     </div><!-- .content -->
   </div><!-- .main -->
 </div><!-- .shell -->
+
+<!-- ── New Customer Modal ── -->
+<div class="modal-backdrop hidden" id="modal-new-customer"
+     onclick="handleModalBackdropClick(event, 'modal-new-customer')">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">New Customer</span>
+      <button class="modal-close" onclick="closeModal('modal-new-customer')" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="new-customer-alert"></div>
+      <div class="form-group">
+        <label class="form-label" for="new-customer-name">Display Name</label>
+        <input class="form-input" id="new-customer-name" type="text" placeholder="e.g. Jane Doe" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="new-customer-kyc-tier">KYC Tier</label>
+        <select class="form-select" id="new-customer-kyc-tier">
+          <option value="1">Tier 1</option>
+          <option value="2">Tier 2</option>
+          <option value="3">Tier 3</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" id="new-customer-btn" onclick="submitNewCustomer()"
+              style="width:100%; justify-content:center; margin-top:4px;">
+        Create Customer
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── New Account Modal ── -->
+<div class="modal-backdrop hidden" id="modal-new-account"
+     onclick="handleModalBackdropClick(event, 'modal-new-account')">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">New Virtual Account</span>
+      <button class="modal-close" onclick="closeModal('modal-new-account')" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="new-account-alert"></div>
+      <div class="form-group">
+        <label class="form-label" for="new-account-customer-select">Customer</label>
+        <select class="form-select" id="new-account-customer-select">
+          <option value="">Loading customers…</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="new-account-display-name">Account Name</label>
+        <input class="form-input" id="new-account-display-name" type="text" placeholder="e.g. Jane Doe" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="new-account-email">Customer Email</label>
+        <input class="form-input" id="new-account-email" type="email" placeholder="jane@example.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="new-account-phone">Phone (optional)</label>
+        <input class="form-input" id="new-account-phone" type="tel" placeholder="e.g. 08012345678" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="new-account-bvn">BVN (optional)</label>
+        <input class="form-input" id="new-account-bvn" type="text" placeholder="11-digit BVN" />
+      </div>
+      <button class="btn btn-primary" id="new-account-btn" onclick="submitNewAccount()"
+              style="width:100%; justify-content:center; margin-top:4px;">
+        Create Account
+      </button>
+    </div>
+  </div>
+</div>
 
 <script>
   // ---------------------------------------------------------------------------
@@ -1402,6 +1533,136 @@
       setTimeout(() => { btn.textContent = orig; }, 1500);
     } catch {
       // Clipboard API unavailable.
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Modal utilities
+  // ---------------------------------------------------------------------------
+  function openModal(modalId) {
+    document.getElementById(modalId).classList.remove('hidden');
+  }
+
+  function closeModal(modalId) {
+    document.getElementById(modalId).classList.add('hidden');
+  }
+
+  function handleModalBackdropClick(event, modalId) {
+    if (event.target === event.currentTarget) closeModal(modalId);
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    ['modal-new-customer', 'modal-new-account'].forEach(closeModal);
+  });
+
+  // ---------------------------------------------------------------------------
+  // New Customer
+  // ---------------------------------------------------------------------------
+  function openNewCustomerModal() {
+    clearAlert('new-customer-alert');
+    document.getElementById('new-customer-name').value     = '';
+    document.getElementById('new-customer-kyc-tier').value = '1';
+    openModal('modal-new-customer');
+  }
+
+  async function submitNewCustomer() {
+    const btn         = document.getElementById('new-customer-btn');
+    const displayName = document.getElementById('new-customer-name').value.trim();
+    const kycTier     = parseInt(document.getElementById('new-customer-kyc-tier').value, 10);
+    clearAlert('new-customer-alert');
+    setButtonLoading(btn, true);
+
+    try {
+      const body = { kyc_tier: kycTier };
+      if (displayName) body.display_name = displayName;
+
+      const res  = await apiFetch('/customers', { method: 'POST', body: JSON.stringify(body) });
+      const data = await res.json();
+      if (!res.ok) {
+        showAlert('new-customer-alert', data.error?.message || 'Failed to create customer.', 'error');
+        return;
+      }
+      closeModal('modal-new-customer');
+      loadCustomers();
+    } catch {
+      showAlert('new-customer-alert', 'Network error.', 'error');
+    } finally {
+      setButtonLoading(btn, false, 'Create Customer');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // New Account
+  // ---------------------------------------------------------------------------
+  async function openNewAccountModal() {
+    clearAlert('new-account-alert');
+    document.getElementById('new-account-display-name').value = '';
+    document.getElementById('new-account-email').value        = '';
+    document.getElementById('new-account-phone').value        = '';
+    document.getElementById('new-account-bvn').value          = '';
+
+    const select = document.getElementById('new-account-customer-select');
+    select.innerHTML = '<option value="">Loading customers…</option>';
+    openModal('modal-new-account');
+
+    try {
+      const res       = await apiFetch('/customers?limit=100&offset=0');
+      const data      = await res.json();
+      const customers = data.customers ?? [];
+      if (!customers.length) {
+        select.innerHTML = '<option value="">No customers yet — create one first</option>';
+        return;
+      }
+      select.innerHTML = customers.map(c => {
+        const label = escHtml(c.display_name || c.id.slice(0, 8) + '…');
+        return `<option value="${escHtml(c.id)}">${label}</option>`;
+      }).join('');
+    } catch {
+      select.innerHTML = '<option value="">Failed to load customers</option>';
+    }
+  }
+
+  async function submitNewAccount() {
+    const btn         = document.getElementById('new-account-btn');
+    const customerId  = document.getElementById('new-account-customer-select').value.trim();
+    const displayName = document.getElementById('new-account-display-name').value.trim();
+    const email       = document.getElementById('new-account-email').value.trim();
+    const phone       = document.getElementById('new-account-phone').value.trim();
+    const bvn         = document.getElementById('new-account-bvn').value.trim();
+    clearAlert('new-account-alert');
+
+    if (!customerId) {
+      showAlert('new-account-alert', 'Please select a customer.', 'error');
+      return;
+    }
+    if (!displayName) {
+      showAlert('new-account-alert', 'Account name is required.', 'error');
+      return;
+    }
+    if (!email) {
+      showAlert('new-account-alert', 'Customer email is required.', 'error');
+      return;
+    }
+
+    const body = { customer_id: customerId, display_name: displayName, customer_email: email };
+    if (phone) body.phone_number = phone;
+    if (bvn)   body.bvn          = bvn;
+
+    setButtonLoading(btn, true);
+    try {
+      const res  = await apiFetch('/accounts', { method: 'POST', body: JSON.stringify(body) });
+      const data = await res.json();
+      if (!res.ok) {
+        showAlert('new-account-alert', data.error?.message || 'Failed to create account.', 'error');
+        return;
+      }
+      closeModal('modal-new-account');
+      loadAccounts();
+    } catch {
+      showAlert('new-account-alert', 'Network error.', 'error');
+    } finally {
+      setButtonLoading(btn, false, 'Create Account');
     }
   }
 
