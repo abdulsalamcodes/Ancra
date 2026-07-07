@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"net/http"
 	"os"
 	"os/signal"
@@ -79,7 +80,8 @@ func main() {
 	// ---------------------------------------------------------------------------
 	// Encryption
 	// ---------------------------------------------------------------------------
-	encryptor, err := crypto.NewEncryptor([]byte(cfg.EncryptionKey))
+	key := sha256.Sum256([]byte(cfg.EncryptionKey))
+	encryptor, err := crypto.NewEncryptor(key[:])
 	if err != nil {
 		log.Fatal("failed to create encryptor — ENCRYPTION_KEY must be exactly 32 bytes", zap.Error(err))
 	}
