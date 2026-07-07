@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -46,7 +47,9 @@ func Load() (*Config, error) {
 	cfg.NombaClientSecret = getEnv("NOMBA_CLIENT_SECRET", "")
 	cfg.NombaAccountID = getEnv("NOMBA_ACCOUNT_ID", "")
 	cfg.NombaSubAccountID = getEnv("NOMBA_SUB_ACCOUNT_ID", "")
-	cfg.NombaBaseURL = getEnv("NOMBA_BASE_URL", "https://api.nomba.com")
+	// Strip a trailing "/v1" if accidentally included — all endpoint paths already
+	// carry their own version prefix, so a duplicated /v1 in the base URL causes 404.
+	cfg.NombaBaseURL = strings.TrimSuffix(getEnv("NOMBA_BASE_URL", "https://api.nomba.com"), "/v1")
 	// Support both NOMBA_WEBHOOK_SECRET and NOMBA_WEBHOOK_SIGNING_KEY (hackathon alias).
 	cfg.NombaWebhookSecret = getEnv("NOMBA_WEBHOOK_SECRET", "")
 	if cfg.NombaWebhookSecret == "" {

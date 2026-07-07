@@ -588,7 +588,7 @@
             </div>
             <div id="new-key-form">
               <div class="form-group">
-                <label class="form-label" for="key-label">Label (optional)</label>
+                <label class="form-label" for="key-label">Name</label>
                 <input class="form-input" id="key-label" type="text" placeholder="e.g. production-server" />
               </div>
               <button class="btn btn-primary" id="create-key-btn" onclick="createAPIKey()">Generate key</button>
@@ -664,6 +664,10 @@
             <div class="form-group">
               <label class="form-label" for="nomba-webhook-secret">Webhook Secret</label>
               <input class="form-input" id="nomba-webhook-secret" type="password" placeholder="Leave blank to keep current" />
+            </div>
+            <div class="form-group" style="display:flex; align-items:center; gap:8px;">
+              <input type="checkbox" id="nomba-sandbox" style="width:15px; height:15px; cursor:pointer;" />
+              <label for="nomba-sandbox" style="font-size:13px; color:var(--ink); cursor:pointer; margin:0;">Sandbox mode</label>
             </div>
             <div style="display:flex; gap:10px; margin-top:8px;">
               <button class="btn btn-primary" id="nomba-save-btn" onclick="saveNombaConfig()">Save</button>
@@ -848,7 +852,7 @@
     try {
       const res = await apiFetch('/api-keys');
       const data = await res.json();
-      if (!res.ok) { renderAPIKeysError(data.error); return; }
+      if (!res.ok) { renderAPIKeysError(data.error?.message || 'Failed to load API keys.'); return; }
       renderAPIKeys(data.keys ?? data ?? []);
     } catch {
       renderAPIKeysError('Failed to load API keys.');
@@ -863,7 +867,7 @@
     }
     tbody.innerHTML = keys.map(k => `
       <tr>
-        <td>${escHtml(k.label ?? '—')}</td>
+        <td>${escHtml(k.name ?? '—')}</td>
         <td><span class="key-chip">${escHtml(k.key_prefix ?? k.prefix ?? k.id?.slice(0,8) ?? '—')}…</span></td>
         <td>${formatDate(k.created_at)}</td>
         <td style="text-align:right;">
@@ -880,17 +884,23 @@
 
   async function createAPIKey() {
     const btn = document.getElementById('create-key-btn');
-    const label = document.getElementById('key-label').value.trim();
-    setButtonLoading(btn, true);
+    const name = document.getElementById('key-label').value.trim();
     clearAlert('apikeys-alert');
+
+    if (!name) {
+      showAlert('apikeys-alert', 'Name is required.', 'error');
+      return;
+    }
+
+    setButtonLoading(btn, true);
 
     try {
       const res = await apiFetch('/api-keys', {
         method: 'POST',
-        body: JSON.stringify({ label: label || undefined }),
+        body: JSON.stringify({ name }),
       });
       const data = await res.json();
-      if (!res.ok) { showAlert('apikeys-alert', data.error || 'Failed to create key.', 'error'); return; }
+      if (!res.ok) { showAlert('apikeys-alert', data.error?.message || 'Failed to create key.', 'error'); return; }
 
       // Show the raw key once.
       const rawKey = data.key ?? data.raw_key ?? data.token;
@@ -930,7 +940,7 @@
       const res = await apiFetch('/webhooks');
       const data = await res.json();
       if (!res.ok) {
-        tbody.innerHTML = `<tr><td colspan="5"><div class="empty">${escHtml(data.error)}</div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5"><div class="empty">${escHtml(data.error?.message || 'Failed to load deliveries.')}</div></td></tr>`;
         return;
       }
       renderWebhooks(data.deliveries ?? data ?? []);
@@ -976,9 +986,10 @@
       if (res.status === 404) return; // Not configured yet — leave form blank.
       if (!res.ok) return;
       const data = await res.json();
-      document.getElementById('nomba-client-id').value    = data.client_id    ?? '';
-      document.getElementById('nomba-account-id').value   = data.account_id   ?? '';
+      document.getElementById('nomba-client-id').value      = data.client_id      ?? '';
+      document.getElementById('nomba-account-id').value     = data.account_id     ?? '';
       document.getElementById('nomba-sub-account-id').value = data.sub_account_id ?? '';
+      document.getElementById('nomba-sandbox').checked      = data.sandbox        ?? false;
     } catch {
       // Non-fatal.
     }
@@ -993,6 +1004,7 @@
       client_id:      document.getElementById('nomba-client-id').value.trim(),
       account_id:     document.getElementById('nomba-account-id').value.trim(),
       sub_account_id: document.getElementById('nomba-sub-account-id').value.trim() || undefined,
+      sandbox:        document.getElementById('nomba-sandbox').checked,
     };
     const clientSecret  = document.getElementById('nomba-client-secret').value;
     const webhookSecret = document.getElementById('nomba-webhook-secret').value;
@@ -1002,7 +1014,7 @@
     try {
       const res = await apiFetch('/settings/nomba', { method: 'PUT', body: JSON.stringify(body) });
       const data = await res.json();
-      if (!res.ok) { showAlert('nomba-alert', data.error || 'Failed to save.', 'error'); return; }
+      if (!res.ok) { showAlert('nomba-alert', data.error?.message || 'Failed to save.', 'error'); return; }
       showAlert('nomba-alert', 'Credentials saved.', 'success');
       document.getElementById('nomba-client-secret').value  = '';
       document.getElementById('nomba-webhook-secret').value = '';
@@ -1021,7 +1033,7 @@
     try {
       const res = await apiFetch('/settings/nomba/test', { method: 'POST' });
       const data = await res.json();
-      if (!res.ok) { showAlert('nomba-alert', data.error || 'Connection test failed.', 'error'); return; }
+      if (!res.ok) { showAlert('nomba-alert', data.error?.message || 'Connection test failed.', 'error'); return; }
       showAlert('nomba-alert', 'Connection successful.', 'success');
     } catch {
       showAlert('nomba-alert', 'Network error.', 'error');
@@ -1065,7 +1077,7 @@
         body: JSON.stringify({ endpoint_url: endpoint }),
       });
       const data = await res.json();
-      if (!res.ok) { showAlert('webhook-alert', data.error || 'Failed to save.', 'error'); return; }
+      if (!res.ok) { showAlert('webhook-alert', data.error?.message || 'Failed to save.', 'error'); return; }
 
       if (data.signing_secret) {
         document.getElementById('webhook-secret-value').textContent = data.signing_secret;
@@ -1118,7 +1130,7 @@
       const res = await apiFetch(`/customers?limit=${CUSTOMERS_PAGE}&offset=${customersOffset}`);
       const data = await res.json();
       if (!res.ok) {
-        setTableError('customers-tbody', 5, data.error);
+        setTableError('customers-tbody', 5, data.error?.message || 'Failed to load customers.');
         return;
       }
       const customers = data.customers ?? [];
@@ -1174,7 +1186,7 @@
       const res  = await apiFetch(`/customers/${customerId}/kyc-tier/history`);
       const data = await res.json();
       if (!res.ok) {
-        setTableError('kyc-history-tbody', 3, data.error);
+        setTableError('kyc-history-tbody', 3, data.error?.message || 'Failed to load KYC history.');
         return;
       }
       renderKYCHistory(data.history ?? data ?? []);
@@ -1230,7 +1242,7 @@
       const res = await apiFetch(`/accounts?limit=${ACCOUNTS_PAGE}&offset=${accountsOffset}`);
       const data = await res.json();
       if (!res.ok) {
-        setTableError('accounts-tbody', 7, data.error);
+        setTableError('accounts-tbody', 7, data.error?.message || 'Failed to load accounts.');
         return;
       }
       const accounts = data.accounts ?? [];
@@ -1302,7 +1314,7 @@
       const res  = await apiFetch(`/accounts/${accountId}/transactions?limit=50&offset=0`);
       const data = await res.json();
       if (!res.ok) {
-        setTableError('transactions-tbody', 5, data.error);
+        setTableError('transactions-tbody', 5, data.error?.message || 'Failed to load transactions.');
         return;
       }
       renderTransactions(data.entries ?? data ?? []);

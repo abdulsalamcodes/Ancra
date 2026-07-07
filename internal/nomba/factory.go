@@ -13,7 +13,10 @@ import (
 	"github.com/abdulsalamcodes/ancra/internal/store"
 )
 
-const cacheTTL = 5 * time.Minute
+const (
+	cacheTTL           = 5 * time.Minute
+	nombaSandboxBaseURL = "https://sandbox.nomba.com"
+)
 
 // cachedEntry holds a built client+verifier pair with an expiry timestamp.
 type cachedEntry struct {
@@ -152,10 +155,8 @@ func (f *ClientFactory) buildEntry(ctx context.Context, orgID uuid.UUID) (*cache
 	}, nil
 }
 
-// sandboxURL returns the Nomba sandbox base URL if the org uses sandbox mode.
-// Nomba sandbox is at api.nomba.com with a different path prefix but same host.
-// We leave this as an identity function for now — sandbox vs prod is controlled
-// by the credentials themselves on Nomba's side.
-func sandboxURL(baseURL string) string {
-	return baseURL
+// sandboxURL returns the Nomba sandbox base URL.
+// Sandbox is a separate host from production; credentials are not interchangeable.
+func sandboxURL(_ string) string {
+	return nombaSandboxBaseURL
 }

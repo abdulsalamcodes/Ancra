@@ -302,7 +302,7 @@
       });
       const data = await res.json();
       if (!res.ok) {
-        showError('login-error', data.error || 'Login failed.');
+        showError('login-error', data.error?.message || 'Login failed.');
         return;
       }
       storeTokensAndRedirect(data);
@@ -337,7 +337,7 @@
       });
       const data = await res.json();
       if (!res.ok) {
-        showError('signup-error', data.error || 'Signup failed.');
+        showError('signup-error', data.error?.message || 'Signup failed.');
         return;
       }
       storeTokensAndRedirect(data);

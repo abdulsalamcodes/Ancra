@@ -869,7 +869,7 @@
         document.getElementById('newKeyName').value = '';
         loadKeys();
       } else {
-        resultEl.innerHTML = `<p style="font-size:12px;color:var(--ember);margin-top:10px">${esc(data.error || 'Failed to create key.')}</p>`;
+        resultEl.innerHTML = `<p style="font-size:12px;color:var(--ember);margin-top:10px">${esc(data.error?.message || 'Failed to create key.')}</p>`;
       }
     } catch (e) {
       if (e.message !== 'unauthorised') {
