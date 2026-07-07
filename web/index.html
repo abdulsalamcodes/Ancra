@@ -633,6 +633,118 @@
       tr.revoked td .badge {
         text-decoration: none;
       }
+
+      /* ── Clickable table rows ───────────────────────────────────────── */
+      tr.clickable-row {
+        cursor: pointer;
+        transition: background 0.1s;
+      }
+      tr.clickable-row:hover td {
+        background: var(--blue-light);
+      }
+
+      /* ── Account detail drawer ──────────────────────────────────────── */
+      .drawer-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.35);
+        z-index: 100;
+        display: none;
+        animation: fadeIn 0.2s ease;
+      }
+      .drawer-overlay.open {
+        display: block;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+      }
+      .drawer {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 580px;
+        max-width: 100vw;
+        height: 100vh;
+        background: var(--card-bg);
+        z-index: 101;
+        transform: translateX(100%);
+        transition: transform 0.25s ease;
+        overflow-y: auto;
+        box-shadow: -4px 0 32px rgba(0, 0, 0, 0.14);
+        display: flex;
+        flex-direction: column;
+      }
+      .drawer.open {
+        transform: translateX(0);
+      }
+      .drawer-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        padding: 24px 24px 16px;
+        border-bottom: 1px solid var(--card-border);
+        position: sticky;
+        top: 0;
+        background: var(--card-bg);
+        z-index: 1;
+      }
+      .drawer-header h3 {
+        font-size: 17px;
+        font-weight: 700;
+        color: var(--text-primary);
+      }
+      .drawer-header .drawer-subtitle {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-top: 2px;
+        font-family: "SF Mono", "Fira Code", monospace;
+      }
+      .drawer-close {
+        background: none;
+        border: none;
+        font-size: 18px;
+        color: var(--text-muted);
+        cursor: pointer;
+        padding: 2px 6px;
+        border-radius: var(--radius-sm);
+        line-height: 1;
+        flex-shrink: 0;
+      }
+      .drawer-close:hover {
+        background: var(--content-bg);
+        color: var(--text-primary);
+      }
+      .drawer-body {
+        padding: 20px 24px;
+        flex: 1;
+      }
+      .drawer-section {
+        margin-bottom: 24px;
+      }
+      .drawer-section-title {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 12px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid var(--card-border);
+      }
+      .copy-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--text-muted);
+        font-size: 11px;
+        padding: 1px 4px;
+        border-radius: 3px;
+      }
+      .copy-btn:hover {
+        background: var(--content-bg);
+        color: var(--text-primary);
+      }
     </style>
   </head>
   <body>
@@ -1713,37 +1825,200 @@
       }
 
       async function loadAccounts() {
-        const el = document.getElementById("accounts-list-content");
-        el.innerHTML = '<p class="td-muted" style="padding:8px 0;">Loading…</p>';
+        const container = document.getElementById("accounts-list-content");
+        container.innerHTML = '<p class="td-muted" style="padding:8px 0;">Loading…</p>';
         try {
           const data = await apiFetch("/accounts?limit=50");
           const accounts = data.accounts || [];
           if (accounts.length === 0) {
-            el.innerHTML = '<p class="td-muted" style="padding:8px 0;">No accounts provisioned yet.</p>';
+            container.innerHTML = '<p class="td-muted" style="padding:8px 0;">No accounts provisioned yet.</p>';
             return;
           }
-          el.innerHTML = `
-            <table class="table" style="margin-top:8px;">
-              <thead><tr>
-                <th>Account ID</th>
-                <th>Account Number</th>
-                <th>Name</th>
-                <th>Status</th>
-                <th>Created</th>
-              </tr></thead>
-              <tbody>
-                ${accounts.map(a => `<tr>
-                  <td class="td-mono" style="font-size:11px;cursor:pointer;" title="Click to copy: ${escapeHtml(a.id)}" onclick="navigator.clipboard.writeText('${escapeHtml(a.id)}').then(()=>showToast('Account ID copied ✓'))">${shortUUID(a.id)} 📋</td>
-                  <td class="mono">${escapeHtml(a.bank_account_number || "—")}</td>
-                  <td>${escapeHtml(a.bank_account_name || "—")}</td>
-                  <td>${statusBadge(a.status)}</td>
-                  <td class="td-muted" style="font-size:11px;">${new Date(a.created_at).toLocaleString()}</td>
-                </tr>`).join("")}
-              </tbody>
-            </table>`;
+          container.innerHTML = buildAccountsTable(accounts);
         } catch (e) {
-          el.innerHTML = `<p class="alert alert-error" style="margin-top:8px;">${escapeHtml(e.message)}</p>`;
+          container.innerHTML = `<p class="alert alert-error" style="margin-top:8px;">${escapeHtml(e.message)}</p>`;
         }
+      }
+
+      function buildAccountsTable(accounts) {
+        const rows = accounts.map(buildAccountRow).join("");
+        return `
+          <table class="table" style="margin-top:8px;">
+            <thead><tr>
+              <th>Account ID</th>
+              <th>Account Number</th>
+              <th>Name</th>
+              <th>Status</th>
+              <th>Created</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>`;
+      }
+
+      function buildAccountRow(account) {
+        return `
+          <tr class="clickable-row" onclick="openAccountDetail('${escapeHtml(account.id)}')">
+            <td class="td-mono" style="font-size:11px;">
+              ${shortUUID(account.id)}
+              <button class="copy-btn" title="Copy full ID"
+                onclick="event.stopPropagation(); copyText('${escapeHtml(account.id)}', 'Account ID copied ✓')">
+                ⎘
+              </button>
+            </td>
+            <td class="mono">${escapeHtml(account.bank_account_number || "—")}</td>
+            <td>${escapeHtml(account.bank_account_name || "—")}</td>
+            <td>${statusBadge(account.status)}</td>
+            <td class="td-muted" style="font-size:11px;">${formatDate(account.created_at)}</td>
+          </tr>`;
+      }
+
+      function copyText(text, toastMessage) {
+        navigator.clipboard.writeText(text).then(() => showToast(toastMessage));
+      }
+
+      // ── Account detail drawer ─────────────────────────────────────────────────
+
+      async function openAccountDetail(accountId) {
+        showDrawer("Loading account details…");
+        const [accountResult, balanceResult, transactionsResult] = await Promise.allSettled([
+          apiFetch(`/accounts/${accountId}`),
+          apiFetch(`/accounts/${accountId}/balance`),
+          apiFetch(`/accounts/${accountId}/transactions?limit=20`),
+        ]);
+
+        const account = accountResult.status === "fulfilled" ? accountResult.value : null;
+        const balance = balanceResult.status === "fulfilled" ? balanceResult.value : null;
+        const transactions = transactionsResult.status === "fulfilled" ? transactionsResult.value : null;
+
+        updateDrawerHeader(account);
+
+        const customerResult = account
+          ? await Promise.allSettled([apiFetch(`/customers/${account.customer_id}`)])
+          : [{ status: "rejected" }];
+        const customer = customerResult[0].status === "fulfilled" ? customerResult[0].value : null;
+
+        document.getElementById("drawer-body").innerHTML =
+          renderDrawerAccountSection(account) +
+          renderDrawerCustomerSection(customer) +
+          renderDrawerBalanceSection(balance) +
+          renderDrawerTransactionsSection(transactions);
+      }
+
+      function showDrawer(loadingMessage) {
+        document.getElementById("drawer-body").innerHTML =
+          `<p style="color:var(--text-muted);">${escapeHtml(loadingMessage)}</p>`;
+        document.getElementById("drawer-account-name").textContent = "Loading…";
+        document.getElementById("drawer-account-number").textContent = "";
+        document.getElementById("account-drawer-overlay").classList.add("open");
+        document.getElementById("account-drawer").classList.add("open");
+      }
+
+      function closeAccountDetail() {
+        document.getElementById("account-drawer-overlay").classList.remove("open");
+        document.getElementById("account-drawer").classList.remove("open");
+      }
+
+      function updateDrawerHeader(account) {
+        document.getElementById("drawer-account-name").textContent =
+          account ? (account.bank_account_name || "Virtual Account") : "Account";
+        document.getElementById("drawer-account-number").textContent =
+          account ? (account.bank_account_number || "") : "";
+      }
+
+      function renderDrawerAccountSection(account) {
+        if (!account) return drawerSectionError("Account Details", "Failed to load account.");
+        return `
+          <div class="drawer-section">
+            <div class="drawer-section-title">Account Details</div>
+            <div class="detail-grid">
+              ${detailItem("Account ID",
+                `${shortUUID(account.id)}
+                 <button class="copy-btn" onclick="copyText('${escapeHtml(account.id)}', 'Account ID copied ✓')">⎘</button>`)}
+              ${detailItem("Account Number", account.bank_account_number || "—", true)}
+              ${detailItem("Bank", account.bank_account_name || "—")}
+              ${detailItem("Status", statusBadge(account.status))}
+              ${detailItem("Account Ref", account.account_ref || "—", true)}
+              ${detailItem("Created", formatDate(account.created_at))}
+            </div>
+          </div>`;
+      }
+
+      function renderDrawerCustomerSection(customer) {
+        if (!customer) return drawerSectionError("Customer Details", "Failed to load customer.");
+        return `
+          <div class="drawer-section">
+            <div class="drawer-section-title">Customer Details</div>
+            <div class="detail-grid">
+              ${detailItem("Customer ID",
+                `${shortUUID(customer.id)}
+                 <button class="copy-btn" onclick="copyText('${escapeHtml(customer.id)}', 'Customer ID copied ✓')">⎘</button>`)}
+              ${detailItem("Display Name", customer.display_name || "—")}
+              ${detailItem("KYC Tier", `Tier ${customer.kyc_tier || "—"}`)}
+              ${detailItem("Member Since", formatDate(customer.created_at))}
+            </div>
+          </div>`;
+      }
+
+      function renderDrawerBalanceSection(balance) {
+        if (!balance) return drawerSectionError("Balance", "Failed to load balance.");
+        const balanceNaira = balance.balance != null
+          ? `₦${(balance.balance / 100).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`
+          : "₦0.00";
+        return `
+          <div class="drawer-section">
+            <div class="drawer-section-title">Balance</div>
+            <div style="font-size:28px;font-weight:700;color:var(--text-primary);margin-bottom:4px;">
+              ${balanceNaira}
+            </div>
+            <div style="font-size:12px;color:var(--text-muted);">
+              ${balance.currency || "NGN"} · as of ${formatDate(balance.as_of)}
+            </div>
+          </div>`;
+      }
+
+      function renderDrawerTransactionsSection(data) {
+        if (!data) return drawerSectionError("Settlements", "Failed to load transactions.");
+        const entries = data.entries || [];
+        if (entries.length === 0) {
+          return `
+            <div class="drawer-section">
+              <div class="drawer-section-title">Settlements</div>
+              <p class="td-muted">No transactions yet.</p>
+            </div>`;
+        }
+        const rows = entries.map(entry => `
+          <tr>
+            <td class="td-muted" style="font-size:11px;">${formatDate(entry.created_at)}</td>
+            <td>${escapeHtml(entry.entry_type || entry.direction || "—")}</td>
+            <td class="mono" style="color:${entry.direction === 'credit' ? 'var(--green)' : 'var(--red)'};">
+              ${entry.direction === 'credit' ? '+' : '-'}₦${((entry.amount_kobo || entry.amount || 0) / 100).toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+            </td>
+            <td class="td-muted" style="font-size:11px;">${escapeHtml(entry.external_ref || "—")}</td>
+          </tr>`).join("");
+        return `
+          <div class="drawer-section">
+            <div class="drawer-section-title">Settlements (last ${entries.length})</div>
+            <table class="table">
+              <thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Reference</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>`;
+      }
+
+      function detailItem(label, value, mono = false) {
+        return `
+          <div class="detail-item">
+            <span class="detail-label">${escapeHtml(label)}</span>
+            <span class="detail-value${mono ? ' mono' : ''}" style="font-size:${mono ? '12px' : '13px'};">${value}</span>
+          </div>`;
+      }
+
+      function drawerSectionError(title, message) {
+        return `
+          <div class="drawer-section">
+            <div class="drawer-section-title">${escapeHtml(title)}</div>
+            <p style="color:var(--text-muted);font-size:13px;">${escapeHtml(message)}</p>
+          </div>`;
       }
 
       async function lookupAccount() {
@@ -2109,6 +2384,25 @@
           testConnection();
         }
       });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closeAccountDetail();
+      });
     </script>
+
+    <!-- ══════════════════════════ ACCOUNT DETAIL DRAWER ═══════════════════════ -->
+    <div id="account-drawer-overlay" class="drawer-overlay" onclick="closeAccountDetail()"></div>
+    <div id="account-drawer" class="drawer" role="dialog" aria-modal="true" aria-label="Account details">
+      <div class="drawer-header">
+        <div>
+          <h3 id="drawer-account-name">Loading…</h3>
+          <div id="drawer-account-number" class="drawer-subtitle"></div>
+        </div>
+        <button class="drawer-close" onclick="closeAccountDetail()" aria-label="Close">✕</button>
+      </div>
+      <div class="drawer-body" id="drawer-body">
+        <p style="color:var(--text-muted);">Loading account details…</p>
+      </div>
+    </div>
   </body>
 </html>

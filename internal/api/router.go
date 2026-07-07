@@ -94,6 +94,7 @@ func NewRouter(d RouterDeps) http.Handler {
 		// Customer endpoints
 		r.Post("/customers", customerHandler.Create)
 		r.Get("/customers", customerHandler.List)
+		r.Get("/customers/{id}", customerHandler.GetCustomerByID)
 
 		// Account endpoints
 		r.Post("/accounts", acctHandler.Create)

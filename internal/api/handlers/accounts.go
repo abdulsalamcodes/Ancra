@@ -298,6 +298,25 @@ func (h *CustomerHandler) Create(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, c)
 }
 
+// GetCustomerByID retrieves a single customer by UUID.
+//
+// GET /customers/{id}
+func (h *CustomerHandler) GetCustomerByID(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseUUID(w, r, "id")
+	if !ok {
+		return
+	}
+
+	customer, err := h.customers.GetCustomer(r.Context(), id)
+	if err != nil {
+		h.log.Error("get customer failed", zap.String("id", id.String()), zap.Error(err))
+		writeError(w, http.StatusNotFound, "customer not found")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, customer)
+}
+
 // List returns a paginated list of customers with their display names.
 //
 // GET /customers
