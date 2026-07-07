@@ -393,6 +393,14 @@
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="1.5" width="5" height="5" rx="1"/><rect x="9.5" y="1.5" width="5" height="5" rx="1"/><rect x="1.5" y="9.5" width="5" height="5" rx="1"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/></svg>
         Overview
       </button>
+      <button class="nav-item" onclick="navigate('customers')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="2.5"/><path d="M1 13c0-2.76 2.24-5 5-5s5 2.24 5 5"/><circle cx="12" cy="5" r="2"/><path d="M14.5 12c0-1.93-1.12-3.6-2.75-4.37"/></svg>
+        Customers
+      </button>
+      <button class="nav-item" onclick="navigate('accounts')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="3.5" width="13" height="9" rx="1.5"/><path d="M1.5 6.5h13"/><path d="M4.5 10h2"/></svg>
+        Accounts
+      </button>
       <button class="nav-item" onclick="navigate('api-keys')">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10.5 5.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path d="m7.5 8.5-4 4m2-2 1 1"/></svg>
         API Keys
@@ -400,10 +408,6 @@
       <button class="nav-item" onclick="navigate('webhooks')">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 5H3m10 6H3M1.5 8h13"/></svg>
         Webhook Deliveries
-      </button>
-      <button class="nav-item" onclick="navigate('reconciliation')">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8h12M2 4h8M2 12h5"/></svg>
-        Reconciliation
       </button>
     </div>
 
@@ -463,6 +467,84 @@
             <p>2. Configure your <strong style="color:var(--ink)">Nomba credentials</strong> under Settings → Nomba Config.</p>
             <p>3. Set a <strong style="color:var(--ink)">Webhook endpoint</strong> to receive real-time account events.</p>
             <p>4. Use the <strong style="color:var(--ink)">/accounts</strong> API to provision virtual accounts for your customers.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Customers ── -->
+      <div class="panel" id="panel-customers">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Customers</span></div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Customer ID</th>
+                  <th>KYC Tier</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody id="customers-tbody">
+                <tr><td colspan="4"><div class="empty"><div class="spinner"></div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div id="customers-load-more" style="padding:14px 20px; display:none;">
+            <button class="btn btn-ghost btn-sm" onclick="loadMoreCustomers()">Load more</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Accounts ── -->
+      <div class="panel" id="panel-accounts">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Virtual Accounts</span></div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Account Number</th>
+                  <th>Account Name</th>
+                  <th>Status</th>
+                  <th>Balance</th>
+                  <th>Customer</th>
+                  <th>Created</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="accounts-tbody">
+                <tr><td colspan="7"><div class="empty"><div class="spinner"></div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div id="accounts-load-more" style="padding:14px 20px; display:none;">
+            <button class="btn btn-ghost btn-sm" onclick="loadMoreAccounts()">Load more</button>
+          </div>
+        </div>
+
+        <div id="transactions-card" style="display:none; margin-top:20px;">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title" id="transactions-title">Transactions</span>
+              <button class="btn btn-ghost btn-sm" onclick="closeTransactions()">Close</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Direction</th>
+                    <th>Amount</th>
+                    <th>Type</th>
+                    <th>Reference</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody id="transactions-tbody">
+                  <tr><td colspan="5"><div class="empty"><div class="spinner"></div></div></td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
@@ -529,21 +611,6 @@
                 <tr><td colspan="5"><div class="empty"><div class="spinner"></div></div></td></tr>
               </tbody>
             </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── Reconciliation ── -->
-      <div class="panel" id="panel-reconciliation">
-        <div id="recon-alert"></div>
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
-          <div></div>
-          <button class="btn btn-primary" id="trigger-recon-btn" onclick="triggerReconciliation()">Run reconciliation</button>
-        </div>
-        <div class="card">
-          <div class="card-header"><span class="card-title">Latest Run</span></div>
-          <div class="card-body" id="recon-body">
-            <div class="empty"><div class="spinner"></div></div>
           </div>
         </div>
       </div>
@@ -688,12 +755,13 @@
   // Navigation
   // ---------------------------------------------------------------------------
   const panelTitles = {
-    'overview':          'Overview',
-    'api-keys':          'API Keys',
-    'webhooks':          'Webhook Deliveries',
-    'reconciliation':    'Reconciliation',
-    'settings-nomba':    'Nomba Config',
-    'settings-webhook':  'Webhook Config',
+    'overview':         'Overview',
+    'customers':        'Customers',
+    'accounts':         'Accounts',
+    'api-keys':         'API Keys',
+    'webhooks':         'Webhook Deliveries',
+    'settings-nomba':   'Nomba Config',
+    'settings-webhook': 'Webhook Config',
   };
 
   let currentPanel = 'overview';
@@ -715,10 +783,11 @@
 
     // Lazy-load panel data.
     const loaders = {
-      'api-keys':       loadAPIKeys,
-      'webhooks':       loadWebhooks,
-      'reconciliation': loadReconciliation,
-      'settings-nomba': loadNombaConfig,
+      'customers':        loadCustomers,
+      'accounts':         loadAccounts,
+      'api-keys':         loadAPIKeys,
+      'webhooks':         loadWebhooks,
+      'settings-nomba':   loadNombaConfig,
       'settings-webhook': loadWebhookConfig,
     };
     loaders[panel]?.();
@@ -874,71 +943,6 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Reconciliation
-  // ---------------------------------------------------------------------------
-  async function loadReconciliation() {
-    const body = document.getElementById('recon-body');
-    body.innerHTML = '<div class="empty"><div class="spinner"></div></div>';
-    clearAlert('recon-alert');
-
-    try {
-      const res = await apiFetch('/reconciliation');
-      const data = await res.json();
-      if (!res.ok) { body.innerHTML = `<div class="empty">${escHtml(data.error)}</div>`; return; }
-      renderReconciliation(body, data);
-    } catch {
-      body.innerHTML = '<div class="empty">Failed to load reconciliation data.</div>';
-    }
-  }
-
-  function renderReconciliation(container, data) {
-    // Accept either a top-level run object or {run: {...}} shape.
-    const run = data.run ?? data;
-    if (!run || !run.id) {
-      container.innerHTML = '<div class="empty">No reconciliation runs yet.</div>';
-      return;
-    }
-    container.innerHTML = `
-      <div class="stats-grid" style="margin-bottom:0;">
-        <div class="stat-card">
-          <div class="stat-label">Status</div>
-          <div class="stat-value" style="font-size:14px;">${statusBadge(run.status)}</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Matched</div>
-          <div class="stat-value">${run.matched_count ?? '—'}</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Discrepancies</div>
-          <div class="stat-value">${run.discrepancy_count ?? '—'}</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Run at</div>
-          <div class="stat-value" style="font-size:13px;">${formatDate(run.created_at)}</div>
-        </div>
-      </div>
-    `;
-  }
-
-  async function triggerReconciliation() {
-    const btn = document.getElementById('trigger-recon-btn');
-    setButtonLoading(btn, true);
-    clearAlert('recon-alert');
-
-    try {
-      const res = await apiFetch('/reconciliation/trigger', { method: 'POST' });
-      const data = await res.json();
-      if (!res.ok) { showAlert('recon-alert', data.error || 'Failed to trigger run.', 'error'); return; }
-      showAlert('recon-alert', 'Reconciliation run started.', 'success');
-      await loadReconciliation();
-    } catch {
-      showAlert('recon-alert', 'Network error.', 'error');
-    } finally {
-      setButtonLoading(btn, false, 'Run reconciliation');
-    }
-  }
-
-  // ---------------------------------------------------------------------------
   // Settings — Nomba
   // ---------------------------------------------------------------------------
   async function loadNombaConfig() {
@@ -1064,6 +1068,201 @@
   }
 
   // ---------------------------------------------------------------------------
+  // Customers
+  // ---------------------------------------------------------------------------
+  let customersOffset = 0;
+  const CUSTOMERS_PAGE = 20;
+
+  async function loadCustomers() {
+    customersOffset = 0;
+    document.getElementById('customers-tbody').innerHTML =
+      '<tr><td colspan="4"><div class="empty"><div class="spinner"></div></div></td></tr>';
+    document.getElementById('customers-load-more').style.display = 'none';
+    await fetchCustomers(true);
+  }
+
+  async function loadMoreCustomers() {
+    customersOffset += CUSTOMERS_PAGE;
+    await fetchCustomers(false);
+  }
+
+  async function fetchCustomers(replace) {
+    try {
+      const res = await apiFetch(`/customers?limit=${CUSTOMERS_PAGE}&offset=${customersOffset}`);
+      const data = await res.json();
+      if (!res.ok) {
+        setTableError('customers-tbody', 4, data.error);
+        return;
+      }
+      const customers = data.customers ?? [];
+      renderCustomers(customers, replace);
+      document.getElementById('customers-load-more').style.display =
+        customers.length === CUSTOMERS_PAGE ? 'block' : 'none';
+    } catch {
+      setTableError('customers-tbody', 4, 'Failed to load customers.');
+    }
+  }
+
+  function renderCustomers(customers, replace) {
+    const tbody = document.getElementById('customers-tbody');
+    if (replace && !customers.length) {
+      tbody.innerHTML = '<tr><td colspan="4"><div class="empty">No customers yet.</div></td></tr>';
+      return;
+    }
+    const rows = customers.map(c => `
+      <tr>
+        <td>${escHtml(c.display_name || '—')}</td>
+        <td class="mono">${escHtml((c.id ?? '').slice(0, 8))}…</td>
+        <td>${kycTierBadge(c.kyc_tier)}</td>
+        <td>${formatDate(c.created_at)}</td>
+      </tr>
+    `).join('');
+    replace ? (tbody.innerHTML = rows) : tbody.insertAdjacentHTML('beforeend', rows);
+  }
+
+  function kycTierBadge(tier) {
+    const label = `Tier ${tier ?? 0}`;
+    const cls   = tier >= 2 ? 'badge-green' : tier === 1 ? 'badge-amber' : 'badge-gray';
+    return `<span class="badge ${cls}">${label}</span>`;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Accounts
+  // ---------------------------------------------------------------------------
+  let accountsOffset    = 0;
+  let expandedAccountId = null;
+  const ACCOUNTS_PAGE   = 20;
+
+  async function loadAccounts() {
+    accountsOffset    = 0;
+    expandedAccountId = null;
+    document.getElementById('transactions-card').style.display = 'none';
+    document.getElementById('accounts-tbody').innerHTML =
+      '<tr><td colspan="7"><div class="empty"><div class="spinner"></div></div></td></tr>';
+    document.getElementById('accounts-load-more').style.display = 'none';
+    await fetchAccounts(true);
+  }
+
+  async function loadMoreAccounts() {
+    accountsOffset += ACCOUNTS_PAGE;
+    await fetchAccounts(false);
+  }
+
+  async function fetchAccounts(replace) {
+    try {
+      const res = await apiFetch(`/accounts?limit=${ACCOUNTS_PAGE}&offset=${accountsOffset}`);
+      const data = await res.json();
+      if (!res.ok) {
+        setTableError('accounts-tbody', 7, data.error);
+        return;
+      }
+      const accounts = data.accounts ?? [];
+      await renderAccounts(accounts, replace);
+      document.getElementById('accounts-load-more').style.display =
+        accounts.length === ACCOUNTS_PAGE ? 'block' : 'none';
+    } catch {
+      setTableError('accounts-tbody', 7, 'Failed to load accounts.');
+    }
+  }
+
+  async function renderAccounts(accounts, replace) {
+    const tbody = document.getElementById('accounts-tbody');
+    if (replace && !accounts.length) {
+      tbody.innerHTML = '<tr><td colspan="7"><div class="empty">No accounts yet.</div></td></tr>';
+      return;
+    }
+
+    // Fetch all balances in parallel; failures silently show '—'.
+    const balances = await Promise.all(
+      accounts.map(a =>
+        apiFetch(`/accounts/${a.id}/balance`)
+          .then(r => r.ok ? r.json() : null)
+          .catch(() => null)
+      )
+    );
+
+    const rows = accounts.map((a, i) => {
+      const balance = balances[i]?.balance ?? balances[i]?.amount ?? null;
+      return `
+        <tr>
+          <td class="mono">${escHtml(a.bank_account_number ?? '—')}</td>
+          <td>${escHtml(a.bank_account_name ?? '—')}</td>
+          <td>${accountStatusBadge(a.status)}</td>
+          <td>${formatKobo(balance)}</td>
+          <td class="mono">${escHtml((a.customer_id ?? '').slice(0, 8))}…</td>
+          <td>${formatDate(a.created_at)}</td>
+          <td style="text-align:right;">
+            <button class="btn btn-ghost btn-sm"
+              onclick="toggleTransactions('${a.id}', '${escHtml(a.bank_account_number ?? a.id)}', this)">
+              Transactions
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    replace ? (tbody.innerHTML = rows) : tbody.insertAdjacentHTML('beforeend', rows);
+  }
+
+  function accountStatusBadge(status) {
+    return status === 'active'
+      ? '<span class="badge badge-green">active</span>'
+      : '<span class="badge badge-gray">closed</span>';
+  }
+
+  async function toggleTransactions(accountId, accountRef, btn) {
+    if (expandedAccountId === accountId) {
+      closeTransactions();
+      return;
+    }
+    expandedAccountId = accountId;
+    document.getElementById('transactions-title').textContent = `Transactions — ${accountRef}`;
+    document.getElementById('transactions-card').style.display = 'block';
+    document.getElementById('transactions-tbody').innerHTML =
+      '<tr><td colspan="5"><div class="empty"><div class="spinner"></div></div></td></tr>';
+
+    try {
+      const res  = await apiFetch(`/accounts/${accountId}/transactions?limit=50&offset=0`);
+      const data = await res.json();
+      if (!res.ok) {
+        setTableError('transactions-tbody', 5, data.error);
+        return;
+      }
+      renderTransactions(data.entries ?? data ?? []);
+    } catch {
+      setTableError('transactions-tbody', 5, 'Failed to load transactions.');
+    }
+  }
+
+  function renderTransactions(entries) {
+    const tbody = document.getElementById('transactions-tbody');
+    if (!entries.length) {
+      tbody.innerHTML = '<tr><td colspan="5"><div class="empty">No transactions yet.</div></td></tr>';
+      return;
+    }
+    tbody.innerHTML = entries.map(e => `
+      <tr>
+        <td>${directionBadge(e.direction)}</td>
+        <td>${formatKobo(e.amount)}</td>
+        <td class="mono" style="font-size:11px;">${escHtml(e.entry_type ?? '—')}</td>
+        <td class="mono" style="font-size:11px;">${escHtml((e.external_ref ?? '').slice(0, 24) || '—')}</td>
+        <td>${formatDate(e.created_at)}</td>
+      </tr>
+    `).join('');
+  }
+
+  function closeTransactions() {
+    expandedAccountId = null;
+    document.getElementById('transactions-card').style.display = 'none';
+  }
+
+  function directionBadge(direction) {
+    return direction === 'credit'
+      ? '<span class="badge badge-green">credit</span>'
+      : '<span class="badge badge-red">debit</span>';
+  }
+
+  // ---------------------------------------------------------------------------
   // Utilities
   // ---------------------------------------------------------------------------
   function escHtml(str) {
@@ -1073,6 +1272,19 @@
   function formatDate(iso) {
     if (!iso) return '—';
     return new Date(iso).toLocaleDateString('en-GB', { year:'numeric', month:'short', day:'numeric' });
+  }
+
+  // formatKobo converts an integer kobo amount to a formatted ₦ string.
+  // Balances are stored as integers (NGN × 100) to avoid floating-point errors.
+  function formatKobo(kobo) {
+    if (kobo == null) return '—';
+    return '₦' + (kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  // setTableError writes a single error row spanning all columns.
+  function setTableError(tbodyId, colspan, message) {
+    document.getElementById(tbodyId).innerHTML =
+      `<tr><td colspan="${colspan}"><div class="empty">${escHtml(message)}</div></td></tr>`;
   }
 
   function showAlert(id, message, type) {

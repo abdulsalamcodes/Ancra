@@ -72,6 +72,35 @@ func (h *AdminHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ListOrgReconciliationRuns returns recent reconciliation runs for the given org.
+//
+// GET /admin/orgs/{orgID}/reconciliation
+func (h *AdminHandler) ListOrgReconciliationRuns(w http.ResponseWriter, r *http.Request) {
+	orgID, err := uuid.Parse(chi.URLParam(r, "orgID"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid org id")
+		return
+	}
+	limit  := queryInt(r, "limit", 20)
+	offset := queryInt(r, "offset", 0)
+
+	runs, err := h.reconSvc.ListRuns(r.Context(), orgID, limit, offset)
+	if err != nil {
+		h.log.Error("admin list reconciliation runs failed",
+			zap.String("org_id", orgID.String()), zap.Error(err))
+		writeError(w, http.StatusInternalServerError, "failed to fetch reconciliation runs")
+		return
+	}
+	if runs == nil {
+		runs = []*store.ReconciliationRun{}
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"runs":   runs,
+		"limit":  limit,
+		"offset": offset,
+	})
+}
+
 // TriggerOrgReconciliation manually runs a reconciliation sweep for the given org.
 //
 // POST /admin/orgs/{orgID}/reconciliation/trigger

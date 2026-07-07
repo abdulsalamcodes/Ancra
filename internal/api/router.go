@@ -95,7 +95,9 @@ func NewRouter(d RouterDeps) http.Handler {
 	webhookConfigHandler := handlers.NewWebhookConfigHandler(d.WebhookConfigs, d.Encryptor, d.Log)
 
 	// ---------------------------------------------------------------------------
-	// JWT-protected routes — dashboard / session-based access
+	// JWT-only routes — dashboard session management and org configuration.
+	// These actions are scoped to the authenticated user's session and are not
+	// appropriate for programmatic API key access.
 	// ---------------------------------------------------------------------------
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.JWTAuth(d.AuthSvc))
@@ -103,26 +105,39 @@ func NewRouter(d RouterDeps) http.Handler {
 
 		r.Get("/auth/me", authHandler.Me)
 
-		// API key management (org-scoped; dashboard creates keys for programmatic use)
 		r.Post("/api-keys", apiKeyHandler.Create)
 		r.Get("/api-keys", apiKeyHandler.List)
 		r.Delete("/api-keys/{id}", apiKeyHandler.Revoke)
 
-		// Webhook deliveries for this org
 		r.Get("/webhooks", reconHandler.ListWebhooks)
 
-		// Nomba BYOK credential settings
 		r.Get("/settings/nomba", nombaConfigHandler.Get)
 		r.Put("/settings/nomba", nombaConfigHandler.Upsert)
 		r.Post("/settings/nomba/test", nombaConfigHandler.TestConnection)
 
-		// Outbound webhook endpoint settings
 		r.Get("/settings/webhook", webhookConfigHandler.Get)
 		r.Put("/settings/webhook", webhookConfigHandler.Upsert)
+	})
 
-		// Reconciliation — also in the JWT group so the dashboard can access it.
-		r.Get("/reconciliation", reconHandler.GetLatest)
-		r.Post("/reconciliation/trigger", reconHandler.Trigger)
+	// ---------------------------------------------------------------------------
+	// JWT-or-API-key routes — org-scoped reads and reconciliation.
+	// Accessible from the dashboard (JWT) and from server-side integrations
+	// (API key). A single registration per route keeps the router DRY and avoids
+	// the chi runtime panic that duplicate route registrations would cause.
+	// ---------------------------------------------------------------------------
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.JWTOrAPIKeyAuth(d.AuthSvc, d.APIKeys, d.StaticKey, d.StaticKeyOrgID))
+		r.Use(chimw.StripSlashes)
+
+		r.Get("/customers", customerHandler.List)
+		r.Get("/customers/{id}", customerHandler.GetCustomerByID)
+		r.Get("/customers/{id}/kyc-tier/history", customerHandler.ListKYCTierHistory)
+
+		r.Get("/accounts", acctHandler.List)
+		r.Get("/accounts/{id}", acctHandler.GetByID)
+		r.Get("/accounts/{id}/balance", acctHandler.GetBalance)
+		r.Get("/accounts/{id}/transactions", acctHandler.ListTransactions)
+		r.Get("/accounts/{id}/statement", acctHandler.GetStatement)
 	})
 
 	// ---------------------------------------------------------------------------
@@ -135,6 +150,7 @@ func NewRouter(d RouterDeps) http.Handler {
 
 		r.Get("/admin/orgs", adminHandler.ListOrgs)
 		r.Get("/admin/stats", adminHandler.GetStats)
+		r.Get("/admin/orgs/{orgID}/reconciliation", adminHandler.ListOrgReconciliationRuns)
 		r.Post("/admin/orgs/{orgID}/reconciliation/trigger", adminHandler.TriggerOrgReconciliation)
 
 		r.Post("/admin/api-keys", apiKeyHandler.AdminCreateKey)
@@ -145,36 +161,22 @@ func NewRouter(d RouterDeps) http.Handler {
 	})
 
 	// ---------------------------------------------------------------------------
-	// Authenticated developer API — API key bearer token
+	// API-key-only routes — write operations for server-side integrations.
+	// These mutate data and are intentionally not exposed to dashboard sessions.
 	// ---------------------------------------------------------------------------
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.APIKeyAuth(d.APIKeys, d.StaticKey, d.StaticKeyOrgID))
 		r.Use(chimw.StripSlashes)
 
-		// Customer endpoints
 		r.Post("/customers", customerHandler.Create)
-		r.Get("/customers", customerHandler.List)
-		r.Get("/customers/{id}", customerHandler.GetCustomerByID)
 		r.Put("/customers/{id}/kyc-tier", customerHandler.UpgradeKYCTier)
-		r.Get("/customers/{id}/kyc-tier/history", customerHandler.ListKYCTierHistory)
 
-		// Account endpoints
 		r.Post("/accounts", acctHandler.Create)
-		r.Get("/accounts", acctHandler.List)
-		r.Get("/accounts/{id}", acctHandler.GetByID)
-		r.Get("/accounts/{id}/balance", acctHandler.GetBalance)
-		r.Get("/accounts/{id}/transactions", acctHandler.ListTransactions)
-		r.Get("/accounts/{id}/statement", acctHandler.GetStatement)
 		r.Put("/accounts/{id}", acctHandler.Update)
 		r.Post("/accounts/{id}/close", acctHandler.Close)
 
-		// Transfer
 		r.Post("/transfers/lookup", txnHandler.LookupBank)
 		r.Post("/accounts/{id}/transfer", txnHandler.Transfer)
-
-		// Reconciliation
-		r.Get("/reconciliation", reconHandler.GetLatest)
-		r.Post("/reconciliation/trigger", reconHandler.Trigger)
 	})
 
 	return r
