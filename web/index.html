@@ -768,6 +768,9 @@
         </button>
 
         <div class="nav-section-label" style="margin-top: 8px">Operations</div>
+        <button class="nav-item" data-panel="transfer">
+          <span class="icon">💸</span> Transfer
+        </button>
         <button class="nav-item" data-panel="reconciliation">
           <span class="icon">📊</span> Reconciliation
         </button>
@@ -1044,6 +1047,74 @@
 
         </div>
 
+        <!-- ══════════════════════════ TRANSFER ══════════════════════════════════ -->
+        <div class="panel" id="panel-transfer">
+          <div class="panel-header">
+            <div>
+              <h2>💸 Transfer</h2>
+              <p>Send funds from a virtual account to any Nigerian bank account</p>
+            </div>
+          </div>
+
+          <!-- Step 1: Recipient lookup -->
+          <div class="card">
+            <div class="card-title">Step 1 — Verify Recipient</div>
+            <div class="form-row">
+              <div class="form-group" style="max-width:160px;">
+                <label>Bank Code</label>
+                <input type="text" id="txfr-bank-code" placeholder="e.g. 044" maxlength="10" />
+              </div>
+              <div class="form-group">
+                <label>Account Number</label>
+                <input type="text" id="txfr-dest-account" placeholder="10-digit number" maxlength="10" />
+              </div>
+              <button class="btn btn-secondary" onclick="lookupRecipient()" id="txfr-lookup-btn">
+                Verify
+              </button>
+            </div>
+            <div id="txfr-lookup-error" class="alert alert-error" style="display:none;margin-top:12px;"></div>
+            <div id="txfr-lookup-result" style="margin-top:12px;"></div>
+          </div>
+
+          <!-- Step 2: Transfer details -->
+          <div class="card" id="txfr-details-card" style="display:none;">
+            <div class="card-title">Step 2 — Transfer Details</div>
+            <div class="form-row">
+              <div class="form-group" style="flex:2;">
+                <label>From Account</label>
+                <select id="txfr-source-account">
+                  <option value="">— select account —</option>
+                </select>
+              </div>
+              <div class="form-group" style="max-width:160px;">
+                <label>Amount (NGN)</label>
+                <input type="number" id="txfr-amount" placeholder="0.00" min="1" step="0.01" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Sender Name</label>
+                <input type="text" id="txfr-sender-name" placeholder="Name on source account" />
+              </div>
+              <div class="form-group">
+                <label>Narration</label>
+                <input type="text" id="txfr-narration" placeholder="Payment for…" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Reference <span style="color:var(--text-muted);font-size:11px;">(auto-generated)</span></label>
+                <input type="text" id="txfr-reference" readonly style="background:var(--content-bg);color:var(--text-secondary);" />
+              </div>
+              <button class="btn btn-primary" onclick="submitTransfer()" id="txfr-submit-btn" style="align-self:flex-end;">
+                Send Money
+              </button>
+            </div>
+            <div id="txfr-submit-error" class="alert alert-error" style="display:none;margin-top:12px;"></div>
+            <div id="txfr-submit-result" style="margin-top:12px;"></div>
+          </div>
+        </div>
+
         <!-- ══════════════════════════ RECONCILIATION ═══════════════════════════ -->
         <div class="panel" id="panel-reconciliation">
           <div class="panel-header">
@@ -1251,6 +1322,9 @@
             break;
           case "accounts":
             loadAccounts();
+            break;
+          case "transfer":
+            loadTransferAccounts();
             break;
           case "reconciliation":
             loadReconciliation();
@@ -1945,6 +2019,156 @@
             <div class="drawer-section-title">${escapeHtml(title)}</div>
             <p style="color:var(--text-muted);font-size:13px;">${escapeHtml(message)}</p>
           </div>`;
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════════════
+      // TRANSFER Panel
+      // ═══════════════════════════════════════════════════════════════════════════════
+
+      // Keeps the verified recipient so submitTransfer can read it.
+      let transferRecipient = null;
+
+      // Populate the source-account dropdown when the panel opens.
+      async function loadTransferAccounts() {
+        const sel = document.getElementById("txfr-source-account");
+        sel.innerHTML = '<option value="">— loading accounts… —</option>';
+        try {
+          const data = await apiFetch("/accounts?limit=100");
+          const accounts = data.accounts || [];
+          sel.innerHTML = '<option value="">— select account —</option>';
+          accounts.forEach((a) => {
+            const opt = document.createElement("option");
+            opt.value = a.id;
+            opt.textContent = `${a.bank_account_name || a.display_name || shortUUID(a.id)} · ${a.bank_account_number || ""}`;
+            sel.appendChild(opt);
+          });
+        } catch (e) {
+          sel.innerHTML = '<option value="">— failed to load accounts —</option>';
+        }
+        // Reset the form each time the panel is opened.
+        resetTransferForm();
+      }
+
+      function resetTransferForm() {
+        transferRecipient = null;
+        document.getElementById("txfr-bank-code").value = "";
+        document.getElementById("txfr-dest-account").value = "";
+        document.getElementById("txfr-lookup-result").innerHTML = "";
+        hideEl("txfr-lookup-error");
+        document.getElementById("txfr-details-card").style.display = "none";
+        document.getElementById("txfr-amount").value = "";
+        document.getElementById("txfr-sender-name").value = "";
+        document.getElementById("txfr-narration").value = "";
+        document.getElementById("txfr-reference").value = generateRef();
+        document.getElementById("txfr-submit-result").innerHTML = "";
+        hideEl("txfr-submit-error");
+      }
+
+      function generateRef() {
+        return "TXN-" + Date.now().toString(36).toUpperCase() + "-" + Math.random().toString(36).slice(2, 6).toUpperCase();
+      }
+
+      async function lookupRecipient() {
+        const bankCode = document.getElementById("txfr-bank-code").value.trim();
+        const accountNumber = document.getElementById("txfr-dest-account").value.trim();
+
+        if (!bankCode || !accountNumber) {
+          setError("txfr-lookup-error", "Bank code and account number are required.");
+          return;
+        }
+
+        const btn = document.getElementById("txfr-lookup-btn");
+        btn.disabled = true;
+        btn.textContent = "⏳ Verifying…";
+        hideEl("txfr-lookup-error");
+        document.getElementById("txfr-lookup-result").innerHTML = "";
+        document.getElementById("txfr-details-card").style.display = "none";
+        transferRecipient = null;
+
+        try {
+          const data = await apiFetch("/transfers/lookup", {
+            method: "POST",
+            body: JSON.stringify({ account_number: accountNumber, bank_code: bankCode }),
+          });
+
+          const name = data.account_name || data.accountName || "—";
+          transferRecipient = { bankCode, accountNumber, accountName: name };
+
+          document.getElementById("txfr-lookup-result").innerHTML = `
+            <div class="alert alert-success" style="display:flex;align-items:center;gap:10px;">
+              <span style="font-size:18px;">✓</span>
+              <div>
+                <div style="font-weight:600;">${escapeHtml(name)}</div>
+                <div style="color:var(--text-muted);font-size:12px;">${escapeHtml(accountNumber)} · Bank ${escapeHtml(bankCode)}</div>
+              </div>
+            </div>`;
+          document.getElementById("txfr-details-card").style.display = "";
+        } catch (e) {
+          setError("txfr-lookup-error", e.message);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "Verify";
+        }
+      }
+
+      async function submitTransfer() {
+        if (!transferRecipient) {
+          showToast("Verify the recipient first.", "error");
+          return;
+        }
+
+        const accountID = document.getElementById("txfr-source-account").value;
+        const amountNaira = parseFloat(document.getElementById("txfr-amount").value);
+        const senderName = document.getElementById("txfr-sender-name").value.trim();
+        const narration = document.getElementById("txfr-narration").value.trim();
+        const reference = document.getElementById("txfr-reference").value.trim();
+
+        if (!accountID) { showToast("Select a source account.", "error"); return; }
+        if (!amountNaira || amountNaira <= 0) { showToast("Enter a valid amount.", "error"); return; }
+        if (!senderName) { showToast("Sender name is required.", "error"); return; }
+
+        const amountKobo = Math.round(amountNaira * 100);
+
+        const btn = document.getElementById("txfr-submit-btn");
+        btn.disabled = true;
+        btn.textContent = "⏳ Sending…";
+        hideEl("txfr-submit-error");
+        document.getElementById("txfr-submit-result").innerHTML = "";
+
+        try {
+          const data = await apiFetch(`/accounts/${accountID}/transfer`, {
+            method: "POST",
+            body: JSON.stringify({
+              amount: amountKobo,
+              narration: narration || "Transfer",
+              reference,
+              sender_name: senderName,
+              destination_bank: transferRecipient.bankCode,
+              destination_account: transferRecipient.accountNumber,
+              destination_name: transferRecipient.accountName,
+            }),
+          });
+
+          document.getElementById("txfr-submit-result").innerHTML = `
+            <div class="alert alert-success">
+              <strong>Transfer submitted</strong>
+              <div class="detail-grid" style="margin-top:10px;">
+                <div class="detail-item"><span class="detail-label">Status</span><span class="detail-value">${escapeHtml(data.nomba_transaction?.status || data.status || "submitted")}</span></div>
+                <div class="detail-item"><span class="detail-label">Nomba ID</span><span class="detail-value mono" style="font-size:11px;">${escapeHtml(data.nomba_transaction?.id || "—")}</span></div>
+                <div class="detail-item"><span class="detail-label">Amount</span><span class="detail-value">${formatNGN(amountKobo)}</span></div>
+                <div class="detail-item"><span class="detail-label">Reference</span><span class="detail-value mono">${escapeHtml(reference)}</span></div>
+              </div>
+            </div>`;
+
+          showToast("Transfer submitted ✓");
+          // Refresh reference so accidental re-submit uses a new one.
+          document.getElementById("txfr-reference").value = generateRef();
+        } catch (e) {
+          setError("txfr-submit-error", e.message);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "Send Money";
+        }
       }
 
       // ═══════════════════════════════════════════════════════════════════════════════

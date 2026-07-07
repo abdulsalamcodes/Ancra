@@ -29,6 +29,39 @@ func NewTransactionHandler(ledgerSvc *ledger.Service, nombaClient *nomba.Client,
 	}
 }
 
+type bankLookupRequest struct {
+	AccountNumber string `json:"account_number"`
+	BankCode      string `json:"bank_code"`
+}
+
+// LookupBank resolves an account number + bank code to the registered account name.
+func (h *TransactionHandler) LookupBank(w http.ResponseWriter, r *http.Request) {
+	var req bankLookupRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	if req.AccountNumber == "" || req.BankCode == "" {
+		writeError(w, http.StatusBadRequest, "account_number and bank_code are required")
+		return
+	}
+
+	resp, err := h.nomba.LookupBankAccount(r.Context(), nomba.BankLookupRequest{
+		AccountNumber: req.AccountNumber,
+		BankCode:      req.BankCode,
+	})
+	if err != nil {
+		h.log.Error("bank lookup failed", zap.Error(err))
+		writeError(w, http.StatusBadGateway, "bank account lookup failed")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{
+		"account_number": resp.Data.AccountNumber,
+		"account_name":   resp.Data.AccountName,
+	})
+}
+
 type transferRequest struct {
 	Amount             int64  `json:"amount"`              // kobo
 	Narration          string `json:"narration"`

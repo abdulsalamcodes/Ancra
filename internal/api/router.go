@@ -105,6 +105,7 @@ func NewRouter(d RouterDeps) http.Handler {
 		r.Post("/accounts/{id}/close", acctHandler.Close)
 
 		// Transfer
+		r.Post("/transfers/lookup", txnHandler.LookupBank)
 		r.Post("/accounts/{id}/transfer", txnHandler.Transfer)
 
 		// Reconciliation
