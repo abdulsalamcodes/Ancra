@@ -183,6 +183,7 @@ func (c *Client) ListTransactions(ctx context.Context, req ListTransactionsReque
 // ---------------------------------------------------------------------------
 
 // Transfer initiates an outbound bank transfer from the sub-account wallet.
+// Path: POST /v2/transfers/bank — amount must be in NGN (naira), not kobo.
 func (c *Client) Transfer(ctx context.Context, req TransferRequest) (*TransferResponse, error) {
 	token, err := c.GetToken(ctx)
 	if err != nil {
@@ -190,9 +191,44 @@ func (c *Client) Transfer(ctx context.Context, req TransferRequest) (*TransferRe
 	}
 
 	var resp TransferResponse
-	path := fmt.Sprintf("/accounts/%s/transfers", c.subAccountID)
-	if err := c.doJSON(ctx, http.MethodPost, path, token, c.subAccountID, req, &resp); err != nil {
+	if err := c.doJSON(ctx, http.MethodPost, "/v2/transfers/bank", token, c.subAccountID, req, &resp); err != nil {
 		return nil, fmt.Errorf("nomba: transfer: %w", err)
+	}
+	if resp.Code != "00" {
+		return nil, &APIError{Code: resp.Code, Description: resp.Description}
+	}
+	return &resp, nil
+}
+
+// LookupBankAccount resolves an account number + bank code to the account name.
+// Path: POST /v1/transfers/bank/lookup
+func (c *Client) LookupBankAccount(ctx context.Context, req BankLookupRequest) (*BankLookupResponse, error) {
+	token, err := c.GetToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp BankLookupResponse
+	if err := c.doJSON(ctx, http.MethodPost, "/v1/transfers/bank/lookup", token, c.subAccountID, req, &resp); err != nil {
+		return nil, fmt.Errorf("nomba: bank lookup: %w", err)
+	}
+	if resp.Code != "00" {
+		return nil, &APIError{Code: resp.Code, Description: resp.Description}
+	}
+	return &resp, nil
+}
+
+// ListBanks returns the current list of supported banks and their codes.
+// Path: GET /v1/transfers/bank
+func (c *Client) ListBanks(ctx context.Context) (*BankListResponse, error) {
+	token, err := c.GetToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp BankListResponse
+	if err := c.doJSON(ctx, http.MethodGet, "/v1/transfers/bank", token, c.subAccountID, nil, &resp); err != nil {
+		return nil, fmt.Errorf("nomba: list banks: %w", err)
 	}
 	if resp.Code != "00" {
 		return nil, &APIError{Code: resp.Code, Description: resp.Description}

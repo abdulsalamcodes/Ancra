@@ -303,6 +303,57 @@ func newFakeNombaServer() *httptest.Server {
 		})
 	})
 
+	// Bank transfer: POST /v2/transfers/bank
+	mux.HandleFunc("/v2/transfers/bank", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]interface{}{ //nolint:errcheck
+			"code":        "00",
+			"description": "Success",
+			"data": map[string]interface{}{
+				"id":          "API-TRANSFER-" + uuid.New().String(),
+				"amount":      100,
+				"fee":         50,
+				"type":        "transfer",
+				"status":      "SUCCESS",
+				"timeCreated": time.Now().UTC().Format(time.RFC3339),
+				"meta": map[string]interface{}{
+					"merchantTxRef": "",
+					"rrn":           "",
+				},
+			},
+		})
+	})
+
+	// Bank account lookup: POST /v1/transfers/bank/lookup
+	mux.HandleFunc("/v1/transfers/bank/lookup", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{ //nolint:errcheck
+			"code":        "00",
+			"description": "Success",
+			"data": map[string]interface{}{
+				"accountNumber": "0123456789",
+				"accountName":   "Test Recipient",
+			},
+		})
+	})
+
+	// Bank list: GET /v1/transfers/bank
+	mux.HandleFunc("/v1/transfers/bank", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{ //nolint:errcheck
+			"code":        "00",
+			"description": "Success",
+			"data": []map[string]interface{}{
+				{"name": "Access Bank", "code": "044", "nipCode": "044", "logo": ""},
+				{"name": "First Bank", "code": "011", "nipCode": "011", "logo": ""},
+			},
+		})
+	})
+
 	// Catch-all for /accounts/...
 	mux.HandleFunc("/accounts/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -332,18 +383,6 @@ func newFakeNombaServer() *httptest.Server {
 					"page":         1,
 					"limit":        20,
 					"total":        0,
-				},
-			})
-
-		// Transfers: POST /accounts/{subID}/transfers
-		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/transfers"):
-			json.NewEncoder(w).Encode(map[string]interface{}{ //nolint:errcheck
-				"code":        "00",
-				"description": "Successful",
-				"data": map[string]interface{}{
-					"transactionId": uuid.New().String(),
-					"reference":     "ref-001",
-					"status":        "SUCCESSFUL",
 				},
 			})
 

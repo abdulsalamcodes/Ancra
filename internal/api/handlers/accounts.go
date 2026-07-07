@@ -68,7 +68,7 @@ func (h *AccountHandler) Create(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		h.log.Error("create account failed", zap.Error(err))
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "failed to create account")
 		return
 	}
 
@@ -132,7 +132,7 @@ func (h *AccountHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
 	balance, err := h.svc.GetBalance(r.Context(), id)
 	if err != nil {
 		h.log.Error("get balance failed", zap.String("id", id.String()), zap.Error(err))
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "failed to retrieve balance")
 		return
 	}
 
@@ -156,7 +156,7 @@ func (h *AccountHandler) ListTransactions(w http.ResponseWriter, r *http.Request
 	page, err := h.svc.ListTransactions(r.Context(), id, limit, offset)
 	if err != nil {
 		h.log.Error("list transactions failed", zap.String("id", id.String()), zap.Error(err))
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "failed to list transactions")
 		return
 	}
 

@@ -121,26 +121,69 @@ type ListTransactionsResponse struct {
 // Transfer (outbound)
 // ---------------------------------------------------------------------------
 
-// TransferRequest is the payload to initiate a transfer out of the Nomba wallet.
+// TransferRequest is the payload for POST /v2/transfers/bank.
+// Amount is in NGN (naira), not kobo.
+// Ref: https://developer.nomba.com/docs/products/transfers/introduction
 type TransferRequest struct {
-	Amount          int64  `json:"amount"`           // kobo
-	Currency        string `json:"currency"`
-	Narration       string `json:"narration"`
-	Reference       string `json:"reference"`        // idempotency key
-	DestinationBank string `json:"destinationBank"`
-	DestinationAccount string `json:"destinationAccount"`
-	DestinationName string `json:"destinationName"`
+	Amount        float64 `json:"amount"`        // NGN (naira)
+	AccountNumber string  `json:"accountNumber"` // destination account number
+	AccountName   string  `json:"accountName"`   // destination account name
+	BankCode      string  `json:"bankCode"`
+	MerchantTxRef string  `json:"merchantTxRef"` // idempotency key
+	SenderName    string  `json:"senderName"`
 }
 
-// TransferResponse is returned after initiating a transfer.
+// TransferResponse is returned by POST /v2/transfers/bank.
 type TransferResponse struct {
 	Code        string `json:"code"`
 	Description string `json:"description"`
 	Data        struct {
-		TransactionID string `json:"transactionId"`
-		Reference     string `json:"reference"`
-		Status        string `json:"status"`
+		ID          string  `json:"id"`
+		Amount      float64 `json:"amount"`
+		Fee         float64 `json:"fee"`
+		Type        string  `json:"type"`
+		Status      string  `json:"status"`
+		TimeCreated string  `json:"timeCreated"`
+		Meta        struct {
+			MerchantTxRef string `json:"merchantTxRef"`
+			RRN           string `json:"rrn"`
+		} `json:"meta"`
 	} `json:"data"`
+}
+
+// ---------------------------------------------------------------------------
+// Bank lookup & bank list
+// ---------------------------------------------------------------------------
+
+// BankLookupRequest is the payload for POST /v1/transfers/bank/lookup.
+type BankLookupRequest struct {
+	AccountNumber string `json:"accountNumber"`
+	BankCode      string `json:"bankCode"`
+}
+
+// BankLookupResponse is returned by the bank account lookup endpoint.
+type BankLookupResponse struct {
+	Code        string `json:"code"`
+	Description string `json:"description"`
+	Data        struct {
+		AccountNumber string `json:"accountNumber"`
+		AccountName   string `json:"accountName"`
+	} `json:"data"`
+}
+
+// Bank represents a single entry in the bank directory.
+type Bank struct {
+	Name    string `json:"name"`
+	Code    string `json:"code"`
+	NipCode string `json:"nipCode"`
+	Logo    string `json:"logo"`
+}
+
+// BankListResponse is returned by GET /v1/transfers/bank.
+type BankListResponse struct {
+	Code        string `json:"code"`
+	Description string `json:"description"`
+	Data        []Bank `json:"data"`
 }
 
 // ---------------------------------------------------------------------------

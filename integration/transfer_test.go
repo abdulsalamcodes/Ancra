@@ -9,10 +9,10 @@ import (
 func transferPayload(amount int64, ref string) map[string]interface{} {
 	return map[string]interface{}{
 		"amount":              amount,
-		"currency":            "NGN",
 		"narration":           "test payment",
 		"reference":           ref,
-		"destination_bank":    "000013",
+		"sender_name":         "Test Sender",
+		"destination_bank":    "044",
 		"destination_account": "0123456789",
 		"destination_name":    "Recipient Name",
 	}

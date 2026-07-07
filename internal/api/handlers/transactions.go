@@ -30,13 +30,13 @@ func NewTransactionHandler(ledgerSvc *ledger.Service, nombaClient *nomba.Client,
 }
 
 type transferRequest struct {
-	Amount             int64  `json:"amount"` // kobo
-	Currency           string `json:"currency"`
+	Amount             int64  `json:"amount"`              // kobo
 	Narration          string `json:"narration"`
-	Reference          string `json:"reference"`
-	DestinationBank    string `json:"destination_bank"`
-	DestinationAccount string `json:"destination_account"`
-	DestinationName    string `json:"destination_name"`
+	Reference          string `json:"reference"`           // → merchantTxRef
+	SenderName         string `json:"sender_name"`
+	DestinationBank    string `json:"destination_bank"`    // → bankCode
+	DestinationAccount string `json:"destination_account"` // → accountNumber
+	DestinationName    string `json:"destination_name"`    // → accountName
 }
 
 // Transfer initiates an outbound bank transfer from a customer's virtual account.
@@ -63,14 +63,10 @@ func (h *TransactionHandler) Transfer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Currency == "" {
-		req.Currency = "NGN"
-	}
-
 	_, err := h.ledgerSvc.PostDebit(r.Context(), ledger.DebitRequest{
 		AccountID:   accountID,
 		Amount:      req.Amount,
-		Currency:    req.Currency,
+		Currency:    "NGN",
 		ExternalRef: req.Reference,
 		Narration:   req.Narration,
 	})
@@ -86,13 +82,12 @@ func (h *TransactionHandler) Transfer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	nombaResp, nombaErr := h.nomba.Transfer(r.Context(), nomba.TransferRequest{
-		Amount:             req.Amount,
-		Currency:           req.Currency,
-		Narration:          req.Narration,
-		Reference:          req.Reference,
-		DestinationBank:    req.DestinationBank,
-		DestinationAccount: req.DestinationAccount,
-		DestinationName:    req.DestinationName,
+		Amount:        float64(req.Amount) / 100, // kobo → naira
+		AccountNumber: req.DestinationAccount,
+		AccountName:   req.DestinationName,
+		BankCode:      req.DestinationBank,
+		MerchantTxRef: req.Reference,
+		SenderName:    req.SenderName,
 	})
 	if nombaErr != nil {
 		h.log.Error("transfer: nomba rejected — reversing ledger debit",
@@ -100,14 +95,14 @@ func (h *TransactionHandler) Transfer(w http.ResponseWriter, r *http.Request) {
 			zap.String("reference", req.Reference),
 			zap.Error(nombaErr),
 		)
-		h.reverseLedgerDebit(r.Context(), accountID, req.Amount, req.Currency, req.Reference)
+		h.reverseLedgerDebit(r.Context(), accountID, req.Amount, "NGN", req.Reference)
 		writeError(w, http.StatusBadGateway, "transfer rejected by payment provider")
 		return
 	}
 
 	h.log.Info("transfer complete",
 		zap.String("account_id", accountID.String()),
-		zap.String("nomba_txn_id", nombaResp.Data.TransactionID),
+		zap.String("nomba_txn_id", nombaResp.Data.ID),
 		zap.Int64("amount_kobo", req.Amount),
 	)
 
@@ -139,12 +134,15 @@ func (h *TransactionHandler) reverseLedgerDebit(ctx context.Context, accountID u
 }
 
 func validateTransferRequest(req transferRequest) error {
-	var missing []string
 	if req.Amount <= 0 {
 		return newValidationError("amount must be a positive kobo value")
 	}
+	var missing []string
 	if req.Reference == "" {
 		missing = append(missing, "reference")
+	}
+	if req.SenderName == "" {
+		missing = append(missing, "sender_name")
 	}
 	if req.DestinationBank == "" {
 		missing = append(missing, "destination_bank")
