@@ -92,7 +92,7 @@ func (c *Client) CreateVirtualAccount(ctx context.Context, req CreateVirtualAcco
 	}
 
 	var resp CreateVirtualAccountResponse
-	path := fmt.Sprintf("/accounts/%s/virtual-accounts", c.subAccountID)
+	path := fmt.Sprintf("/accounts/%s/virtual-accounts", c.accountID)
 	if err := c.doJSON(ctx, http.MethodPost, path, token, req, &resp); err != nil {
 		return nil, fmt.Errorf("nomba: create virtual account: %w", err)
 	}
