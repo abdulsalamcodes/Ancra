@@ -22,8 +22,8 @@ type Client struct {
 	baseURL      string
 	clientID     string
 	clientSecret string
-	accountID    string // parent account ID — used in the accountId auth header
-	subAccountID string // sub-account ID — used for VA creation, transfers, transactions
+	accountID    string // parent account ID — used for token requests
+	subAccountID string // sub-account ID — used for all resource operations
 	log          *zap.Logger
 
 	mu          sync.Mutex
@@ -67,12 +67,12 @@ func (c *Client) GetToken(ctx context.Context) (string, error) {
 	}
 
 	var resp TokenResponse
-	if err := c.doJSON(ctx, http.MethodPost, "/auth/token/issue", "", body, &resp); err != nil {
+	// Token request uses the parent account ID in the header.
+	if err := c.doJSON(ctx, http.MethodPost, "/auth/token/issue", "", c.accountID, body, &resp); err != nil {
 		return "", fmt.Errorf("nomba: token refresh: %w", err)
 	}
 
 	c.token = resp.AccessToken
-	// Nomba returns ExpiresIn in seconds.
 	c.tokenExpiry = time.Now().Add(time.Duration(resp.ExpiresIn) * time.Second)
 	c.log.Info("nomba: token refreshed", zap.Time("expires_at", c.tokenExpiry))
 
@@ -83,8 +83,8 @@ func (c *Client) GetToken(ctx context.Context) (string, error) {
 // Virtual accounts
 // ---------------------------------------------------------------------------
 
-// CreateVirtualAccount provisions a dedicated virtual account under your Nomba
-// merchant account.
+// CreateVirtualAccount provisions a dedicated virtual account under the
+// sub-account. Both path and accountId header use the sub-account ID.
 func (c *Client) CreateVirtualAccount(ctx context.Context, req CreateVirtualAccountRequest) (*CreateVirtualAccountResponse, error) {
 	token, err := c.GetToken(ctx)
 	if err != nil {
@@ -92,8 +92,8 @@ func (c *Client) CreateVirtualAccount(ctx context.Context, req CreateVirtualAcco
 	}
 
 	var resp CreateVirtualAccountResponse
-	path := fmt.Sprintf("/accounts/%s/virtual-accounts", c.accountID)
-	if err := c.doJSON(ctx, http.MethodPost, path, token, req, &resp); err != nil {
+	path := fmt.Sprintf("/accounts/%s/virtual-accounts", c.subAccountID)
+	if err := c.doJSON(ctx, http.MethodPost, path, token, c.subAccountID, req, &resp); err != nil {
 		return nil, fmt.Errorf("nomba: create virtual account: %w", err)
 	}
 	if !resp.RequestSuccessful {
@@ -109,7 +109,7 @@ func (c *Client) CreateVirtualAccount(ctx context.Context, req CreateVirtualAcco
 // Wallet balance
 // ---------------------------------------------------------------------------
 
-// GetWalletBalance returns the current balance of the master Nomba wallet.
+// GetWalletBalance returns the current balance of the sub-account wallet.
 func (c *Client) GetWalletBalance(ctx context.Context) (*WalletBalanceResponse, error) {
 	token, err := c.GetToken(ctx)
 	if err != nil {
@@ -118,7 +118,7 @@ func (c *Client) GetWalletBalance(ctx context.Context) (*WalletBalanceResponse, 
 
 	var resp WalletBalanceResponse
 	path := fmt.Sprintf("/accounts/%s/balance", c.subAccountID)
-	if err := c.doJSON(ctx, http.MethodGet, path, token, nil, &resp); err != nil {
+	if err := c.doJSON(ctx, http.MethodGet, path, token, c.subAccountID, nil, &resp); err != nil {
 		return nil, fmt.Errorf("nomba: get wallet balance: %w", err)
 	}
 	if !resp.RequestSuccessful {
@@ -134,8 +134,7 @@ func (c *Client) GetWalletBalance(ctx context.Context) (*WalletBalanceResponse, 
 // Transactions
 // ---------------------------------------------------------------------------
 
-// ListTransactions fetches a paginated list of transactions for the master
-// Nomba account within the requested time window.
+// ListTransactions fetches a paginated list of transactions for the sub-account.
 func (c *Client) ListTransactions(ctx context.Context, req ListTransactionsRequest) (*ListTransactionsResponse, error) {
 	token, err := c.GetToken(ctx)
 	if err != nil {
@@ -158,13 +157,13 @@ func (c *Client) ListTransactions(ctx context.Context, req ListTransactionsReque
 
 	accountID := req.AccountID
 	if accountID == "" {
-		accountID = c.accountID
+		accountID = c.subAccountID
 	}
 
 	path := fmt.Sprintf("/accounts/%s/transactions?%s", accountID, q.Encode())
 
 	var resp ListTransactionsResponse
-	if err := c.doJSON(ctx, http.MethodGet, path, token, nil, &resp); err != nil {
+	if err := c.doJSON(ctx, http.MethodGet, path, token, c.subAccountID, nil, &resp); err != nil {
 		return nil, fmt.Errorf("nomba: list transactions: %w", err)
 	}
 	if !resp.RequestSuccessful {
@@ -180,7 +179,7 @@ func (c *Client) ListTransactions(ctx context.Context, req ListTransactionsReque
 // Transfer
 // ---------------------------------------------------------------------------
 
-// Transfer initiates an outbound bank transfer from the Nomba wallet.
+// Transfer initiates an outbound bank transfer from the sub-account wallet.
 func (c *Client) Transfer(ctx context.Context, req TransferRequest) (*TransferResponse, error) {
 	token, err := c.GetToken(ctx)
 	if err != nil {
@@ -189,7 +188,7 @@ func (c *Client) Transfer(ctx context.Context, req TransferRequest) (*TransferRe
 
 	var resp TransferResponse
 	path := fmt.Sprintf("/accounts/%s/transfers", c.subAccountID)
-	if err := c.doJSON(ctx, http.MethodPost, path, token, req, &resp); err != nil {
+	if err := c.doJSON(ctx, http.MethodPost, path, token, c.subAccountID, req, &resp); err != nil {
 		return nil, fmt.Errorf("nomba: transfer: %w", err)
 	}
 	if !resp.RequestSuccessful {
@@ -205,9 +204,10 @@ func (c *Client) Transfer(ctx context.Context, req TransferRequest) (*TransferRe
 // HTTP helpers
 // ---------------------------------------------------------------------------
 
-// doJSON performs an HTTP request, serialising reqBody as JSON (when non-nil)
-// and deserialising the response into respBody.
-func (c *Client) doJSON(ctx context.Context, method, path, token string, reqBody, respBody interface{}) error {
+// doJSON performs an HTTP request with the given accountId in the header.
+// headerAccountID controls the Nomba-required accountId header independently
+// from the path, allowing parent vs sub-account scoping per operation.
+func (c *Client) doJSON(ctx context.Context, method, path, token, headerAccountID string, reqBody, respBody interface{}) error {
 	var bodyReader io.Reader
 	if reqBody != nil {
 		b, err := json.Marshal(reqBody)
@@ -223,12 +223,18 @@ func (c *Client) doJSON(ctx context.Context, method, path, token string, reqBody
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("accountId", c.accountID) // Nomba requires parent accountId on every request
+	if headerAccountID != "" {
+		req.Header.Set("accountId", headerAccountID)
+	}
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
 
-	c.log.Debug("nomba: http request", zap.String("method", method), zap.String("path", path))
+	c.log.Info("nomba: http request",
+		zap.String("method", method),
+		zap.String("path", path),
+		zap.String("accountId_header", headerAccountID),
+	)
 
 	res, err := c.httpClient.Do(req)
 	if err != nil {
@@ -240,6 +246,12 @@ func (c *Client) doJSON(ctx context.Context, method, path, token string, reqBody
 	if err != nil {
 		return fmt.Errorf("read body: %w", err)
 	}
+
+	c.log.Info("nomba: http response",
+		zap.String("path", path),
+		zap.Int("status", res.StatusCode),
+		zap.String("body", string(rawBody)),
+	)
 
 	if res.StatusCode >= 400 {
 		var apiErr APIError
