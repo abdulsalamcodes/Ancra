@@ -106,6 +106,9 @@ func main() {
 	}
 
 	nombaFactory := nomba.NewClientFactory(nombaConfigStore, encryptor, cfg.NombaBaseURL, log)
+	if nombaClient != nil {
+		nombaFactory.SetGlobalFallback(nombaClient, verifier)
+	}
 
 	// ---------------------------------------------------------------------------
 	// Domain services

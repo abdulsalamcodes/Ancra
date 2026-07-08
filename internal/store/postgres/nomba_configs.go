@@ -2,9 +2,11 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/abdulsalamcodes/ancra/internal/store"
@@ -67,6 +69,9 @@ func (s *NombaConfigStore) GetNombaConfig(ctx context.Context, orgID uuid.UUID) 
 		&cfg.CreatedAt,
 		&cfg.UpdatedAt,
 	); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, store.ErrNombaConfigNotFound
+		}
 		return nil, fmt.Errorf("postgres: get nomba config: %w", err)
 	}
 	return &cfg, nil

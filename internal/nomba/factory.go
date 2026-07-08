@@ -2,6 +2,7 @@ package nomba
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -32,14 +33,21 @@ func (e *cachedEntry) isExpired() bool {
 // ClientFactory builds and caches per-org Nomba clients from stored credentials.
 // It decrypts secrets on demand using the provided Encryptor and caches the
 // resulting clients for cacheTTL to avoid a DB round-trip on every request.
+//
+// When an org has no stored BYOK credentials, the factory falls back to the
+// platform-wide global client (if one was registered via SetGlobalFallback).
+// This covers single-tenant deployments and orgs that have not yet configured
+// their own credentials.
 type ClientFactory struct {
 	configs   store.NombaConfigStore
 	encryptor *crypto.Encryptor
 	baseURL   string
 	log       *zap.Logger
 
-	mu    sync.Mutex
-	cache map[uuid.UUID]*cachedEntry
+	mu             sync.Mutex
+	cache          map[uuid.UUID]*cachedEntry
+	globalClient   *Client
+	globalVerifier *Verifier
 }
 
 // NewClientFactory constructs a ClientFactory.
@@ -98,9 +106,34 @@ func (f *ClientFactory) InvalidateOrg(orgID uuid.UUID) {
 	delete(f.cache, orgID)
 }
 
+// SetGlobalFallback registers a platform-wide Nomba client to use when an org
+// has no per-org credentials stored. Must be called before any ForOrg calls if
+// a fallback is desired.
+func (f *ClientFactory) SetGlobalFallback(client *Client, verifier *Verifier) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.globalClient = client
+	f.globalVerifier = verifier
+}
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
+
+// globalFallbackEntry returns a cachedEntry backed by the global client, or nil
+// if no global fallback has been registered.
+func (f *ClientFactory) globalFallbackEntry() *cachedEntry {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.globalClient == nil {
+		return nil
+	}
+	return &cachedEntry{
+		client:    f.globalClient,
+		verifier:  f.globalVerifier,
+		expiresAt: time.Now().Add(cacheTTL),
+	}
+}
 
 func (f *ClientFactory) fromCache(orgID uuid.UUID) *cachedEntry {
 	f.mu.Lock()
@@ -122,6 +155,14 @@ func (f *ClientFactory) storeInCache(orgID uuid.UUID, entry *cachedEntry) {
 func (f *ClientFactory) buildEntry(ctx context.Context, orgID uuid.UUID) (*cachedEntry, error) {
 	cfg, err := f.configs.GetNombaConfig(ctx, orgID)
 	if err != nil {
+		if errors.Is(err, store.ErrNombaConfigNotFound) {
+			if fallback := f.globalFallbackEntry(); fallback != nil {
+				f.log.Info("nomba: no per-org config found, using global fallback",
+					zap.String("org_id", orgID.String()))
+				return fallback, nil
+			}
+			return nil, fmt.Errorf("factory: no nomba credentials configured for org %s and no global fallback available", orgID)
+		}
 		return nil, fmt.Errorf("factory: load nomba config for org %s: %w", orgID, err)
 	}
 

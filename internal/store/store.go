@@ -130,6 +130,9 @@ type KYCTierChange struct {
 // ErrKYCTierDowngrade is returned when the requested tier is not higher than the current tier.
 var ErrKYCTierDowngrade = errors.New("kyc_tier can only be upgraded, not downgraded")
 
+// ErrNombaConfigNotFound is returned when no Nomba credentials are stored for an org.
+var ErrNombaConfigNotFound = errors.New("nomba config not found for org")
+
 // VirtualAccount is a Nomba-backed dedicated virtual account owned by a customer.
 type VirtualAccount struct {
 	ID                uuid.UUID     `json:"id"`
