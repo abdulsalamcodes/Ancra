@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -15,18 +16,38 @@ import (
 
 // TransactionHandler handles outbound transfer requests.
 type TransactionHandler struct {
-	ledgerSvc *ledger.Service
-	nomba     *nomba.Client
-	log       *zap.Logger
+	ledgerSvc    *ledger.Service
+	nombaFactory *nomba.ClientFactory
+	nombaGlobal  *nomba.Client // fallback when org has no BYOK config
+	log          *zap.Logger
 }
 
 // NewTransactionHandler constructs a TransactionHandler.
-func NewTransactionHandler(ledgerSvc *ledger.Service, nombaClient *nomba.Client, log *zap.Logger) *TransactionHandler {
+func NewTransactionHandler(ledgerSvc *ledger.Service, factory *nomba.ClientFactory, globalClient *nomba.Client, log *zap.Logger) *TransactionHandler {
 	return &TransactionHandler{
-		ledgerSvc: ledgerSvc,
-		nomba:     nombaClient,
-		log:       log,
+		ledgerSvc:    ledgerSvc,
+		nombaFactory: factory,
+		nombaGlobal:  globalClient,
+		log:          log,
 	}
+}
+
+// nombaClientForOrg returns the per-org Nomba client from the factory, falling
+// back to the global client for single-tenant deployments that have no BYOK config.
+func (h *TransactionHandler) nombaClientForOrg(ctx context.Context, orgID uuid.UUID) (*nomba.Client, error) {
+	if h.nombaFactory != nil {
+		client, err := h.nombaFactory.ForOrg(ctx, orgID)
+		if err == nil {
+			return client, nil
+		}
+		// Factory miss — org has no BYOK config; try the global client.
+		h.log.Debug("nomba factory miss, falling back to global client",
+			zap.String("org_id", orgID.String()), zap.Error(err))
+	}
+	if h.nombaGlobal != nil {
+		return h.nombaGlobal, nil
+	}
+	return nil, fmt.Errorf("no nomba client available for org %s", orgID)
 }
 
 type bankLookupRequest struct {
@@ -36,6 +57,11 @@ type bankLookupRequest struct {
 
 // LookupBank resolves an account number + bank code to the registered account name.
 func (h *TransactionHandler) LookupBank(w http.ResponseWriter, r *http.Request) {
+	orgID, ok := requireOrgID(w, r)
+	if !ok {
+		return
+	}
+
 	var req bankLookupRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
@@ -46,7 +72,13 @@ func (h *TransactionHandler) LookupBank(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	resp, err := h.nomba.LookupBankAccount(r.Context(), nomba.BankLookupRequest{
+	client, err := h.nombaClientForOrg(r.Context(), orgID)
+	if err != nil {
+		writeError(w, http.StatusServiceUnavailable, "payment provider not configured for this organisation")
+		return
+	}
+
+	resp, err := client.LookupBankAccount(r.Context(), nomba.BankLookupRequest{
 		AccountNumber: req.AccountNumber,
 		BankCode:      req.BankCode,
 	})
@@ -101,7 +133,13 @@ func (h *TransactionHandler) Transfer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.ledgerSvc.PostDebit(r.Context(), ledger.DebitRequest{
+	nombaClient, err := h.nombaClientForOrg(r.Context(), orgID)
+	if err != nil {
+		writeError(w, http.StatusServiceUnavailable, "payment provider not configured for this organisation")
+		return
+	}
+
+	_, err = h.ledgerSvc.PostDebit(r.Context(), ledger.DebitRequest{
 		OrgID:       orgID,
 		AccountID:   accountID,
 		Amount:      req.Amount,
@@ -120,7 +158,7 @@ func (h *TransactionHandler) Transfer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nombaResp, nombaErr := h.nomba.Transfer(r.Context(), nomba.TransferRequest{
+	nombaResp, nombaErr := nombaClient.Transfer(r.Context(), nomba.TransferRequest{
 		Amount:        float64(req.Amount) / 100, // kobo → naira
 		AccountNumber: req.DestinationAccount,
 		AccountName:   req.DestinationName,

@@ -388,6 +388,58 @@
       margin-top: 16px;
     }
     .callout strong { color: var(--ink); }
+
+    /* ── Drawer ── */
+    .drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.3);
+      z-index: 200;
+      display: none;
+    }
+    .drawer-backdrop.open { display: block; }
+    .drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      height: 100%;
+      width: 700px;
+      max-width: 92vw;
+      background: var(--paper);
+      border-left: 1px solid var(--hairline);
+      box-shadow: -4px 0 24px rgba(0,0,0,0.10);
+      display: flex;
+      flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.22s cubic-bezier(0.4,0,0.2,1);
+      z-index: 201;
+    }
+    .drawer-backdrop.open .drawer { transform: translateX(0); }
+    .drawer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--hairline);
+      flex-shrink: 0;
+    }
+    .drawer-title { font-size: 14px; font-weight: 600; }
+    .drawer-close {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--gray);
+      font-size: 20px;
+      line-height: 1;
+      padding: 0 2px;
+      font-family: var(--font);
+    }
+    .drawer-close:hover { color: var(--ink); }
+    .drawer-body {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: auto;
+    }
   </style>
 </head>
 <body>
@@ -451,6 +503,12 @@
           <path d="M10 8h5M13 6v4"/>
         </svg>
         API Keys
+      </button>
+      <button class="nav-item" data-panel="reconciliation" onclick="showPanel('reconciliation',this)">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M1 8h14M8 1v14M4 4l8 8M12 4l-8 8"/>
+        </svg>
+        Reconciliation
       </button>
       <button class="nav-item" data-panel="webhooks" onclick="showPanel('webhooks',this)">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -563,6 +621,37 @@
         </div>
       </div>
 
+      <!-- ── Reconciliation panel ── -->
+      <div class="panel" id="panel-reconciliation">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">All Reconciliation Runs</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Run At</th>
+                  <th>Org</th>
+                  <th>Status</th>
+                  <th style="text-align:right;">Nomba Balance</th>
+                  <th style="text-align:right;">Ledger Balance</th>
+                  <th style="text-align:right;">Delta</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="reconRunsBody">
+                <tr><td colspan="7"><div class="loading-row"><div class="spinner"></div> Loading…</div></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="padding:16px;border-top:1px solid var(--hairline);display:flex;align-items:center;gap:12px">
+            <button class="btn btn-ghost btn-sm" id="reconLoadMoreBtn" onclick="loadMoreReconRuns()" style="display:none;">Load more</button>
+            <span id="reconRunsMeta" style="font-size:12px;color:var(--gray)"></span>
+          </div>
+        </div>
+      </div>
+
       <!-- ── Webhooks panel ── -->
       <div class="panel" id="panel-webhooks">
         <div class="card">
@@ -600,9 +689,11 @@
   /* ────────────────────────────────────────────────
      State
   ──────────────────────────────────────────────── */
-  let adminSecret = '';
-  let webhookOffset = 0;
-  const WEBHOOK_LIMIT = 20;
+  let adminSecret      = '';
+  let webhookOffset    = 0;
+  let reconRunsOffset  = 0;
+  const WEBHOOK_LIMIT     = 20;
+  const RECON_RUNS_LIMIT  = 50;
 
   /* ────────────────────────────────────────────────
      Auth helpers
@@ -677,10 +768,11 @@
      Navigation
   ──────────────────────────────────────────────── */
   const panelTitles = {
-    overview: 'Overview',
-    orgs:     'Organisations',
-    keys:     'API Keys',
-    webhooks: 'Webhook Deliveries',
+    overview:        'Overview',
+    orgs:            'Organisations',
+    keys:            'API Keys',
+    reconciliation:  'Reconciliation Runs',
+    webhooks:        'Webhook Deliveries',
   };
 
   function showPanel(name, btn) {
@@ -700,10 +792,11 @@
   }
 
   function loadPanel(name) {
-    if (name === 'overview') loadOverview();
-    else if (name === 'orgs') loadOrgs();
-    else if (name === 'keys') loadKeys();
-    else if (name === 'webhooks') { webhookOffset = 0; loadWebhooks(false); }
+    if      (name === 'overview')       loadOverview();
+    else if (name === 'orgs')           loadOrgs();
+    else if (name === 'keys')           loadKeys();
+    else if (name === 'reconciliation') { reconRunsOffset = 0; loadReconRunsPage(false); }
+    else if (name === 'webhooks')       { webhookOffset = 0; loadWebhooks(false); }
   }
 
   /* Overview */
@@ -751,9 +844,10 @@
           <td>${esc(o.name)}</td>
           <td>${esc(o.slug)}</td>
           <td>${fmtDate(o.created_at)}</td>
-          <td>
-            <button class="btn btn-ghost btn-sm" onclick="triggerRecon('${o.id}', this)">Trigger Recon</button>
-            <span class="inline-msg" id="recon-${o.id}"></span>
+          <td style="white-space:nowrap;">
+            <button class="btn btn-ghost btn-sm" onclick="triggerRecon('${o.id}', '${esc(o.name)}', this)">Trigger Recon</button>
+            <button class="btn btn-ghost btn-sm" onclick="showReconRunsDrawer('${o.id}', '${esc(o.name)}')" style="margin-left:6px;">View Runs</button>
+            <span class="inline-msg" id="recon-msg-${o.id}"></span>
           </td>
         </tr>
       `).join('');
@@ -764,28 +858,209 @@
     }
   }
 
-  async function triggerRecon(orgID, btn) {
-    const msgEl = document.getElementById('recon-' + orgID);
+  /* Reconciliation Runs page */
+  async function loadReconRunsPage(append) {
+    const tbody  = document.getElementById('reconRunsBody');
+    const metaEl = document.getElementById('reconRunsMeta');
+    const moreBtn = document.getElementById('reconLoadMoreBtn');
+
+    if (!append) {
+      tbody.innerHTML = '<tr><td colspan="7"><div class="loading-row"><div class="spinner"></div> Loading…</div></td></tr>';
+      moreBtn.style.display = 'none';
+      metaEl.textContent = '';
+    } else {
+      moreBtn.disabled = true;
+      moreBtn.textContent = 'Loading…';
+    }
+
+    try {
+      const res  = await apiFetch(`/admin/reconciliation?limit=${RECON_RUNS_LIMIT}&offset=${reconRunsOffset}`);
+      const data = await res.json();
+      const runs = data.runs ?? [];
+
+      if (!append) {
+        if (!runs.length) {
+          tbody.innerHTML = '<tr><td colspan="7"><div class="state-box">No reconciliation runs yet.</div></td></tr>';
+          return;
+        }
+        tbody.innerHTML = '';
+      }
+
+      runs.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = reconRunRow(r);
+        tbody.appendChild(tr);
+      });
+
+      reconRunsOffset += runs.length;
+      metaEl.textContent = `Showing ${reconRunsOffset} record${reconRunsOffset !== 1 ? 's' : ''}`;
+      moreBtn.style.display = runs.length < RECON_RUNS_LIMIT ? 'none' : '';
+    } catch (e) {
+      if (e.message !== 'unauthorised') {
+        if (!append) tbody.innerHTML = '<tr><td colspan="7"><div class="state-box error">Failed to load reconciliation runs.</div></td></tr>';
+      }
+    } finally {
+      moreBtn.disabled = false;
+      moreBtn.textContent = 'Load more';
+    }
+  }
+
+  function loadMoreReconRuns() {
+    loadReconRunsPage(true);
+  }
+
+  function reconRunRow(r) {
+    const balanced = r.status === 'ok';
+    const deltaFmt = r.delta === 0
+      ? '—'
+      : (r.delta > 0 ? '+' : '') + '₦' + (r.delta / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 });
+    return `
+      <td>${fmtDate(r.run_at)}</td>
+      <td class="mono">${shortID(r.org_id)}</td>
+      <td>${balanced ? '<span class="badge badge-green">✓ ok</span>' : '<span class="badge badge-red">⚠ mismatch</span>'}</td>
+      <td style="text-align:right;" class="mono">₦${(r.nomba_wallet_balance / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</td>
+      <td style="text-align:right;" class="mono">₦${(r.computed_pool_balance / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</td>
+      <td style="text-align:right; color:${r.delta === 0 ? 'var(--green)' : 'var(--ember)'};" class="mono">${deltaFmt}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="showRunDetailDrawer(${JSON.stringify(r)})">Details</button></td>`;
+  }
+
+  function showRunDetailDrawer(run) {
+    const balanced = run.status === 'ok';
+    const delta    = run.delta / 100;
+    const deltaFmt = run.delta === 0
+      ? '—'
+      : (run.delta > 0 ? '+' : '') + '₦' + Math.abs(delta).toLocaleString('en-NG', { minimumFractionDigits: 2 });
+
+    openDrawer(`Run — ${fmtDate(run.run_at)}`);
+    document.getElementById('drawerBody').innerHTML = `
+      <div style="padding:20px;display:flex;flex-direction:column;gap:20px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="stat-card">
+            <div class="stat-label">Status</div>
+            <div class="stat-value" style="font-size:16px;color:${balanced ? 'var(--green)' : 'var(--ember)'};">
+              ${balanced ? '✓ Balanced' : '⚠ Mismatch'}
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Run At</div>
+            <div class="stat-value" style="font-size:16px;">${fmtDate(run.run_at)}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Nomba Wallet Balance</div>
+            <div class="stat-value" style="font-size:16px;">₦${(run.nomba_wallet_balance / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Ledger Pool Balance</div>
+            <div class="stat-value" style="font-size:16px;">₦${(run.computed_pool_balance / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Delta (Nomba − Ledger)</div>
+          <div class="stat-value" style="font-size:20px;color:${run.delta === 0 ? 'var(--green)' : 'var(--ember)'};">${deltaFmt}</div>
+          ${run.delta !== 0 ? '<div class="stat-sub">A non-zero delta indicates a discrepancy between the Nomba wallet and the internal ledger.</div>' : ''}
+        </div>
+        <div style="font-size:12px;color:var(--gray);font-family:ui-monospace,monospace;">
+          <div>Org: ${esc(run.org_id)}</div>
+          <div>Run ID: ${esc(run.id)}</div>
+        </div>
+      </div>`;
+  }
+
+  async function triggerRecon(orgID, orgName, btn) {
+    const msgEl = document.getElementById('recon-msg-' + orgID);
     btn.disabled = true;
     msgEl.textContent = '';
     try {
-      const res = await apiFetch(`/admin/orgs/${orgID}/reconciliation/trigger`, { method: 'POST' });
+      const res  = await apiFetch(`/admin/orgs/${orgID}/reconciliation/trigger`, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        msgEl.className = 'inline-msg ok';
-        msgEl.textContent = 'Done';
+        const balanced = data.status === 'ok';
+        const delta    = data.delta != null ? ' · Δ ₦' + (Math.abs(data.delta) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 }) : '';
+        msgEl.className   = 'inline-msg ' + (balanced ? 'ok' : 'err');
+        msgEl.textContent = (balanced ? '✓ Balanced' : '⚠ Mismatch') + delta;
+        showReconRunsDrawer(orgID, orgName);
       } else {
-        const d = await res.json().catch(() => ({}));
-        msgEl.className = 'inline-msg err';
-        msgEl.textContent = d.error || 'Failed';
+        msgEl.className   = 'inline-msg err';
+        msgEl.textContent = data.error?.message || 'Failed';
       }
     } catch (e) {
       if (e.message !== 'unauthorised') {
-        msgEl.className = 'inline-msg err';
+        msgEl.className   = 'inline-msg err';
         msgEl.textContent = 'Error';
       }
     } finally {
       btn.disabled = false;
     }
+  }
+
+  function showReconRunsDrawer(orgID, orgName) {
+    openDrawer(`Reconciliation Runs — ${orgName}`);
+    loadReconRuns(orgID);
+  }
+
+  async function loadReconRuns(orgID) {
+    const body = document.getElementById('drawerBody');
+    body.innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Run At</th>
+              <th>Status</th>
+              <th style="text-align:right;">Nomba Balance</th>
+              <th style="text-align:right;">Ledger Balance</th>
+              <th style="text-align:right;">Delta</th>
+            </tr>
+          </thead>
+          <tbody id="drawer-recon-tbody">
+            <tr><td colspan="5"><div class="loading-row"><div class="spinner"></div> Loading…</div></td></tr>
+          </tbody>
+        </table>
+      </div>`;
+    try {
+      const res  = await apiFetch(`/admin/orgs/${orgID}/reconciliation?limit=20`);
+      const data = await res.json().catch(() => ({}));
+      const tbody = document.getElementById('drawer-recon-tbody');
+      const runs  = data.runs ?? [];
+      if (!runs.length) {
+        tbody.innerHTML = '<tr><td colspan="5"><div class="state-box">No reconciliation runs yet.</div></td></tr>';
+        return;
+      }
+      tbody.innerHTML = runs.map(r => `
+        <tr>
+          <td>${fmtDate(r.run_at)}</td>
+          <td>${r.status === 'ok'
+            ? '<span class="badge badge-green">✓ ok</span>'
+            : '<span class="badge badge-red">⚠ mismatch</span>'}</td>
+          <td style="text-align:right;" class="mono">₦${(r.nomba_wallet_balance / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</td>
+          <td style="text-align:right;" class="mono">₦${(r.computed_pool_balance / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</td>
+          <td style="text-align:right;" class="mono" style="color:${r.delta === 0 ? 'var(--green)' : 'var(--ember)'};">
+            ${r.delta === 0 ? '—' : (r.delta > 0 ? '+' : '') + '₦' + (r.delta / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+          </td>
+        </tr>
+      `).join('');
+    } catch (e) {
+      if (e.message !== 'unauthorised') {
+        const tbody = document.getElementById('drawer-recon-tbody');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="5"><div class="state-box error">Failed to load runs.</div></td></tr>';
+      }
+    }
+  }
+
+  /* ────────────────────────────────────────────────
+     Drawer
+  ──────────────────────────────────────────────── */
+  function openDrawer(title) {
+    document.getElementById('drawerTitle').textContent = title;
+    document.getElementById('drawerBackdrop').classList.add('open');
+  }
+
+  function closeDrawer() {
+    document.getElementById('drawerBackdrop').classList.remove('open');
+  }
+
+  function handleDrawerBackdropClick(event) {
+    if (event.target === event.currentTarget) closeDrawer();
   }
 
   /* API Keys */
@@ -987,6 +1262,22 @@
       initApp();
     }
   })();
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeDrawer();
+  });
 </script>
+
+<!-- ── Side Drawer ── -->
+<div class="drawer-backdrop" id="drawerBackdrop" onclick="handleDrawerBackdropClick(event)">
+  <div class="drawer" id="drawer">
+    <div class="drawer-header">
+      <span class="drawer-title" id="drawerTitle"></span>
+      <button class="drawer-close" onclick="closeDrawer()" aria-label="Close">&#215;</button>
+    </div>
+    <div class="drawer-body" id="drawerBody"></div>
+  </div>
+</div>
+
 </body>
 </html>

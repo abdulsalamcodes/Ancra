@@ -428,6 +428,58 @@
       cursor: pointer;
     }
     .form-select:focus { box-shadow: 0 0 0 1.5px var(--hairline); }
+
+    /* ── Drawer ── */
+    .drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.3);
+      z-index: 200;
+      display: none;
+    }
+    .drawer-backdrop.open { display: block; }
+    .drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      height: 100%;
+      width: 600px;
+      max-width: 92vw;
+      background: var(--paper);
+      border-left: 1px solid var(--hairline);
+      box-shadow: -4px 0 24px rgba(0,0,0,0.10);
+      display: flex;
+      flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.22s cubic-bezier(0.4,0,0.2,1);
+      z-index: 201;
+    }
+    .drawer-backdrop.open .drawer { transform: translateX(0); }
+    .drawer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--hairline);
+      flex-shrink: 0;
+    }
+    .drawer-title { font-size: 14px; font-weight: 600; }
+    .drawer-close {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--gray);
+      font-size: 20px;
+      line-height: 1;
+      padding: 0 2px;
+      font-family: var(--font);
+    }
+    .drawer-close:hover { color: var(--ink); }
+    .drawer-body {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: auto;
+    }
   </style>
 </head>
 <body>
@@ -554,28 +606,6 @@
           </div>
         </div>
 
-        <div id="kyc-history-card" style="display:none; margin-top:20px;">
-          <div class="card">
-            <div class="card-header">
-              <span class="card-title" id="kyc-history-title">KYC Tier History</span>
-              <button class="btn btn-ghost btn-sm" onclick="closeKYCHistory()">Close</button>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>From</th>
-                    <th>To</th>
-                    <th>Date</th>
-                  </tr>
-                </thead>
-                <tbody id="kyc-history-tbody">
-                  <tr><td colspan="3"><div class="empty"><div class="spinner"></div></div></td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- ── Accounts ── -->
@@ -608,30 +638,6 @@
           </div>
         </div>
 
-        <div id="transactions-card" style="display:none; margin-top:20px;">
-          <div class="card">
-            <div class="card-header">
-              <span class="card-title" id="transactions-title">Transactions</span>
-              <button class="btn btn-ghost btn-sm" onclick="closeTransactions()">Close</button>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Direction</th>
-                    <th>Amount</th>
-                    <th>Type</th>
-                    <th>Reference</th>
-                    <th>Date</th>
-                  </tr>
-                </thead>
-                <tbody id="transactions-tbody">
-                  <tr><td colspan="5"><div class="empty"><div class="spinner"></div></div></td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- ── API Keys ── -->
@@ -1237,14 +1243,12 @@
   // ---------------------------------------------------------------------------
   // Customers
   // ---------------------------------------------------------------------------
-  let customersOffset    = 0;
-  let expandedCustomerId = null;
-  const CUSTOMERS_PAGE   = 20;
+  let customersOffset  = 0;
+  const CUSTOMERS_PAGE = 20;
 
   async function loadCustomers() {
-    customersOffset    = 0;
-    expandedCustomerId = null;
-    document.getElementById('kyc-history-card').style.display = 'none';
+    customersOffset = 0;
+    closeDrawer();
     document.getElementById('customers-tbody').innerHTML =
       '<tr><td colspan="5"><div class="empty"><div class="spinner"></div></div></td></tr>';
     document.getElementById('customers-load-more').style.display = 'none';
@@ -1287,7 +1291,7 @@
         <td>${formatDate(c.created_at)}</td>
         <td style="text-align:right;">
           <button class="btn btn-ghost btn-sm"
-            onclick="toggleKYCHistory('${c.id}', '${escHtml(c.display_name || c.id)}', this)">
+            onclick="showKYCHistoryDrawer('${c.id}', '${escHtml(c.display_name || c.id)}')">
             History
           </button>
         </td>
@@ -1302,61 +1306,59 @@
     return `<span class="badge ${cls}">${label}</span>`;
   }
 
-  async function toggleKYCHistory(customerId, customerName, btn) {
-    if (expandedCustomerId === customerId) {
-      closeKYCHistory();
-      return;
-    }
-    expandedCustomerId = customerId;
-    document.getElementById('kyc-history-title').textContent = `KYC Tier History — ${customerName}`;
-    document.getElementById('kyc-history-card').style.display = 'block';
-    document.getElementById('kyc-history-tbody').innerHTML =
-      '<tr><td colspan="3"><div class="empty"><div class="spinner"></div></div></td></tr>';
+  async function showKYCHistoryDrawer(customerId, customerName) {
+    openDrawer(`KYC Tier History — ${customerName}`);
+    document.getElementById('drawerBody').innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>From</th>
+              <th>To</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody id="drawer-kyc-tbody">
+            <tr><td colspan="3"><div class="empty"><div class="spinner"></div></div></td></tr>
+          </tbody>
+        </table>
+      </div>`;
 
     try {
       const res  = await apiFetch(`/customers/${customerId}/kyc-tier/history`);
       const data = await res.json();
+      const tbody = document.getElementById('drawer-kyc-tbody');
       if (!res.ok) {
-        setTableError('kyc-history-tbody', 3, data.error?.message || 'Failed to load KYC history.');
+        tbody.innerHTML = `<tr><td colspan="3"><div class="empty" style="color:var(--ember)">${escHtml(data.error?.message || 'Failed to load KYC history.')}</div></td></tr>`;
         return;
       }
-      renderKYCHistory(data.history ?? data ?? []);
+      const history = data.history ?? data ?? [];
+      if (!history.length) {
+        tbody.innerHTML = '<tr><td colspan="3"><div class="empty">No tier changes yet.</div></td></tr>';
+        return;
+      }
+      tbody.innerHTML = history.map(h => `
+        <tr>
+          <td>${kycTierBadge(h.from_tier)}</td>
+          <td>${kycTierBadge(h.to_tier)}</td>
+          <td>${formatDate(h.upgraded_at)}</td>
+        </tr>
+      `).join('');
     } catch {
-      setTableError('kyc-history-tbody', 3, 'Failed to load KYC history.');
+      const tbody = document.getElementById('drawer-kyc-tbody');
+      if (tbody) tbody.innerHTML = '<tr><td colspan="3"><div class="empty" style="color:var(--ember)">Failed to load KYC history.</div></td></tr>';
     }
-  }
-
-  function renderKYCHistory(history) {
-    const tbody = document.getElementById('kyc-history-tbody');
-    if (!history.length) {
-      tbody.innerHTML = '<tr><td colspan="3"><div class="empty">No tier changes yet.</div></td></tr>';
-      return;
-    }
-    tbody.innerHTML = history.map(h => `
-      <tr>
-        <td>${kycTierBadge(h.from_tier)}</td>
-        <td>${kycTierBadge(h.to_tier)}</td>
-        <td>${formatDate(h.upgraded_at)}</td>
-      </tr>
-    `).join('');
-  }
-
-  function closeKYCHistory() {
-    expandedCustomerId = null;
-    document.getElementById('kyc-history-card').style.display = 'none';
   }
 
   // ---------------------------------------------------------------------------
   // Accounts
   // ---------------------------------------------------------------------------
-  let accountsOffset    = 0;
-  let expandedAccountId = null;
-  const ACCOUNTS_PAGE   = 20;
+  let accountsOffset  = 0;
+  const ACCOUNTS_PAGE = 20;
 
   async function loadAccounts() {
-    accountsOffset    = 0;
-    expandedAccountId = null;
-    document.getElementById('transactions-card').style.display = 'none';
+    accountsOffset = 0;
+    closeDrawer();
     document.getElementById('accounts-tbody').innerHTML =
       '<tr><td colspan="7"><div class="empty"><div class="spinner"></div></div></td></tr>';
     document.getElementById('accounts-load-more').style.display = 'none';
@@ -1413,7 +1415,7 @@
           <td>${formatDate(a.created_at)}</td>
           <td style="text-align:right;">
             <button class="btn btn-ghost btn-sm"
-              onclick="toggleTransactions('${a.id}', '${escHtml(a.bank_account_number ?? a.id)}', this)">
+              onclick="showTransactionsDrawer('${a.id}', '${escHtml(a.bank_account_number ?? a.id)}')">
               Transactions
             </button>
           </td>
@@ -1430,50 +1432,52 @@
       : '<span class="badge badge-gray">closed</span>';
   }
 
-  async function toggleTransactions(accountId, accountRef, btn) {
-    if (expandedAccountId === accountId) {
-      closeTransactions();
-      return;
-    }
-    expandedAccountId = accountId;
-    document.getElementById('transactions-title').textContent = `Transactions — ${accountRef}`;
-    document.getElementById('transactions-card').style.display = 'block';
-    document.getElementById('transactions-tbody').innerHTML =
-      '<tr><td colspan="5"><div class="empty"><div class="spinner"></div></div></td></tr>';
+  async function showTransactionsDrawer(accountId, accountRef) {
+    openDrawer(`Transactions — ${accountRef}`);
+    document.getElementById('drawerBody').innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Direction</th>
+              <th>Amount</th>
+              <th>Type</th>
+              <th>Reference</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody id="drawer-txn-tbody">
+            <tr><td colspan="5"><div class="empty"><div class="spinner"></div></div></td></tr>
+          </tbody>
+        </table>
+      </div>`;
 
     try {
       const res  = await apiFetch(`/accounts/${accountId}/transactions?limit=50&offset=0`);
       const data = await res.json();
+      const tbody = document.getElementById('drawer-txn-tbody');
       if (!res.ok) {
-        setTableError('transactions-tbody', 5, data.error?.message || 'Failed to load transactions.');
+        tbody.innerHTML = `<tr><td colspan="5"><div class="empty" style="color:var(--ember)">${escHtml(data.error?.message || 'Failed to load transactions.')}</div></td></tr>`;
         return;
       }
-      renderTransactions(data.entries ?? data ?? []);
+      const entries = data.entries ?? data ?? [];
+      if (!entries.length) {
+        tbody.innerHTML = '<tr><td colspan="5"><div class="empty">No transactions yet.</div></td></tr>';
+        return;
+      }
+      tbody.innerHTML = entries.map(e => `
+        <tr>
+          <td>${directionBadge(e.direction)}</td>
+          <td>${formatKobo(e.amount)}</td>
+          <td class="mono" style="font-size:11px;">${escHtml(e.entry_type ?? '—')}</td>
+          <td class="mono" style="font-size:11px;">${escHtml((e.external_ref ?? '').slice(0, 24) || '—')}</td>
+          <td>${formatDate(e.created_at)}</td>
+        </tr>
+      `).join('');
     } catch {
-      setTableError('transactions-tbody', 5, 'Failed to load transactions.');
+      const tbody = document.getElementById('drawer-txn-tbody');
+      if (tbody) tbody.innerHTML = '<tr><td colspan="5"><div class="empty" style="color:var(--ember)">Failed to load transactions.</div></td></tr>';
     }
-  }
-
-  function renderTransactions(entries) {
-    const tbody = document.getElementById('transactions-tbody');
-    if (!entries.length) {
-      tbody.innerHTML = '<tr><td colspan="5"><div class="empty">No transactions yet.</div></td></tr>';
-      return;
-    }
-    tbody.innerHTML = entries.map(e => `
-      <tr>
-        <td>${directionBadge(e.direction)}</td>
-        <td>${formatKobo(e.amount)}</td>
-        <td class="mono" style="font-size:11px;">${escHtml(e.entry_type ?? '—')}</td>
-        <td class="mono" style="font-size:11px;">${escHtml((e.external_ref ?? '').slice(0, 24) || '—')}</td>
-        <td>${formatDate(e.created_at)}</td>
-      </tr>
-    `).join('');
-  }
-
-  function closeTransactions() {
-    expandedAccountId = null;
-    document.getElementById('transactions-card').style.display = 'none';
   }
 
   function directionBadge(direction) {
@@ -1537,6 +1541,22 @@
   }
 
   // ---------------------------------------------------------------------------
+  // Drawer
+  // ---------------------------------------------------------------------------
+  function openDrawer(title) {
+    document.getElementById('drawerTitle').textContent = title;
+    document.getElementById('drawerBackdrop').classList.add('open');
+  }
+
+  function closeDrawer() {
+    document.getElementById('drawerBackdrop').classList.remove('open');
+  }
+
+  function handleDrawerBackdropClick(event) {
+    if (event.target === event.currentTarget) closeDrawer();
+  }
+
+  // ---------------------------------------------------------------------------
   // Modal utilities
   // ---------------------------------------------------------------------------
   function openModal(modalId) {
@@ -1553,6 +1573,7 @@
 
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
+    closeDrawer();
     ['modal-new-customer', 'modal-new-account'].forEach(closeModal);
   });
 
@@ -1671,6 +1692,17 @@
   // ---------------------------------------------------------------------------
   loadMe();
 </script>
+
+<!-- ── Side Drawer ── -->
+<div class="drawer-backdrop" id="drawerBackdrop" onclick="handleDrawerBackdropClick(event)">
+  <div class="drawer" id="drawer">
+    <div class="drawer-header">
+      <span class="drawer-title" id="drawerTitle"></span>
+      <button class="drawer-close" onclick="closeDrawer()" aria-label="Close">&#215;</button>
+    </div>
+    <div class="drawer-body" id="drawerBody"></div>
+  </div>
+</div>
 
 </body>
 </html>

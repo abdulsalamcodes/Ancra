@@ -60,6 +60,31 @@ func (s *ReconciliationStore) ListRuns(ctx context.Context, orgID uuid.UUID, lim
 	return runs, rows.Err()
 }
 
+// ListAllRuns returns reconciliation runs across all organisations, ordered newest first.
+func (s *ReconciliationStore) ListAllRuns(ctx context.Context, limit, offset int) ([]*store.ReconciliationRun, error) {
+	const q = `
+		SELECT id, org_id, run_at, nomba_wallet_balance, computed_pool_balance, delta, status
+		FROM reconciliation_runs
+		ORDER BY run_at DESC
+		LIMIT $1 OFFSET $2`
+
+	rows, err := s.Pool.Query(ctx, q, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("reconciliation.ListAllRuns: %w", err)
+	}
+	defer rows.Close()
+
+	var runs []*store.ReconciliationRun
+	for rows.Next() {
+		r, err := scanRun(rows)
+		if err != nil {
+			return nil, err
+		}
+		runs = append(runs, r)
+	}
+	return runs, rows.Err()
+}
+
 // GetLatestRun returns the most recent reconciliation run for an org.
 func (s *ReconciliationStore) GetLatestRun(ctx context.Context, orgID uuid.UUID) (*store.ReconciliationRun, error) {
 	const q = `

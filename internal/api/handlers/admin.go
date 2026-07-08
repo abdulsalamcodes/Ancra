@@ -72,6 +72,30 @@ func (h *AdminHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ListAllReconciliationRuns returns a paginated list of reconciliation runs across
+// all organisations, ordered newest first.
+//
+// GET /admin/reconciliation
+func (h *AdminHandler) ListAllReconciliationRuns(w http.ResponseWriter, r *http.Request) {
+	limit  := queryInt(r, "limit", 50)
+	offset := queryInt(r, "offset", 0)
+
+	runs, err := h.reconSvc.ListAllRuns(r.Context(), limit, offset)
+	if err != nil {
+		h.log.Error("admin list all reconciliation runs failed", zap.Error(err))
+		writeError(w, http.StatusInternalServerError, "failed to fetch reconciliation runs")
+		return
+	}
+	if runs == nil {
+		runs = []*store.ReconciliationRun{}
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"runs":   runs,
+		"limit":  limit,
+		"offset": offset,
+	})
+}
+
 // ListOrgReconciliationRuns returns recent reconciliation runs for the given org.
 //
 // GET /admin/orgs/{orgID}/reconciliation

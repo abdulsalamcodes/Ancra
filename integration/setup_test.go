@@ -864,6 +864,19 @@ func (s *fakeReconStore) ListRuns(_ context.Context, _ uuid.UUID, limit, offset 
 	return s.runs[offset:end], nil
 }
 
+func (s *fakeReconStore) ListAllRuns(_ context.Context, limit, offset int) ([]*store.ReconciliationRun, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if offset >= len(s.runs) {
+		return []*store.ReconciliationRun{}, nil
+	}
+	end := offset + limit
+	if end > len(s.runs) {
+		end = len(s.runs)
+	}
+	return s.runs[offset:end], nil
+}
+
 func (s *fakeReconStore) GetLatestRun(_ context.Context, _ uuid.UUID) (*store.ReconciliationRun, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

@@ -300,6 +300,9 @@ type EventStore interface {
 type ReconciliationStore interface {
 	InsertRun(ctx context.Context, run *ReconciliationRun) error
 	ListRuns(ctx context.Context, orgID uuid.UUID, limit, offset int) ([]*ReconciliationRun, error)
+	// ListAllRuns returns reconciliation runs across all organisations, newest first.
+	// Intended for admin/operator use only.
+	ListAllRuns(ctx context.Context, limit, offset int) ([]*ReconciliationRun, error)
 	GetLatestRun(ctx context.Context, orgID uuid.UUID) (*ReconciliationRun, error)
 }
 

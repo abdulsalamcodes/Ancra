@@ -232,6 +232,11 @@ func (s *Service) ListRuns(ctx context.Context, orgID uuid.UUID, limit, offset i
 	return s.recon.ListRuns(ctx, orgID, limit, offset)
 }
 
+// ListAllRuns returns a page of reconciliation runs across all organisations.
+func (s *Service) ListAllRuns(ctx context.Context, limit, offset int) ([]*store.ReconciliationRun, error) {
+	return s.recon.ListAllRuns(ctx, limit, offset)
+}
+
 // ---------------------------------------------------------------------------
 // helpers
 // ---------------------------------------------------------------------------

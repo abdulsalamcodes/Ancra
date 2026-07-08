@@ -90,7 +90,7 @@ func NewRouter(d RouterDeps) http.Handler {
 	apiKeyHandler := handlers.NewAPIKeyHandler(d.APIKeys, d.Log)
 	reconHandler := handlers.NewReconciliationHandler(d.ReconSvc, d.Webhooks, d.Log)
 	acctHandler := handlers.NewAccountHandler(d.AccountSvc, d.Log)
-	txnHandler := handlers.NewTransactionHandler(d.LedgerSvc, d.NombaClient, d.Log)
+	txnHandler := handlers.NewTransactionHandler(d.LedgerSvc, d.NombaFactory, d.NombaClient, d.Log)
 	customerHandler := handlers.NewCustomerHandler(d.Customers, d.Log)
 	nombaConfigHandler := handlers.NewNombaConfigHandler(d.NombaConfigs, d.Encryptor, d.NombaFactory, d.Log)
 	webhookConfigHandler := handlers.NewWebhookConfigHandler(d.WebhookConfigs, d.Encryptor, d.Log)
@@ -154,6 +154,7 @@ func NewRouter(d RouterDeps) http.Handler {
 
 		r.Get("/admin/orgs", adminHandler.ListOrgs)
 		r.Get("/admin/stats", adminHandler.GetStats)
+		r.Get("/admin/reconciliation", adminHandler.ListAllReconciliationRuns)
 		r.Get("/admin/orgs/{orgID}/reconciliation", adminHandler.ListOrgReconciliationRuns)
 		r.Post("/admin/orgs/{orgID}/reconciliation/trigger", adminHandler.TriggerOrgReconciliation)
 
