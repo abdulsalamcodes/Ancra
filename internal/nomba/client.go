@@ -138,7 +138,7 @@ func (c *Client) GetWalletBalance(ctx context.Context) (*WalletBalanceResponse, 
 
 	var resp WalletBalanceResponse
 	path := fmt.Sprintf("/v1/accounts/%s/balance", c.subAccountID)
-	if err := c.doJSON(ctx, http.MethodGet, path, token, c.subAccountID, nil, &resp); err != nil {
+	if err := c.doJSON(ctx, http.MethodGet, path, token, c.accountID, nil, &resp); err != nil {
 		return nil, fmt.Errorf("nomba: get wallet balance: %w", err)
 	}
 	if resp.Code != "00" {
