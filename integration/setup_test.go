@@ -81,7 +81,7 @@ func newTestEnv(t *testing.T) *testEnv {
 	nombaConfigs := newFakeNombaConfigStore(t, enc, nServer.URL)
 	factory := nomba.NewClientFactory(nombaConfigs, enc, nServer.URL, log)
 
-	acctSvc := account.NewService(fs.accounts, fs.customers, fs.ledger, nombaClient, log)
+	acctSvc := account.NewService(fs.accounts, fs.customers, fs.ledger, factory, log)
 	ledgerSvc := ledger.NewService(fs.ledger, log)
 	reconSvc := reconciliation.NewService(fs.ledger, fs.recon, fs.accounts, fs.events, factory, log)
 

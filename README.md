@@ -10,6 +10,53 @@ Live docs: [ancra.mintlify.app](https://ancra.mintlify.app)
 
 ---
 
+## Reviewer Access
+
+> Use these credentials to evaluate the live deployment without going through the signup flow.
+
+**Live URL:** `https://ancra.onrender.com`
+
+### Dashboard (Web UI)
+
+| Field    | Value                        |
+| -------- | ---------------------------- |
+| URL      | https://ancra.onrender.com/auth |
+| Email    | reviewer@ancra.dev           |
+| Password | ReviewAncra2026!             |
+
+### Developer API (Bearer token)
+
+Use this key in the `Authorization` header for all API requests:
+
+```
+Authorization: Bearer ancra_reviewer_key_placeholder
+```
+
+**Quick smoke test:**
+
+```bash
+# List customers
+curl https://ancra.onrender.com/customers \
+  -H "Authorization: Bearer ancra_reviewer_key_placeholder"
+
+# Provision a virtual account
+curl -X POST https://ancra.onrender.com/accounts \
+  -H "Authorization: Bearer ancra_reviewer_key_placeholder" \
+  -H "Content-Type: application/json" \
+  -d '{"customer_id": "<id-from-above>", "display_name": "Test User", "customer_email": "test@example.com"}'
+```
+
+### Admin API
+
+```bash
+curl https://ancra.onrender.com/admin/orgs \
+  -H "Admin-Secret: reviewer-admin-secret-placeholder"
+```
+
+> **Note to reviewers:** The server is kept alive via UptimeRobot pings — no cold-start delay expected.
+
+---
+
 ## What it does
 
 | Capability                       | Detail                                                                                                                                        |

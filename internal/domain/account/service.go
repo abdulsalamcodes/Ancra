@@ -18,11 +18,11 @@ import (
 // Service orchestrates virtual-account operations across the Nomba API and the
 // local data stores.
 type Service struct {
-	accounts  store.AccountStore
-	customers store.CustomerStore
-	ledger    store.LedgerStore
-	nomba     *nomba.Client
-	log       *zap.Logger
+	accounts      store.AccountStore
+	customers     store.CustomerStore
+	ledger        store.LedgerStore
+	nombaFactory  *nomba.ClientFactory
+	log           *zap.Logger
 }
 
 // NewService constructs an account Service.
@@ -30,15 +30,15 @@ func NewService(
 	accounts store.AccountStore,
 	customers store.CustomerStore,
 	ledger store.LedgerStore,
-	nombaClient *nomba.Client,
+	nombaFactory *nomba.ClientFactory,
 	log *zap.Logger,
 ) *Service {
 	return &Service{
-		accounts:  accounts,
-		customers: customers,
-		ledger:    ledger,
-		nomba:     nombaClient,
-		log:       log,
+		accounts:     accounts,
+		customers:    customers,
+		ledger:       ledger,
+		nombaFactory: nombaFactory,
+		log:          log,
 	}
 }
 
@@ -70,12 +70,14 @@ func (s *Service) Create(ctx context.Context, req CreateAccountRequest) (*Create
 		}
 	}
 
-	// accountRef is stable and customer-scoped. Nomba uses this as their
-	// idempotency key, so we must never generate a new one per call.
 	accountRef := customer.ID.String()
 
-	// 2. Call Nomba.
-	nombaResp, err := s.nomba.CreateVirtualAccount(ctx, nomba.CreateVirtualAccountRequest{
+	nombaClient, err := s.nombaFactory.ForOrg(ctx, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("account.Create: nomba client: %w", err)
+	}
+
+	nombaResp, err := nombaClient.CreateVirtualAccount(ctx, nomba.CreateVirtualAccountRequest{
 		AccountName: req.DisplayName,
 		AccountRef:  accountRef,
 		Currency:    "NGN",

@@ -114,7 +114,7 @@ func main() {
 	// Domain services
 	// ---------------------------------------------------------------------------
 	authSvc := domainauth.NewService(orgStore, userStore, refreshTokenStore, ledgerStore, []byte(cfg.JWTSecret), log)
-	accountSvc := account.NewService(accountStore, customerStore, ledgerStore, nombaClient, log)
+	accountSvc := account.NewService(accountStore, customerStore, ledgerStore, nombaFactory, log)
 	ledgerSvc := ledger.NewService(ledgerStore, log)
 	reconSvc := reconciliation.NewService(ledgerStore, reconStore, accountStore, eventStore, nombaFactory, log)
 
@@ -142,6 +142,7 @@ func main() {
 		NombaFactory:   nombaFactory,
 		Verifier:       verifier,
 		Accounts:       accountStore,
+		Ledger:         ledgerStore,
 		Orgs:           orgStore,
 		Customers:      customerStore,
 		Events:         eventStore,

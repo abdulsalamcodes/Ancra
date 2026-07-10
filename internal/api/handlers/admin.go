@@ -15,13 +15,29 @@ import (
 type AdminHandler struct {
 	orgs     store.OrgStore
 	apiKeys  store.APIKeyStore
+	accounts store.AccountStore
+	ledger   store.LedgerStore
 	reconSvc *reconciliation.Service
 	log      *zap.Logger
 }
 
 // NewAdminHandler constructs an AdminHandler.
-func NewAdminHandler(orgs store.OrgStore, apiKeys store.APIKeyStore, reconSvc *reconciliation.Service, log *zap.Logger) *AdminHandler {
-	return &AdminHandler{orgs: orgs, apiKeys: apiKeys, reconSvc: reconSvc, log: log}
+func NewAdminHandler(
+	orgs store.OrgStore,
+	apiKeys store.APIKeyStore,
+	accounts store.AccountStore,
+	ledger store.LedgerStore,
+	reconSvc *reconciliation.Service,
+	log *zap.Logger,
+) *AdminHandler {
+	return &AdminHandler{
+		orgs:     orgs,
+		apiKeys:  apiKeys,
+		accounts: accounts,
+		ledger:   ledger,
+		reconSvc: reconSvc,
+		log:      log,
+	}
 }
 
 // ListOrgs returns all organisations on the platform.
@@ -143,4 +159,87 @@ func (h *AdminHandler) TriggerOrgReconciliation(w http.ResponseWriter, r *http.R
 		return
 	}
 	writeJSON(w, http.StatusOK, run)
+}
+
+// ListOrgAccounts returns all virtual accounts for the given org, with their
+// current ledger balance included inline.
+//
+// GET /admin/orgs/{orgID}/accounts
+func (h *AdminHandler) ListOrgAccounts(w http.ResponseWriter, r *http.Request) {
+	orgID, err := uuid.Parse(chi.URLParam(r, "orgID"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid org id")
+		return
+	}
+	limit  := queryInt(r, "limit", 50)
+	offset := queryInt(r, "offset", 0)
+
+	accounts, err := h.accounts.ListAccounts(r.Context(), orgID, limit, offset)
+	if err != nil {
+		h.log.Error("admin list org accounts failed",
+			zap.String("org_id", orgID.String()), zap.Error(err))
+		writeError(w, http.StatusInternalServerError, "failed to list accounts")
+		return
+	}
+	if accounts == nil {
+		accounts = []*store.VirtualAccount{}
+	}
+
+	type accountWithBalance struct {
+		*store.VirtualAccount
+		Balance int64 `json:"balance"`
+	}
+	enriched := make([]accountWithBalance, 0, len(accounts))
+	for _, a := range accounts {
+		balance, err := h.ledger.GetBalance(r.Context(), a.ID)
+		if err != nil {
+			h.log.Warn("admin: could not fetch balance for account",
+				zap.String("account_id", a.ID.String()), zap.Error(err))
+		}
+		enriched = append(enriched, accountWithBalance{VirtualAccount: a, Balance: balance})
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"accounts": enriched,
+		"limit":    limit,
+		"offset":   offset,
+	})
+}
+
+// ListAccountLedger returns the raw ledger entries for a single account,
+// regardless of which org owns it. Intended for operator inspection only.
+//
+// GET /admin/accounts/{id}/ledger
+func (h *AdminHandler) ListAccountLedger(w http.ResponseWriter, r *http.Request) {
+	accountID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid account id")
+		return
+	}
+	limit  := queryInt(r, "limit", 50)
+	offset := queryInt(r, "offset", 0)
+
+	entries, err := h.ledger.ListEntries(r.Context(), accountID, limit, offset)
+	if err != nil {
+		h.log.Error("admin list account ledger failed",
+			zap.String("account_id", accountID.String()), zap.Error(err))
+		writeError(w, http.StatusInternalServerError, "failed to list ledger entries")
+		return
+	}
+	if entries == nil {
+		entries = []*store.LedgerEntry{}
+	}
+
+	balance, err := h.ledger.GetBalance(r.Context(), accountID)
+	if err != nil {
+		h.log.Warn("admin: could not fetch balance",
+			zap.String("account_id", accountID.String()), zap.Error(err))
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"entries": entries,
+		"balance": balance,
+		"limit":   limit,
+		"offset":  offset,
+	})
 }

@@ -562,6 +562,7 @@
                   <th>Name</th>
                   <th>Slug</th>
                   <th>Joined</th>
+                  <th>Accounts</th>
                   <th></th>
                 </tr>
               </thead>
@@ -836,7 +837,7 @@
       const data = await res.json();
       const orgs = data.orgs || [];
       if (!orgs.length) {
-        tbody.innerHTML = '<tr><td colspan="4"><div class="state-box">No organisations yet.</div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5"><div class="state-box">No organisations yet.</div></td></tr>';
         return;
       }
       tbody.innerHTML = orgs.map(o => `
@@ -844,6 +845,9 @@
           <td>${esc(o.name)}</td>
           <td>${esc(o.slug)}</td>
           <td>${fmtDate(o.created_at)}</td>
+          <td>
+            <button class="btn btn-ghost btn-sm" onclick="showOrgAccountsDrawer('${o.id}', '${esc(o.name)}')">View Accounts</button>
+          </td>
           <td style="white-space:nowrap;">
             <button class="btn btn-ghost btn-sm" onclick="triggerRecon('${o.id}', '${esc(o.name)}', this)">Trigger Recon</button>
             <button class="btn btn-ghost btn-sm" onclick="showReconRunsDrawer('${o.id}', '${esc(o.name)}')" style="margin-left:6px;">View Runs</button>
@@ -853,9 +857,119 @@
       `).join('');
     } catch (e) {
       if (e.message !== 'unauthorised') {
-        tbody.innerHTML = '<tr><td colspan="4"><div class="state-box error">Failed to load organisations.</div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5"><div class="state-box error">Failed to load organisations.</div></td></tr>';
       }
     }
+  }
+
+  /* Org Accounts drawer */
+  async function showOrgAccountsDrawer(orgID, orgName) {
+    openDrawer(`Accounts — ${orgName}`);
+    document.getElementById('drawerBody').innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Account Name</th>
+              <th>Account Number</th>
+              <th>Status</th>
+              <th style="text-align:right;">Balance</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="drawer-accounts-tbody">
+            <tr><td colspan="5"><div class="loading-row"><div class="spinner"></div> Loading…</div></td></tr>
+          </tbody>
+        </table>
+      </div>`;
+
+    try {
+      const res  = await apiFetch(`/admin/orgs/${orgID}/accounts?limit=50`);
+      const data = await res.json();
+      const tbody = document.getElementById('drawer-accounts-tbody');
+      const accounts = data.accounts ?? [];
+      if (!accounts.length) {
+        tbody.innerHTML = '<tr><td colspan="5"><div class="state-box">No accounts yet.</div></td></tr>';
+        return;
+      }
+      tbody.innerHTML = accounts.map(a => `
+        <tr>
+          <td>${esc(a.bank_account_name ?? '—')}</td>
+          <td class="mono">${esc(a.bank_account_number ?? '—')}</td>
+          <td>${a.status === 'active'
+            ? '<span class="badge badge-green">active</span>'
+            : '<span class="badge badge-gray">closed</span>'}</td>
+          <td style="text-align:right;" class="mono">${formatKobo(a.balance)}</td>
+          <td><button class="btn btn-ghost btn-sm" onclick="showAccountLedgerDrawer('${a.id}', '${esc(a.bank_account_number ?? a.id)}')">Ledger</button></td>
+        </tr>
+      `).join('');
+    } catch (e) {
+      if (e.message !== 'unauthorised') {
+        const tbody = document.getElementById('drawer-accounts-tbody');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="5"><div class="state-box error">Failed to load accounts.</div></td></tr>';
+      }
+    }
+  }
+
+  /* Account Ledger drawer */
+  async function showAccountLedgerDrawer(accountID, accountRef) {
+    openDrawer(`Ledger — ${accountRef}`);
+    document.getElementById('drawerBody').innerHTML = `
+      <div id="drawer-ledger-balance" style="padding:16px 20px; border-bottom:1px solid var(--hairline); font-size:13px; color:var(--gray);">
+        Loading balance…
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Direction</th>
+              <th style="text-align:right;">Amount</th>
+              <th>Type</th>
+              <th>Reference</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody id="drawer-ledger-tbody">
+            <tr><td colspan="5"><div class="loading-row"><div class="spinner"></div> Loading…</div></td></tr>
+          </tbody>
+        </table>
+      </div>`;
+
+    try {
+      const res  = await apiFetch(`/admin/accounts/${accountID}/ledger?limit=100`);
+      const data = await res.json();
+      const tbody   = document.getElementById('drawer-ledger-tbody');
+      const balEl   = document.getElementById('drawer-ledger-balance');
+      const entries = data.entries ?? [];
+
+      balEl.innerHTML = `Balance: <strong style="color:var(--ink);">${formatKobo(data.balance)}</strong>`;
+
+      if (!entries.length) {
+        tbody.innerHTML = '<tr><td colspan="5"><div class="state-box">No ledger entries yet.</div></td></tr>';
+        return;
+      }
+      tbody.innerHTML = entries.map(e => `
+        <tr>
+          <td>${e.direction === 'credit'
+            ? '<span class="badge badge-green">credit</span>'
+            : '<span class="badge badge-red">debit</span>'}</td>
+          <td style="text-align:right;" class="mono">${formatKobo(e.amount)}</td>
+          <td class="mono" style="font-size:11px;">${esc(e.entry_type ?? '—')}</td>
+          <td class="mono" style="font-size:11px;">${esc((e.external_ref ?? '').slice(0, 24) || '—')}</td>
+          <td>${fmtDate(e.created_at)}</td>
+        </tr>
+      `).join('');
+    } catch (e) {
+      if (e.message !== 'unauthorised') {
+        const tbody = document.getElementById('drawer-ledger-tbody');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="5"><div class="state-box error">Failed to load ledger.</div></td></tr>';
+      }
+    }
+  }
+
+  function formatKobo(kobo) {
+    if (kobo == null) return '—';
+    return '₦' + (kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
   /* Reconciliation Runs page */

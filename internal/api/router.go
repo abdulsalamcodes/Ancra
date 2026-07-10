@@ -30,6 +30,7 @@ type RouterDeps struct {
 	NombaFactory   *nomba.ClientFactory
 	Verifier       *nomba.Verifier // optional; nil when all orgs use BYOK
 	Accounts       store.AccountStore
+	Ledger         store.LedgerStore
 	Orgs           store.OrgStore
 	Customers      store.CustomerStore
 	Events         store.EventStore
@@ -147,7 +148,7 @@ func NewRouter(d RouterDeps) http.Handler {
 	// ---------------------------------------------------------------------------
 	// Admin routes — protected by Admin-Secret header only (operator use)
 	// ---------------------------------------------------------------------------
-	adminHandler := handlers.NewAdminHandler(d.Orgs, d.APIKeys, d.ReconSvc, d.Log)
+	adminHandler := handlers.NewAdminHandler(d.Orgs, d.APIKeys, d.Accounts, d.Ledger, d.ReconSvc, d.Log)
 
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.AdminAuth(d.AdminSecret))
@@ -157,6 +158,8 @@ func NewRouter(d RouterDeps) http.Handler {
 		r.Get("/admin/reconciliation", adminHandler.ListAllReconciliationRuns)
 		r.Get("/admin/orgs/{orgID}/reconciliation", adminHandler.ListOrgReconciliationRuns)
 		r.Post("/admin/orgs/{orgID}/reconciliation/trigger", adminHandler.TriggerOrgReconciliation)
+		r.Get("/admin/orgs/{orgID}/accounts", adminHandler.ListOrgAccounts)
+		r.Get("/admin/accounts/{id}/ledger", adminHandler.ListAccountLedger)
 
 		r.Post("/admin/api-keys", apiKeyHandler.AdminCreateKey)
 		r.Get("/admin/api-keys", apiKeyHandler.AdminListAllKeys)
